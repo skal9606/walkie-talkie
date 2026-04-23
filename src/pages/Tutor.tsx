@@ -1,0 +1,547 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
+import { TUTOR_INSTRUCTIONS } from '../lib/tutor-prompt'
+import {
+  ALL_SCENARIOS,
+  FREE_CONVERSATIONS,
+  ROLEPLAY_SCENARIOS,
+  type Scenario,
+} from '../lib/scenarios'
+import {
+  addFreeSecondsUsed,
+  getFreeSecondsRemaining,
+  isSubscribed,
+  markSubscribed,
+  type Plan,
+} from '../lib/subscription'
+import { Paywall } from '../components/Paywall'
+
+type Turn = {
+  id: string
+  role: 'user' | 'tutor'
+  text: string
+  done: boolean
+}
+
+type Status = 'idle' | 'connecting' | 'live' | 'error' | 'reviewing' | 'review'
+
+type ReviewData = {
+  summary?: string
+  corrections?: Array<{ original: string; corrected: string; explanation: string }>
+  newVocabulary?: Array<{ word: string; translation: string; example: string }>
+  practiceNextTime?: string[]
+}
+
+type TranslationState = Record<string, string | 'loading'>
+
+function formatSeconds(total: number): string {
+  const s = Math.max(0, Math.ceil(total))
+  const m = Math.floor(s / 60)
+  const r = s % 60
+  return `${m}:${r.toString().padStart(2, '0')}`
+}
+
+export default function Tutor() {
+  const [status, setStatus] = useState<Status>('idle')
+  const [scenarioId, setScenarioId] = useState<string>('free-beginner')
+  const [turns, setTurns] = useState<Turn[]>([])
+  const [translations, setTranslations] = useState<TranslationState>({})
+  const [review, setReview] = useState<ReviewData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [subscribed, setSubscribed] = useState<boolean>(() => isSubscribed())
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(() =>
+    getFreeSecondsRemaining(),
+  )
+  const [paywallOpen, setPaywallOpen] = useState<null | 'exhausted' | 'blocked'>(null)
+  const tutorRef = useRef<RealtimeTutor | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const scenario = useMemo(
+    () => ALL_SCENARIOS.find((s) => s.id === scenarioId) ?? ALL_SCENARIOS[0],
+    [scenarioId],
+  )
+  const showScenarioHeader = status !== 'idle'
+
+  // Handle the return from Stripe Checkout
+  useEffect(() => {
+    const plan = searchParams.get('subscribed')
+    if (plan === 'monthly' || plan === 'yearly') {
+      markSubscribed(plan as Plan)
+      setSubscribed(true)
+      setPaywallOpen(null)
+      const next = new URLSearchParams(searchParams)
+      next.delete('subscribed')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [turns, translations])
+
+  const stop = useCallback(
+    async (options: { showPaywall?: 'exhausted' } = {}) => {
+      tutorRef.current?.disconnect()
+      tutorRef.current = null
+
+      const finalTurns = turns.filter((t) => t.text.trim())
+
+      if (options.showPaywall === 'exhausted') {
+        setPaywallOpen('exhausted')
+      }
+
+      if (finalTurns.length < 2) {
+        setStatus('idle')
+        return
+      }
+
+      setStatus('reviewing')
+      try {
+        const res = await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scenario: scenario.title,
+            transcript: finalTurns.map((t) => ({ role: t.role, text: t.text })),
+          }),
+        })
+        const data = (await res.json()) as ReviewData & { error?: string }
+        if (!res.ok || data.error) {
+          throw new Error(data.error ?? `Review failed (${res.status})`)
+        }
+        setReview(data)
+        setStatus('review')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err))
+        setStatus('review')
+      }
+    },
+    [scenario.title, turns],
+  )
+
+  // Tick down the free-trial clock while live. Every second, if the user isn't
+  // subscribed, add one second to their lifetime usage. When the remainder hits
+  // zero, auto-stop the session and surface the paywall.
+  useEffect(() => {
+    if (status !== 'live' || subscribed) return
+    const interval = setInterval(() => {
+      addFreeSecondsUsed(1)
+      const remaining = getFreeSecondsRemaining()
+      setSecondsRemaining(remaining)
+      if (remaining <= 0) {
+        void stop({ showPaywall: 'exhausted' })
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [status, subscribed, stop])
+
+  async function start() {
+    if (!subscribed && getFreeSecondsRemaining() <= 0) {
+      setPaywallOpen('blocked')
+      return
+    }
+    setStatus('connecting')
+    setError(null)
+    setTurns([])
+    setTranslations({})
+    setReview(null)
+
+    const addon = scenario.buildPromptAddon()
+    const instructions = addon ? `${TUTOR_INSTRUCTIONS}\n\n${addon}` : TUTOR_INSTRUCTIONS
+
+    const tutor = new RealtimeTutor()
+    tutorRef.current = tutor
+
+    tutor.onEvent((event: RealtimeEvent) => {
+      switch (event.type) {
+        case 'conversation.item.created': {
+          const item = event.item as
+            | { id?: string; role?: string; type?: string }
+            | undefined
+          if (item?.role === 'user' && item.type === 'message' && item.id) {
+            const id = item.id
+            setTurns((prev) =>
+              prev.some((t) => t.id === id)
+                ? prev
+                : [...prev, { id, role: 'user', text: '', done: false }],
+            )
+          }
+          break
+        }
+        case 'conversation.item.input_audio_transcription.completed': {
+          const id = (event.item_id as string) ?? crypto.randomUUID()
+          const transcript = (event.transcript as string) ?? ''
+          setTurns((prev) => {
+            const idx = prev.findIndex((t) => t.id === id && t.role === 'user')
+            if (idx >= 0) {
+              const next = prev.slice()
+              next[idx] = { ...next[idx], text: transcript, done: true }
+              return next
+            }
+            if (!transcript.trim()) return prev
+            return [...prev, { id, role: 'user', text: transcript, done: true }]
+          })
+          break
+        }
+        case 'response.audio_transcript.delta': {
+          const id = (event.response_id as string) ?? 'tutor'
+          const delta = (event.delta as string) ?? ''
+          setTurns((prev) => {
+            const idx = prev.findIndex(
+              (t) => t.id === id && t.role === 'tutor' && !t.done,
+            )
+            if (idx >= 0) {
+              const next = prev.slice()
+              next[idx] = { ...next[idx], text: next[idx].text + delta }
+              return next
+            }
+            return [...prev, { id, role: 'tutor', text: delta, done: false }]
+          })
+          break
+        }
+        case 'response.audio_transcript.done': {
+          const id = (event.response_id as string) ?? 'tutor'
+          setTurns((prev) =>
+            prev.map((t) =>
+              t.id === id && t.role === 'tutor' ? { ...t, done: true } : t,
+            ),
+          )
+          break
+        }
+        case 'error': {
+          const err = event.error as { message?: string } | undefined
+          setError(err?.message ?? 'Unknown error from Realtime API')
+          break
+        }
+      }
+    })
+
+    try {
+      await tutor.connect(instructions, { vadEagerness: scenario.vadEagerness })
+      setStatus('live')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setStatus('error')
+      tutor.disconnect()
+      tutorRef.current = null
+    }
+  }
+
+  async function toggleTranslation(turn: Turn) {
+    if (turn.role !== 'tutor' || !turn.text.trim() || !turn.done) return
+    const existing = translations[turn.id]
+    if (existing && existing !== 'loading') {
+      setTranslations((prev) => {
+        const next = { ...prev }
+        delete next[turn.id]
+        return next
+      })
+      return
+    }
+    if (existing === 'loading') return
+
+    setTranslations((prev) => ({ ...prev, [turn.id]: 'loading' }))
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: turn.text }),
+      })
+      const data = (await res.json()) as { translation?: string; error?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Translate failed')
+      setTranslations((prev) => ({
+        ...prev,
+        [turn.id]: data.translation ?? '(no translation)',
+      }))
+    } catch {
+      setTranslations((prev) => {
+        const next = { ...prev }
+        delete next[turn.id]
+        return next
+      })
+    }
+  }
+
+  function newSession() {
+    setStatus('idle')
+    setReview(null)
+    setTurns([])
+    setTranslations({})
+    setError(null)
+  }
+
+  const freeExhausted = !subscribed && secondsRemaining <= 0
+
+  return (
+    <div className="app">
+      <nav className="tutor-nav">
+        <Link to="/" className="tutor-nav-back">
+          ← Back
+        </Link>
+        {subscribed ? (
+          <div className="tutor-nav-badge">Subscribed</div>
+        ) : (
+          <div className="tutor-nav-badge free">
+            Free trial · {formatSeconds(secondsRemaining)} left
+          </div>
+        )}
+      </nav>
+
+      <header className="header">
+        <h1>{showScenarioHeader ? scenario.title : 'Walkie Talkie'}</h1>
+        <p className="subtitle">
+          {showScenarioHeader
+            ? scenario.description
+            : 'Voice conversation · Brazilian Portuguese'}
+        </p>
+      </header>
+
+      {status === 'idle' && !paywallOpen && (
+        <ScenarioPicker
+          selectedId={scenarioId}
+          onSelect={setScenarioId}
+          freeConversations={FREE_CONVERSATIONS}
+          roleplayScenarios={ROLEPLAY_SCENARIOS}
+        />
+      )}
+
+      {(status === 'connecting' || status === 'live') && (
+        <div className="transcript" ref={scrollRef}>
+          {turns.length === 0 && status === 'connecting' && (
+            <div className="empty">Connecting to tutor…</div>
+          )}
+          {turns.map((turn) => {
+            const translation = translations[turn.id]
+            const isTutor = turn.role === 'tutor'
+            return (
+              <div
+                key={turn.id + '-' + turn.role}
+                className={`turn ${turn.role} ${isTutor && turn.done ? 'clickable' : ''}`}
+                onClick={isTutor ? () => toggleTranslation(turn) : undefined}
+                title={isTutor && turn.done ? 'Click for English translation' : undefined}
+              >
+                <div className="turn-role">{isTutor ? 'Tutor' : 'You'}</div>
+                <div className="turn-text">{turn.text || '…'}</div>
+                {translation === 'loading' && (
+                  <div className="translation loading">Translating…</div>
+                )}
+                {translation && translation !== 'loading' && (
+                  <div className="translation">{translation}</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {status === 'reviewing' && (
+        <div className="transcript">
+          <div className="empty">Generating session review…</div>
+        </div>
+      )}
+
+      {status === 'review' && <ReviewView review={review} error={error} />}
+
+      <div className="controls">
+        {status === 'live' && (
+          <div className="live-indicator">
+            ● Live{' '}
+            {!subscribed && secondsRemaining <= 30 && (
+              <span className="live-warning">
+                · {formatSeconds(secondsRemaining)} left
+              </span>
+            )}
+          </div>
+        )}
+        {status === 'idle' && !paywallOpen && (
+          <button
+            className="mic-btn start"
+            onClick={start}
+            disabled={freeExhausted}
+            title={freeExhausted ? 'Your free trial is up — subscribe to continue' : undefined}
+          >
+            {freeExhausted ? 'Free trial used — subscribe' : 'Start session'}
+          </button>
+        )}
+        {status === 'connecting' && (
+          <button className="mic-btn" disabled>
+            Connecting…
+          </button>
+        )}
+        {status === 'live' && (
+          <button className="mic-btn stop" onClick={() => stop()}>
+            End session
+          </button>
+        )}
+        {status === 'reviewing' && (
+          <button className="mic-btn" disabled>
+            Reviewing…
+          </button>
+        )}
+        {status === 'review' && !paywallOpen && (
+          <button className="mic-btn start" onClick={newSession}>
+            Start another session
+          </button>
+        )}
+        {status === 'error' && (
+          <>
+            <div className="error">{error}</div>
+            <button className="mic-btn start" onClick={start}>
+              Retry
+            </button>
+          </>
+        )}
+      </div>
+
+      {paywallOpen && (
+        <Paywall
+          reason={paywallOpen}
+          onUnlocked={() => {
+            setSubscribed(true)
+            setPaywallOpen(null)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function ScenarioPicker({
+  freeConversations,
+  roleplayScenarios,
+  selectedId,
+  onSelect,
+}: {
+  freeConversations: Scenario[]
+  roleplayScenarios: Scenario[]
+  selectedId: string
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div className="scenarios">
+      <section className="picker-section">
+        <h3 className="picker-section-label">Free conversation</h3>
+        <div className="scenario-grid cols-3">
+          {freeConversations.map((s) => (
+            <ScenarioTile
+              key={s.id}
+              scenario={s}
+              selected={s.id === selectedId}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="picker-section">
+        <h3 className="picker-section-label">Scenarios</h3>
+        <div className="scenario-grid cols-2">
+          {roleplayScenarios.map((s) => (
+            <ScenarioTile
+              key={s.id}
+              scenario={s}
+              selected={s.id === selectedId}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function ScenarioTile({
+  scenario,
+  selected,
+  onSelect,
+}: {
+  scenario: Scenario
+  selected: boolean
+  onSelect: (id: string) => void
+}) {
+  return (
+    <button
+      className={`scenario-tile ${selected ? 'selected' : ''}`}
+      onClick={() => onSelect(scenario.id)}
+    >
+      <div className="scenario-title">{scenario.title}</div>
+      <div className="scenario-desc">{scenario.description}</div>
+    </button>
+  )
+}
+
+function ReviewView({ review, error }: { review: ReviewData | null; error: string | null }) {
+  if (error && !review) {
+    return (
+      <div className="review">
+        <div className="error">{error}</div>
+      </div>
+    )
+  }
+  if (!review) return null
+
+  const hasCorrections = (review.corrections ?? []).length > 0
+  const hasVocab = (review.newVocabulary ?? []).length > 0
+  const hasNextTime = (review.practiceNextTime ?? []).length > 0
+
+  return (
+    <div className="review">
+      {review.summary && (
+        <section className="review-section">
+          <h2>Session summary</h2>
+          <p>{review.summary}</p>
+        </section>
+      )}
+
+      {hasCorrections && (
+        <section className="review-section">
+          <h2>Corrections</h2>
+          <ul className="corrections">
+            {review.corrections!.map((c, i) => (
+              <li key={i}>
+                <div className="correction-row">
+                  <span className="correction-wrong">{c.original}</span>
+                  <span className="correction-arrow">→</span>
+                  <span className="correction-right">{c.corrected}</span>
+                </div>
+                <div className="correction-explain">{c.explanation}</div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {hasVocab && (
+        <section className="review-section">
+          <h2>New vocabulary</h2>
+          <ul className="vocab">
+            {review.newVocabulary!.map((v, i) => (
+              <li key={i}>
+                <div>
+                  <span className="vocab-word">{v.word}</span>
+                  <span className="vocab-translation"> — {v.translation}</span>
+                </div>
+                {v.example && <div className="vocab-example">{v.example}</div>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {hasNextTime && (
+        <section className="review-section">
+          <h2>Next time, practice</h2>
+          <ul className="next-time">
+            {review.practiceNextTime!.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  )
+}
+
