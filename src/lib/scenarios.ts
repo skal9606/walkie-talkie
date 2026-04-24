@@ -1,11 +1,19 @@
 export type VadEagerness = 'low' | 'medium' | 'high' | 'auto'
 
+/** The four levels the learner chooses from during onboarding. */
+export type Level = 'complete-beginner' | 'novice' | 'intermediate' | 'advanced'
+
+export type PromptContext = {
+  /** Learner's first name, captured during onboarding. */
+  name?: string
+}
+
 export type Scenario = {
   id: string
   title: string
   description: string
   /** Called once per session. Returns the prompt addon appended to the base tutor prompt. */
-  buildPromptAddon: () => string
+  buildPromptAddon: (ctx?: PromptContext) => string
   /**
    * How eagerly the semantic VAD decides the learner is done talking.
    * 'low' waits longest (good for beginners who pause mid-sentence).
@@ -14,71 +22,101 @@ export type Scenario = {
   vadEagerness?: VadEagerness
 }
 
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]
+function nameGreeting(ctx?: PromptContext): string {
+  return ctx?.name?.trim() ? ctx.name.trim() : 'friend'
 }
 
-// --- Opening variants for Free Conversation, one set per level ---
+// --- Free-conversation openers, one per level. Natalia is the tutor persona. ---
+//
+// Complete-beginner and novice openers deliberately mix English and Portuguese
+// (in the style of Issen's Beatriz) so the learner isn't immediately drowned.
+// Intermediate and advanced are almost entirely in Portuguese.
 
-const BEGINNER_OPENINGS = [
-  `OPENING: Greet the learner warmly in English. Tell them you'll start from the very beginning. Teach them their first Portuguese phrase — "olá" (hello) or "tudo bem?" (how are you?) — say it slowly twice, then ask them to repeat it back.`,
+function beginnerOpener(ctx?: PromptContext): string {
+  const n = nameGreeting(ctx)
+  return `OPENING (deliver exactly this, naturally, in one turn):
+"Oi, ${n}! I'm Natalia, your Brazilian Portuguese tutor. We're gonna start super simple — mostly English for now, with just a few Portuguese words sprinkled in. If I go too fast or you want me to repeat, just say 'again' or 'slower,' tá? Ready to learn your first word in Portuguese?"
 
-  `OPENING: Start with a brief word-of-the-day. Pick one very basic Portuguese word ("obrigado/obrigada", "por favor", "bom dia", "tchau"). In English, explain what it means and when you'd use it. Say it slowly twice, then ask the learner to repeat it back to you.`,
+Then WAIT for their answer before moving on.`
+}
 
-  `OPENING: Greet the learner in English and offer to practice greetings. Say: "Let's start with greetings. In Portuguese, 'good morning' is 'bom dia'. Bom dia. Can you say it?" Wait for their attempt and gently correct their pronunciation if needed.`,
+function noviceOpener(ctx?: PromptContext): string {
+  const n = nameGreeting(ctx)
+  return `OPENING (deliver exactly this, naturally, in one turn):
+"Oi, ${n}! Tudo bem? I'm Natalia, and I'll be your Portuguese tutor. We'll chat in a mix of Portuguese and English — when something feels tricky, I'll switch back to English so you don't get lost. Before we dive in, tell me: what's making you want to learn Portuguese?"
 
-  `OPENING: Greet the learner in English and offer to teach them how to introduce themselves. Say: "Let's start with something useful — how to introduce yourself. In Portuguese we say 'meu nome é…' — my name is. Try it: say 'meu nome é' and then your name."`,
-]
+Then WAIT for their answer before moving on.`
+}
 
-const INTERMEDIATE_OPENINGS = [
-  `OPENING: Greet the learner in Portuguese warmly — "Oi! Tudo bem? Sobre o que você quer conversar hoje?" Wait for their answer. If they have no topic, suggest one (weekend plans, their work, something they've been watching or reading).`,
+function intermediateOpener(ctx?: PromptContext): string {
+  const n = nameGreeting(ctx)
+  return `OPENING (deliver exactly this, naturally, in one turn):
+"Oi, ${n}! Eu sou a Natalia, prazer em te conhecer. Antes da gente começar — pode me interromper, me corrigir, ou me pedir pra repetir se precisar, tá? Então, me conta: como foi o seu dia hoje?"
 
-  `OPENING: Open by asking, in Portuguese, what they did over the weekend — "E aí, o que você fez no fim de semana?" Give them space to answer. Recast any verb tense errors gently.`,
+Then WAIT for their answer before moving on.`
+}
 
-  `OPENING: Start with a Brazilian expression of the day — pick something conversational like "beleza", "legal", "chato", "fofoca", "dar um jeito". Use it in a natural sentence, briefly explain what it means, then ask the learner if they want to try using it.`,
+function advancedOpener(ctx?: PromptContext): string {
+  const n = nameGreeting(ctx)
+  return `OPENING (deliver exactly this, naturally, in one turn):
+"E aí, ${n}, tudo joia? Sou a Natalia, sua tutora. Olha, você já tá num nível legal, então vou falar normal, na velocidade que eu falaria com qualquer pessoa. Se rolar alguma gíria ou expressão que você não conhecer, pode me parar. Me conta — o que você andou fazendo essa semana?"
 
-  `OPENING: Greet the learner in Portuguese and ask a curiosity question: "Me conta — o que você gosta de fazer no seu tempo livre?" Follow up on whatever they mention with genuine interest.`,
+Then WAIT for their answer before moving on.`
+}
 
-  `OPENING: Ask the learner what they'd like to practice today — vocabulary, a specific situation, or just free chatting. Say this in Portuguese first ("O que você gostaria de praticar hoje?") with a brief English gloss.`,
-]
-
-const ADVANCED_OPENINGS = [
-  `OPENING: Greet the learner in Portuguese and ask an open-ended question worth an actual conversation: "Oi! Sobre o que você anda pensando ultimamente?" or "O que te deixou curioso essa semana?" Follow wherever they go. Speak entirely in Portuguese.`,
-
-  `OPENING: Open with a Brazilian idiom of the day — something a native would use: "pagar mico", "engolir sapo", "enfiar o pé na jaca", "dar uma de joão-sem-braço". Use it in context, ask if they've heard it, and invite them to try using it themselves.`,
-
-  `OPENING: Ask the learner about their relationship to Brazil or Portuguese — have they been, do they have family there, what drew them to the language. Let their story guide the conversation. Entirely in Portuguese.`,
-
-  `OPENING: Raise a light current-events or cultural topic (Brazilian music, football, food, politics lite, travel) and ask their opinion. Keep the register natural and adult. Entirely in Portuguese.`,
-
-  `OPENING: Simply ask, in Portuguese: "Sobre o que você gostaria de conversar hoje? Pode ser qualquer coisa." Let them steer. If they have nothing in mind, propose a subject you find interesting and go.`,
-]
-
-// --- Free conversation scenarios (grouped by level) ---
+// --- Free conversation scenarios, one per level ---
 
 export const FREE_CONVERSATIONS: Scenario[] = [
   {
-    id: 'free-beginner',
-    title: 'Free conversation — Beginner',
-    description: 'Just starting out. Mostly English with simple Portuguese.',
-    buildPromptAddon: () =>
-      `SCENARIO: Free conversation at the BEGINNER (A1) level.
+    id: 'free-complete-beginner',
+    title: 'Free conversation — Complete beginner',
+    description: 'Know zero Portuguese. Mostly English with a few Portuguese words.',
+    vadEagerness: 'medium',
+    buildPromptAddon: (ctx) =>
+      `SCENARIO: Free conversation with a COMPLETE BEGINNER (A0).
 
 LEVEL CALIBRATION:
-- Treat the learner as an absolute beginner. Use simple vocabulary only: greetings, family, food, days of the week, numbers, likes/dislikes.
-- Stay mostly in ENGLISH. Introduce Portuguese one phrase at a time, always with the model-then-repeat pattern (say slowly twice, then "can you say it?").
+- Treat the learner as someone who knows zero Portuguese. Assume nothing.
+- Stay MOSTLY in ENGLISH. Introduce Portuguese one phrase at a time, with the model-then-repeat pattern (say slowly twice, then "can you say it?").
 - Stick to simple present tense. Do not introduce past or future tense yet.
 - Every new Portuguese word gets an English gloss.
-- Be very patient. Celebrate every attempt, however small.
 
-${pickRandom(BEGINNER_OPENINGS)}`,
+ACCEPTANCE (OVERRIDES THE BASE PROMPT'S CORRECTION RULES):
+- Accept ANY reasonable attempt. If they say the word recognizably, praise them enthusiastically and MOVE ON — "Perfect! That's it!" or "Great, you got it!" Do NOT ask them to repeat. Do NOT say "close" or "almost."
+- Only correct if the word is completely unrecognizable, and even then keep it light — "Almost! Try again: [word]." Once only, then move on.
+- No pronunciation nitpicking. The goal at this level is momentum and confidence, not accuracy.
+- If they say something that isn't Portuguese (or is in another language), gently redirect — "Ha, that's French! In Portuguese we'd say [word]" — then move on.
+
+${beginnerOpener(ctx)}`,
+  },
+  {
+    id: 'free-novice',
+    title: 'Free conversation — Novice',
+    description: 'Know a little. Can greet, say thanks, a few basics.',
+    vadEagerness: 'medium',
+    buildPromptAddon: (ctx) =>
+      `SCENARIO: Free conversation with a NOVICE (A1) learner.
+
+LEVEL CALIBRATION:
+- The learner knows basics: greetings, thank you, numbers, a handful of nouns.
+- Mix English and Portuguese actively. When you hit something tricky, fall back to English so they don't stall.
+- Stick to simple present tense and very common vocabulary (food, family, work, likes/dislikes).
+- Every new Portuguese word gets an English gloss on first use.
+
+ACCEPTANCE (OVERRIDES THE BASE PROMPT'S CORRECTION RULES):
+- Accept attempts generously. If they say something recognizable, praise them and move on. Do not say "close" or "almost" — that's demotivating at this level.
+- Only correct if the word is really off, and keep it to one try. Momentum beats accuracy.
+- Gender/agreement and verb conjugation errors can slide entirely at this level.
+- If they speak another language by mistake, gently point it out and give the Portuguese equivalent.
+
+${noviceOpener(ctx)}`,
   },
   {
     id: 'free-intermediate',
     title: 'Free conversation — Intermediate',
-    description: 'Comfortable with basics. Mostly Portuguese with English assists.',
+    description: 'Can hold a basic conversation. Mostly Portuguese.',
     vadEagerness: 'medium',
-    buildPromptAddon: () =>
+    buildPromptAddon: (ctx) =>
       `SCENARIO: Free conversation at the INTERMEDIATE (B1/B2) level.
 
 LEVEL CALIBRATION:
@@ -87,14 +125,14 @@ LEVEL CALIBRATION:
 - Past tense (eu fiz, eu fui, eu comi) and simple future (eu vou fazer) are fair game. Introduce them as they naturally come up.
 - Correct meaningful mistakes — verb tense, gender/agreement, subjunctive misuse — and have them repeat the fixed sentence. Let small slips slide to preserve flow.
 
-${pickRandom(INTERMEDIATE_OPENINGS)}`,
+${intermediateOpener(ctx)}`,
   },
   {
     id: 'free-advanced',
     title: 'Free conversation — Advanced',
     description: 'Fluent-ish. Full Portuguese, any topic, idioms and nuance.',
     vadEagerness: 'high',
-    buildPromptAddon: () =>
+    buildPromptAddon: (ctx) =>
       `SCENARIO: Free conversation at the ADVANCED (C1/C2) level.
 
 LEVEL CALIBRATION:
@@ -104,9 +142,15 @@ LEVEL CALIBRATION:
 - Speak at natural native pace. Do not slow down for them.
 - Correct only significant errors (awkward phrasing, subjunctive mood, register mismatches). Ignore minor slips entirely — flow matters more.
 
-${pickRandom(ADVANCED_OPENINGS)}`,
+${advancedOpener(ctx)}`,
   },
 ]
+
+/** Map a Level id to its free-conversation scenario. */
+export function scenarioForLevel(level: Level): Scenario {
+  const id = `free-${level}`
+  return FREE_CONVERSATIONS.find((s) => s.id === id) ?? FREE_CONVERSATIONS[0]
+}
 
 // --- Specific roleplay scenarios ---
 

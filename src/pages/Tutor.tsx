@@ -6,11 +6,14 @@ import {
   ALL_SCENARIOS,
   FREE_CONVERSATIONS,
   ROLEPLAY_SCENARIOS,
+  scenarioForLevel,
   type Scenario,
 } from '../lib/scenarios'
 import { FREE_TIER_SECONDS, type Plan } from '../lib/subscription'
 import { Paywall } from '../components/Paywall'
 import { SignIn } from '../components/SignIn'
+import { Onboarding } from '../components/Onboarding'
+import { clearProfile, loadProfile, saveProfile, type LearnerProfile } from '../lib/profile'
 import { signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
@@ -47,8 +50,21 @@ function formatSeconds(total: number): string {
 export default function Tutor() {
   const { user, accessToken, loading: authLoading } = useAuth()
 
+  // Learner profile comes from localStorage. New visitors go through Onboarding
+  // which writes it; returning visitors skip straight to the tutor.
+  const [profile, setProfile] = useState<LearnerProfile | null>(() => loadProfile())
+  const [signingInAnon, setSigningInAnon] = useState(false)
+  const [showSignIn, setShowSignIn] = useState(false)
+  // Set to true when onboarding just completed so we know to auto-start a
+  // session as soon as auth + status are ready (instead of parking on the
+  // scenario picker).
+  const [autoStartAfterAuth, setAutoStartAfterAuth] = useState(false)
+
   const [status, setStatus] = useState<Status>('idle')
-  const [scenarioId, setScenarioId] = useState<string>('free-beginner')
+  const [scenarioId, setScenarioId] = useState<string>(() => {
+    const p = loadProfile()
+    return p ? `free-${p.level}` : 'free-complete-beginner'
+  })
   const [turns, setTurns] = useState<Turn[]>([])
   const [translations, setTranslations] = useState<TranslationState>({})
   const [review, setReview] = useState<ReviewData | null>(null)
@@ -131,6 +147,65 @@ export default function Tutor() {
       setError(err instanceof Error ? err.message : String(err))
     })
   }, [accessToken, searchParams, setSearchParams])
+
+  // --- One-shot /chat?reset=1 handler (for testing the onboarding flow) ---
+  // Clears profile + signs out, then reloads without the param.
+  useEffect(() => {
+    if (searchParams.get('reset') !== '1') return
+    clearProfile()
+    setProfile(null)
+    supabase.auth.signOut().finally(() => {
+      window.location.replace('/chat')
+    })
+  }, [searchParams])
+
+  // --- Onboarding → anon sign-in → auto-start trial ---
+
+  const handleOnboardingComplete = useCallback((p: LearnerProfile) => {
+    saveProfile(p)
+    setProfile(p)
+    setScenarioId(`free-${p.level}`)
+    setAutoStartAfterAuth(true)
+    // Anon sign-in is kicked off by the effect below, which also covers
+    // returning users whose anon session expired.
+  }, [])
+
+  // If a profile is on file but there's no active session (fresh onboarding,
+  // cleared cookies, expired anon session), sign the user in anonymously.
+  // Ref-guarded so we attempt once per mount and don't get into a retry loop
+  // if anon sign-in is disabled in Supabase.
+  const anonSignInAttempted = useRef(false)
+  useEffect(() => {
+    if (!profile) return
+    if (authLoading) return
+    if (user) return
+    if (showSignIn) return
+    if (anonSignInAttempted.current) return
+    anonSignInAttempted.current = true
+    setSigningInAnon(true)
+    supabase.auth.signInAnonymously().then(({ error: signInErr }) => {
+      setSigningInAnon(false)
+      if (signInErr) {
+        setError(
+          `Anonymous sign-in failed: ${signInErr.message}. Check that Anonymous Sign-ins are enabled in Supabase → Authentication → Providers.`,
+        )
+        setAutoStartAfterAuth(false)
+      }
+    })
+  }, [profile, authLoading, user, showSignIn])
+
+  useEffect(() => {
+    if (!autoStartAfterAuth) return
+    if (!user || !accessToken) return
+    if (!statusLoaded) return
+    if (status !== 'idle') return
+    if (!profile) return
+    setAutoStartAfterAuth(false)
+    start(scenarioForLevel(profile.level))
+    // start() reads from refs/state and is defined below; intentionally not
+    // in deps to avoid re-firing every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartAfterAuth, user, accessToken, statusLoaded, status, profile])
 
   // --- Auto-scroll transcript ---
 
@@ -224,7 +299,7 @@ export default function Tutor() {
     stopRef.current = stop
   }, [stop])
 
-  async function start() {
+  async function start(overrideScenario?: Scenario) {
     if (!accessToken) return
     if (!subscribed && secondsRemaining <= 0) {
       setPaywallOpen('blocked')
@@ -236,7 +311,8 @@ export default function Tutor() {
     setTranslations({})
     setReview(null)
 
-    const addon = scenario.buildPromptAddon()
+    const activeScenario = overrideScenario ?? scenario
+    const addon = activeScenario.buildPromptAddon({ name: profile?.name })
     const instructions = addon ? `${TUTOR_INSTRUCTIONS}\n\n${addon}` : TUTOR_INSTRUCTIONS
 
     const tutor = new RealtimeTutor()
@@ -308,7 +384,7 @@ export default function Tutor() {
 
     try {
       const info = await tutor.connect(instructions, {
-        vadEagerness: scenario.vadEagerness,
+        vadEagerness: activeScenario.vadEagerness,
         accessToken,
       })
       setSubscribed(info.subscribed)
@@ -387,7 +463,9 @@ export default function Tutor() {
     )
   }
 
-  if (!user || !accessToken) {
+  // Returning subscriber asked to sign in with email — surface the magic-link
+  // form instead of onboarding.
+  if (showSignIn && (!user || !accessToken)) {
     return (
       <div className="app">
         <nav className="tutor-nav">
@@ -396,6 +474,89 @@ export default function Tutor() {
           </Link>
         </nav>
         <SignIn />
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <button
+            type="button"
+            className="onboarding-link-btn"
+            onClick={() => setShowSignIn(false)}
+          >
+            ← Back to sign-up
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // First visit — no profile yet. Collect name + level, then anon sign-in +
+  // auto-start trial. If they came from a pricing card (?checkout=…), skip
+  // onboarding and go straight to magic-link sign-in: they already know they
+  // want to subscribe.
+  const hasCheckoutIntent =
+    searchParams.get('checkout') === 'monthly' ||
+    searchParams.get('checkout') === 'yearly'
+  if (!profile) {
+    if (hasCheckoutIntent && (!user || !accessToken)) {
+      return (
+        <div className="app">
+          <nav className="tutor-nav">
+            <Link to="/" className="tutor-nav-back">
+              ← Back
+            </Link>
+          </nav>
+          <SignIn />
+        </div>
+      )
+    }
+    return (
+      <div className="app">
+        <nav className="tutor-nav">
+          <Link to="/" className="tutor-nav-back">
+            ← Back
+          </Link>
+        </nav>
+        <Onboarding
+          onComplete={handleOnboardingComplete}
+          onSignInInstead={() => setShowSignIn(true)}
+        />
+        {error && (
+          <div className="error" style={{ textAlign: 'center', marginTop: 16 }}>
+            {error}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Profile is set but we're still waiting on anon sign-in to complete.
+  if (!user || !accessToken) {
+    return (
+      <div className="app">
+        <nav className="tutor-nav">
+          <Link to="/" className="tutor-nav-back">
+            ← Back
+          </Link>
+        </nav>
+        <div className="empty" style={{ marginTop: 80 }}>
+          {signingInAnon ? 'Getting ready…' : error ? '' : 'Loading…'}
+        </div>
+        {error && !signingInAnon && (
+          <div className="auth-card" style={{ marginTop: 24 }}>
+            <h2 className="auth-title">Something went wrong</h2>
+            <p className="auth-body">{error}</p>
+            <button
+              type="button"
+              className="mic-btn start"
+              onClick={() => {
+                setError(null)
+                anonSignInAttempted.current = false
+                // Force the effect to re-evaluate by nudging a dep.
+                setProfile((p) => (p ? { ...p } : p))
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -491,7 +652,7 @@ export default function Tutor() {
         {status === 'idle' && !paywallOpen && (
           <button
             className="mic-btn start"
-            onClick={start}
+            onClick={() => start()}
             disabled={freeExhausted || !statusLoaded}
             title={
               freeExhausted
@@ -529,7 +690,7 @@ export default function Tutor() {
         {status === 'error' && (
           <>
             <div className="error">{error}</div>
-            <button className="mic-btn start" onClick={start}>
+            <button className="mic-btn start" onClick={() => start()}>
               Retry
             </button>
           </>
@@ -537,7 +698,11 @@ export default function Tutor() {
       </div>
 
       {paywallOpen && accessToken && (
-        <Paywall reason={paywallOpen} accessToken={accessToken} />
+        <Paywall
+          reason={paywallOpen}
+          accessToken={accessToken}
+          isAnonymous={user?.is_anonymous ?? false}
+        />
       )}
     </div>
   )
