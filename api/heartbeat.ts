@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { addUsageSeconds, checkSessionAccess } from '../lib/gating'
-import { getUserIdFromAuthHeader } from '../lib/supabase-admin'
+import { addUsageSeconds, checkSessionAccess } from '../lib/gating.js'
+import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 
 /**
  * Called ~every 10s while a free-tier session is live. Server increments the

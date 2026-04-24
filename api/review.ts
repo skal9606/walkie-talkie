@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { reviewTranscript, type TranscriptEntry } from '../lib/api-handlers'
+import { reviewTranscript, type TranscriptEntry } from '../lib/api-handlers.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

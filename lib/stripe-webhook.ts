@@ -1,6 +1,6 @@
 import Stripe from 'stripe'
-import { supabaseAdmin } from './supabase-admin'
-import type { HandlerResult } from './api-handlers'
+import { supabaseAdmin } from './supabase-admin.js'
+import type { HandlerResult } from './api-handlers.js'
 
 type SubscriptionRow = {
   user_id: string

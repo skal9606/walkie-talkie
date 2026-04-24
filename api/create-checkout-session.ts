@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createCheckoutSession } from '../lib/api-handlers'
-import { getUserIdFromAuthHeader } from '../lib/supabase-admin'
+import { createCheckoutSession } from '../lib/api-handlers.js'
+import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

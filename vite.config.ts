@@ -6,10 +6,10 @@ import {
   reviewTranscript,
   translate,
   type HandlerResult,
-} from './lib/api-handlers'
-import { addUsageSeconds, checkSessionAccess, mintGatedSession } from './lib/gating'
-import { handleStripeWebhook } from './lib/stripe-webhook'
-import { getUserIdFromAuthHeader } from './lib/supabase-admin'
+} from './lib/api-handlers.js'
+import { addUsageSeconds, checkSessionAccess, mintGatedSession } from './lib/gating.js'
+import { handleStripeWebhook } from './lib/stripe-webhook.js'
+import { getUserIdFromAuthHeader } from './lib/supabase-admin.js'
 
 // Local dev API endpoints. In production these live in api/*.ts as Vercel
 // serverless functions — both sides share the handler logic in lib/.

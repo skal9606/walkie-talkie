@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { handleStripeWebhook } from '../lib/stripe-webhook'
+import { handleStripeWebhook } from '../lib/stripe-webhook.js'
 
 // Disable Vercel's automatic JSON body parsing — Stripe's signature is
 // calculated over the raw bytes and won't verify if we let Vercel reformat.

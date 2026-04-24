@@ -1,6 +1,6 @@
-import { mintSessionToken, type HandlerResult } from './api-handlers'
-import { supabaseAdmin } from './supabase-admin'
-import { FREE_TIER_SECONDS } from './constants'
+import { mintSessionToken, type HandlerResult } from './api-handlers.js'
+import { supabaseAdmin } from './supabase-admin.js'
+import { FREE_TIER_SECONDS } from './constants.js'
 
 export type GateResult = {
   allowed: boolean
