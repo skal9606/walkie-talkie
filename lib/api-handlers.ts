@@ -159,6 +159,30 @@ export type StripeEnv = {
   yearlyPriceId?: string
 }
 
+// Hosts we accept as success/cancel URLs when starting a Stripe checkout.
+// Prevents an attacker with a valid JWT from routing a user's post-payment
+// redirect (which contains the session_id) to a phishing site.
+const ALLOWED_REDIRECT_HOSTS = new Set([
+  'walkietalkie.so',
+  'www.walkietalkie.so',
+  'localhost:5173',
+  'localhost:5174',
+])
+
+function isAllowedRedirectUrl(url: string | undefined): boolean {
+  if (!url) return false
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+    if (ALLOWED_REDIRECT_HOSTS.has(parsed.host)) return true
+    // Vercel preview deploys (e.g. walkie-talkie-abc.vercel.app) are allowed.
+    if (parsed.host.endsWith('.vercel.app')) return true
+    return false
+  } catch {
+    return false
+  }
+}
+
 export async function createCheckoutSession(
   env: StripeEnv,
   params: {
@@ -192,6 +216,12 @@ export async function createCheckoutSession(
   }
   if (!successUrl || !cancelUrl) {
     return { status: 400, body: { error: 'successUrl and cancelUrl required.' } }
+  }
+  if (!isAllowedRedirectUrl(successUrl) || !isAllowedRedirectUrl(cancelUrl)) {
+    return {
+      status: 400,
+      body: { error: 'successUrl and cancelUrl must point to an allowed host.' },
+    }
   }
 
   try {
