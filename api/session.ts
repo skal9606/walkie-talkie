@@ -1,7 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { mintSessionToken } from '../lib/api-handlers'
+import { mintGatedSession } from '../lib/gating'
+import { getUserIdFromAuthHeader } from '../lib/supabase-admin'
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
-  const result = await mintSessionToken(process.env.OPENAI_API_KEY)
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await getUserIdFromAuthHeader(req.headers.authorization)
+  if (!userId) {
+    return res.status(401).json({ error: 'Not signed in.' })
+  }
+  const result = await mintGatedSession(userId, process.env.OPENAI_API_KEY)
   res.status(result.status).json(result.body)
 }

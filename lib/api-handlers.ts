@@ -161,7 +161,14 @@ export type StripeEnv = {
 
 export async function createCheckoutSession(
   env: StripeEnv,
-  params: { plan?: string; successUrl?: string; cancelUrl?: string },
+  params: {
+    plan?: string
+    successUrl?: string
+    cancelUrl?: string
+    /** Supabase user id — stored on the Stripe session so the webhook can
+     *  link subscription events back to the right user. */
+    userId?: string
+  },
 ): Promise<HandlerResult> {
   if (!env.stripeSecretKey) {
     return {
@@ -195,6 +202,13 @@ export async function createCheckoutSession(
     form.set('success_url', successUrl)
     form.set('cancel_url', cancelUrl)
     form.set('allow_promotion_codes', 'true')
+    if (params.userId) {
+      form.set('client_reference_id', params.userId)
+      form.set('metadata[user_id]', params.userId)
+      // On the Subscription itself too, so later webhooks (renewal, cancel)
+      // still know which user this belongs to.
+      form.set('subscription_data[metadata][user_id]', params.userId)
+    }
 
     const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',

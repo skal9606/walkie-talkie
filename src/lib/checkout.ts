@@ -2,12 +2,17 @@ import type { Plan } from './subscription'
 
 /**
  * Creates a Stripe Checkout session and redirects to Stripe's hosted page.
- * Throws if the server can't mint the session (e.g. Stripe env vars missing).
+ * Requires a Supabase access token so the server can attach the user id as
+ * client_reference_id / metadata (the webhook uses this to link the
+ * subscription back to the user).
  */
-export async function startCheckout(plan: Plan): Promise<void> {
+export async function startCheckout(plan: Plan, accessToken: string): Promise<void> {
   const res = await fetch('/api/create-checkout-session', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: JSON.stringify({
       plan,
       successUrl: `${window.location.origin}/chat?subscribed=${plan}`,

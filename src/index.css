@@ -340,13 +340,14 @@ body {
   padding: 10px 14px;
 }
 
-/* --- Tutor nav (back link + subscription badge) --- */
+/* --- Tutor nav (back link + subscription badge + sign out) --- */
 
 .tutor-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+  gap: 12px;
 }
 
 .tutor-nav-back {
@@ -357,6 +358,12 @@ body {
 
 .tutor-nav-back:hover {
   color: var(--fg);
+}
+
+.tutor-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .tutor-nav-badge {
@@ -371,6 +378,97 @@ body {
 .tutor-nav-badge.free {
   color: var(--muted);
   background: var(--bg-2);
+}
+
+.tutor-nav-signout {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.tutor-nav-signout:hover {
+  color: var(--fg);
+  background: var(--bg-2);
+}
+
+/* --- Auth card --- */
+
+.auth-card {
+  max-width: 420px;
+  margin: 60px auto 0;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 28px;
+}
+
+.auth-title {
+  font-size: 22px;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.auth-body {
+  color: var(--muted);
+  margin: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--fg);
+  font-size: 15px;
+  width: 100%;
+  font-family: inherit;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.auth-input:disabled {
+  opacity: 0.6;
+}
+
+.auth-error {
+  margin-top: 6px;
+  text-align: left;
+}
+
+.auth-link-btn {
+  margin-top: 14px;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.auth-link-btn:hover {
+  text-decoration: underline;
+}
+
+.auth-footnote {
+  margin-top: 18px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .live-warning {

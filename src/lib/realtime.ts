@@ -22,18 +22,30 @@ export class RealtimeTutor {
 
   async connect(
     instructions: string,
-    options: { vadEagerness?: 'low' | 'medium' | 'high' | 'auto' } = {},
-  ): Promise<void> {
-    const tokenRes = await fetch('/api/session')
-    if (!tokenRes.ok) {
-      const text = await tokenRes.text()
-      throw new Error(`Session token request failed: ${text}`)
-    }
+    options: {
+      vadEagerness?: 'low' | 'medium' | 'high' | 'auto'
+      accessToken?: string
+    } = {},
+  ): Promise<{ subscribed: boolean; secondsRemaining: number }> {
+    const tokenRes = await fetch('/api/session', {
+      headers: options.accessToken
+        ? { Authorization: `Bearer ${options.accessToken}` }
+        : {},
+    })
     const tokenData = (await tokenRes.json()) as {
       client_secret?: { value?: string }
       error?: string
+      subscribed?: boolean
+      secondsRemaining?: number
     }
-    if (tokenData.error) throw new Error(tokenData.error)
+    if (!tokenRes.ok) {
+      // Preserve status code so the caller can distinguish 401 / 402.
+      const err = new Error(tokenData.error ?? `Session token request failed (${tokenRes.status})`)
+      ;(err as Error & { status?: number; secondsRemaining?: number }).status = tokenRes.status
+      ;(err as Error & { status?: number; secondsRemaining?: number }).secondsRemaining =
+        tokenData.secondsRemaining
+      throw err
+    }
     const ephemeralKey = tokenData?.client_secret?.value
     if (!ephemeralKey) {
       throw new Error(`Malformed session response: ${JSON.stringify(tokenData)}`)
@@ -98,6 +110,11 @@ export class RealtimeTutor {
       throw new Error(`Realtime SDP exchange failed: ${await sdpRes.text()}`)
     }
     await pc.setRemoteDescription({ type: 'answer', sdp: await sdpRes.text() })
+
+    return {
+      subscribed: tokenData.subscribed ?? false,
+      secondsRemaining: tokenData.secondsRemaining ?? 0,
+    }
   }
 
   send(event: object) {

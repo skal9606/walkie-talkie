@@ -1,21 +1,13 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { startCheckout } from '../lib/checkout'
+import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
 
 export default function Landing() {
-  const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null)
-  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
-  async function handleSubscribe(plan: Plan) {
-    setCheckoutError(null)
-    setLoadingPlan(plan)
-    try {
-      await startCheckout(plan)
-    } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : String(err))
-      setLoadingPlan(null)
-    }
+  // Pricing cards navigate to /chat with a ?checkout=<plan> param. Tutor.tsx
+  // sends the user through sign-in if needed, then auto-starts checkout.
+  function handleSubscribe(plan: Plan) {
+    navigate(`/chat?checkout=${plan}`)
   }
 
   return (
@@ -114,8 +106,6 @@ export default function Landing() {
             period="/ month"
             description="Cancel anytime"
             onSubscribe={handleSubscribe}
-            loading={loadingPlan === 'monthly'}
-            disabled={loadingPlan !== null && loadingPlan !== 'monthly'}
           />
           <PriceCard
             plan="yearly"
@@ -125,11 +115,8 @@ export default function Landing() {
             description="Save $20 · ~$8.33/mo"
             highlighted
             onSubscribe={handleSubscribe}
-            loading={loadingPlan === 'yearly'}
-            disabled={loadingPlan !== null && loadingPlan !== 'yearly'}
           />
         </div>
-        {checkoutError && <div className="checkout-error">{checkoutError}</div>}
       </section>
 
       <section id="faq" className="faq">
@@ -182,8 +169,6 @@ function PriceCard({
   description,
   highlighted,
   onSubscribe,
-  loading,
-  disabled,
 }: {
   plan: Plan
   title: string
@@ -192,14 +177,11 @@ function PriceCard({
   description: string
   highlighted?: boolean
   onSubscribe: (plan: Plan) => void
-  loading: boolean
-  disabled: boolean
 }) {
   return (
     <button
       className={`price-card ${highlighted ? 'highlighted' : ''}`}
       onClick={() => onSubscribe(plan)}
-      disabled={disabled || loading}
     >
       {highlighted && <div className="price-badge">Best value</div>}
       <div className="price-title">{title}</div>
@@ -208,9 +190,7 @@ function PriceCard({
         <span className="price-period">{period}</span>
       </div>
       <div className="price-desc">{description}</div>
-      <div className="price-cta">
-        {loading ? 'Redirecting to checkout…' : 'Subscribe →'}
-      </div>
+      <div className="price-cta">Subscribe →</div>
     </button>
   )
 }

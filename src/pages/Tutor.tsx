@@ -8,14 +8,12 @@ import {
   ROLEPLAY_SCENARIOS,
   type Scenario,
 } from '../lib/scenarios'
-import {
-  addFreeSecondsUsed,
-  getFreeSecondsRemaining,
-  isSubscribed,
-  markSubscribed,
-  type Plan,
-} from '../lib/subscription'
+import { FREE_TIER_SECONDS, type Plan } from '../lib/subscription'
 import { Paywall } from '../components/Paywall'
+import { SignIn } from '../components/SignIn'
+import { signOut, useAuth } from '../lib/auth'
+import { startCheckout } from '../lib/checkout'
+import { supabase } from '../lib/supabase'
 
 type Turn = {
   id: string
@@ -35,6 +33,9 @@ type ReviewData = {
 
 type TranslationState = Record<string, string | 'loading'>
 
+// How often to ping /api/heartbeat while a free-tier session is live.
+const HEARTBEAT_INTERVAL_MS = 10000
+
 function formatSeconds(total: number): string {
   const s = Math.max(0, Math.ceil(total))
   const m = Math.floor(s / 60)
@@ -43,17 +44,21 @@ function formatSeconds(total: number): string {
 }
 
 export default function Tutor() {
+  const { user, accessToken, loading: authLoading } = useAuth()
+
   const [status, setStatus] = useState<Status>('idle')
   const [scenarioId, setScenarioId] = useState<string>('free-beginner')
   const [turns, setTurns] = useState<Turn[]>([])
   const [translations, setTranslations] = useState<TranslationState>({})
   const [review, setReview] = useState<ReviewData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [subscribed, setSubscribed] = useState<boolean>(() => isSubscribed())
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(() =>
-    getFreeSecondsRemaining(),
-  )
+
+  // Server-authoritative state. Loaded on auth + updated from API responses.
+  const [subscribed, setSubscribed] = useState(false)
+  const [secondsRemaining, setSecondsRemaining] = useState(FREE_TIER_SECONDS)
+  const [statusLoaded, setStatusLoaded] = useState(false)
   const [paywallOpen, setPaywallOpen] = useState<null | 'exhausted' | 'blocked'>(null)
+
   const tutorRef = useRef<RealtimeTutor | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -64,37 +69,120 @@ export default function Tutor() {
   )
   const showScenarioHeader = status !== 'idle'
 
-  // Handle the return from Stripe Checkout
+  // --- Load subscription + usage from Supabase whenever the user changes ---
+
+  const refreshStatus = useCallback(async () => {
+    if (!user) return
+    const [{ data: sub }, { data: usage }] = await Promise.all([
+      supabase
+        .from('subscriptions')
+        .select('status')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase.from('usage').select('seconds_used').eq('user_id', user.id).maybeSingle(),
+    ])
+    const active = sub?.status === 'active' || sub?.status === 'trialing'
+    setSubscribed(active)
+    setSecondsRemaining(
+      active
+        ? FREE_TIER_SECONDS
+        : Math.max(0, FREE_TIER_SECONDS - (usage?.seconds_used ?? 0)),
+    )
+    setStatusLoaded(true)
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    setStatusLoaded(false)
+    refreshStatus()
+  }, [user, refreshStatus])
+
+  // --- Handle the return-from-Stripe redirect ---
+
   useEffect(() => {
     const plan = searchParams.get('subscribed')
     if (plan === 'monthly' || plan === 'yearly') {
-      markSubscribed(plan as Plan)
-      setSubscribed(true)
-      setPaywallOpen(null)
+      // Webhook updates the DB asynchronously — give it a beat, then refresh.
+      refreshStatus()
+      const t = setTimeout(refreshStatus, 2500)
       const next = new URLSearchParams(searchParams)
       next.delete('subscribed')
       setSearchParams(next, { replace: true })
+      return () => clearTimeout(t)
     }
-  }, [searchParams, setSearchParams])
+  }, [searchParams, setSearchParams, refreshStatus])
+
+  // --- Auto-start checkout when arriving from a Landing pricing card ---
+  // (Landing navigates to /chat?checkout=monthly; if the user isn't signed in
+  //  yet, they land on SignIn, then come back signed in with the param still
+  //  present, at which point we kick off checkout automatically.)
+
+  useEffect(() => {
+    const plan = searchParams.get('checkout')
+    if (!accessToken) return
+    if (plan !== 'monthly' && plan !== 'yearly') return
+    const next = new URLSearchParams(searchParams)
+    next.delete('checkout')
+    setSearchParams(next, { replace: true })
+    startCheckout(plan as Plan, accessToken).catch((err) => {
+      setError(err instanceof Error ? err.message : String(err))
+    })
+  }, [accessToken, searchParams, setSearchParams])
+
+  // --- Auto-scroll transcript ---
 
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [turns, translations])
 
+  // --- Heartbeat loop: while live + not subscribed, POST /api/heartbeat ---
+
+  useEffect(() => {
+    if (status !== 'live' || subscribed || !accessToken) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/heartbeat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ seconds: HEARTBEAT_INTERVAL_MS / 1000 }),
+        })
+        if (!res.ok) return
+        const data = (await res.json()) as {
+          subscribed?: boolean
+          secondsRemaining?: number
+        }
+        setSubscribed(data.subscribed ?? false)
+        setSecondsRemaining(data.secondsRemaining ?? 0)
+        if ((data.secondsRemaining ?? 0) <= 0 && !data.subscribed) {
+          // Free minutes burned through — cut the session and show the paywall.
+          await stopRef.current?.({ reason: 'exhausted' })
+        }
+      } catch {
+        // Ignore transient network errors; next tick will retry.
+      }
+    }, HEARTBEAT_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [status, subscribed, accessToken])
+
+  // --- Session lifecycle ---
+
   const stop = useCallback(
-    async (options: { showPaywall?: 'exhausted' } = {}) => {
+    async (options: { reason?: 'exhausted' } = {}) => {
       tutorRef.current?.disconnect()
       tutorRef.current = null
 
-      const finalTurns = turns.filter((t) => t.text.trim())
-
-      if (options.showPaywall === 'exhausted') {
+      if (options.reason === 'exhausted') {
         setPaywallOpen('exhausted')
       }
 
+      const finalTurns = turns.filter((t) => t.text.trim())
       if (finalTurns.length < 2) {
         setStatus('idle')
+        refreshStatus()
         return
       }
 
@@ -102,7 +190,10 @@ export default function Tutor() {
       try {
         const res = await fetch('/api/review', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
           body: JSON.stringify({
             scenario: scenario.title,
             transcript: finalTurns.map((t) => ({ role: t.role, text: t.text })),
@@ -118,28 +209,21 @@ export default function Tutor() {
         setError(err instanceof Error ? err.message : String(err))
         setStatus('review')
       }
+      refreshStatus()
     },
-    [scenario.title, turns],
+    [accessToken, refreshStatus, scenario.title, turns],
   )
 
-  // Tick down the free-trial clock while live. Every second, if the user isn't
-  // subscribed, add one second to their lifetime usage. When the remainder hits
-  // zero, auto-stop the session and surface the paywall.
+  // Ref indirection so the heartbeat useEffect can call stop() without
+  // depending on it (which would re-trigger the interval every render).
+  const stopRef = useRef(stop)
   useEffect(() => {
-    if (status !== 'live' || subscribed) return
-    const interval = setInterval(() => {
-      addFreeSecondsUsed(1)
-      const remaining = getFreeSecondsRemaining()
-      setSecondsRemaining(remaining)
-      if (remaining <= 0) {
-        void stop({ showPaywall: 'exhausted' })
-      }
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [status, subscribed, stop])
+    stopRef.current = stop
+  }, [stop])
 
   async function start() {
-    if (!subscribed && getFreeSecondsRemaining() <= 0) {
+    if (!accessToken) return
+    if (!subscribed && secondsRemaining <= 0) {
       setPaywallOpen('blocked')
       return
     }
@@ -220,13 +304,25 @@ export default function Tutor() {
     })
 
     try {
-      await tutor.connect(instructions, { vadEagerness: scenario.vadEagerness })
+      const info = await tutor.connect(instructions, {
+        vadEagerness: scenario.vadEagerness,
+        accessToken,
+      })
+      setSubscribed(info.subscribed)
+      setSecondsRemaining(info.secondsRemaining)
       setStatus('live')
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-      setStatus('error')
       tutor.disconnect()
       tutorRef.current = null
+      const typed = err as Error & { status?: number; secondsRemaining?: number }
+      if (typed.status === 402) {
+        setSecondsRemaining(typed.secondsRemaining ?? 0)
+        setPaywallOpen('blocked')
+        setStatus('idle')
+        return
+      }
+      setError(err instanceof Error ? err.message : String(err))
+      setStatus('error')
     }
   }
 
@@ -247,7 +343,10 @@ export default function Tutor() {
     try {
       const res = await fetch('/api/translate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({ text: turn.text }),
       })
       const data = (await res.json()) as { translation?: string; error?: string }
@@ -275,19 +374,49 @@ export default function Tutor() {
 
   const freeExhausted = !subscribed && secondsRemaining <= 0
 
+  if (authLoading) {
+    return (
+      <div className="app">
+        <div className="empty" style={{ marginTop: 80 }}>
+          Loading…
+        </div>
+      </div>
+    )
+  }
+
+  if (!user || !accessToken) {
+    return (
+      <div className="app">
+        <nav className="tutor-nav">
+          <Link to="/" className="tutor-nav-back">
+            ← Back
+          </Link>
+        </nav>
+        <SignIn />
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <nav className="tutor-nav">
         <Link to="/" className="tutor-nav-back">
           ← Back
         </Link>
-        {subscribed ? (
-          <div className="tutor-nav-badge">Subscribed</div>
-        ) : (
-          <div className="tutor-nav-badge free">
-            Free trial · {formatSeconds(secondsRemaining)} left
-          </div>
-        )}
+        <div className="tutor-nav-right">
+          {!statusLoaded ? (
+            <div className="tutor-nav-badge free">Loading…</div>
+          ) : subscribed ? (
+            <div className="tutor-nav-badge">Subscribed</div>
+          ) : (
+            <div className="tutor-nav-badge free">
+              Free trial · {formatSeconds(secondsRemaining)} left
+            </div>
+          )}
+          <button className="tutor-nav-signout" onClick={() => signOut()}>
+            Sign out
+          </button>
+        </div>
       </nav>
 
       <header className="header">
@@ -360,10 +489,18 @@ export default function Tutor() {
           <button
             className="mic-btn start"
             onClick={start}
-            disabled={freeExhausted}
-            title={freeExhausted ? 'Your free trial is up — subscribe to continue' : undefined}
+            disabled={freeExhausted || !statusLoaded}
+            title={
+              freeExhausted
+                ? 'Your free trial is up — subscribe to continue'
+                : undefined
+            }
           >
-            {freeExhausted ? 'Free trial used — subscribe' : 'Start session'}
+            {!statusLoaded
+              ? 'Loading…'
+              : freeExhausted
+                ? 'Free trial used — subscribe'
+                : 'Start session'}
           </button>
         )}
         {status === 'connecting' && (
@@ -396,14 +533,8 @@ export default function Tutor() {
         )}
       </div>
 
-      {paywallOpen && (
-        <Paywall
-          reason={paywallOpen}
-          onUnlocked={() => {
-            setSubscribed(true)
-            setPaywallOpen(null)
-          }}
-        />
+      {paywallOpen && accessToken && (
+        <Paywall reason={paywallOpen} accessToken={accessToken} />
       )}
     </div>
   )
@@ -544,4 +675,3 @@ function ReviewView({ review, error }: { review: ReviewData | null; error: strin
     </div>
   )
 }
-

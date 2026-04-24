@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { startCheckout } from '../lib/checkout'
-import { markSubscribed, type Plan } from '../lib/subscription'
+import { type Plan } from '../lib/subscription'
 
 export function Paywall({
-  onUnlocked,
+  accessToken,
   reason,
 }: {
-  onUnlocked: () => void
+  accessToken: string
   reason: 'exhausted' | 'blocked'
 }) {
   const [loading, setLoading] = useState<Plan | null>(null)
@@ -16,16 +16,11 @@ export function Paywall({
     setError(null)
     setLoading(plan)
     try {
-      await startCheckout(plan)
+      await startCheckout(plan, accessToken)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setLoading(null)
     }
-  }
-
-  function skipForDev() {
-    markSubscribed('monthly')
-    onUnlocked()
   }
 
   return (
@@ -35,7 +30,10 @@ export function Paywall({
           {reason === 'exhausted' ? (
             <>
               <h2>Your free 2 minutes are up</h2>
-              <p>Subscribe to keep practicing — unlimited conversations, reviews, and scenarios.</p>
+              <p>
+                Subscribe to keep practicing — unlimited conversations, reviews, and
+                scenarios.
+              </p>
             </>
           ) : (
             <>
@@ -81,12 +79,6 @@ export function Paywall({
         </div>
 
         {error && <div className="paywall-error">{error}</div>}
-
-        {import.meta.env.DEV && (
-          <button className="paywall-dev-skip" onClick={skipForDev}>
-            Dev only — skip payment
-          </button>
-        )}
       </div>
     </div>
   )
