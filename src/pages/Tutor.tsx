@@ -14,6 +14,7 @@ import { SignIn } from '../components/SignIn'
 import { signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
+import { trackSubscribe } from '../lib/tiktok'
 
 type Turn = {
   id: string
@@ -102,6 +103,8 @@ export default function Tutor() {
   useEffect(() => {
     const plan = searchParams.get('subscribed')
     if (plan === 'monthly' || plan === 'yearly') {
+      // Fire TikTok conversion event first (before the URL param is cleared).
+      trackSubscribe(plan)
       // Webhook updates the DB asynchronously — give it a beat, then refresh.
       refreshStatus()
       const t = setTimeout(refreshStatus, 2500)
