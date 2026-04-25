@@ -106,7 +106,7 @@ Stop after the question and wait silently for their answer.`
 export const FREE_CONVERSATIONS: Scenario[] = [
   {
     id: 'free-complete-beginner',
-    title: 'Free conversation — Complete beginner',
+    title: 'Complete beginner',
     description: 'Know zero Portuguese. Mostly English with a few Portuguese words.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) =>
@@ -135,7 +135,7 @@ ${memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx)}`,
   },
   {
     id: 'free-novice',
-    title: 'Free conversation — Novice',
+    title: 'Novice',
     description: 'Know a little. Can greet, say thanks, a few basics.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) =>
@@ -163,7 +163,7 @@ ${memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx)}`,
   },
   {
     id: 'free-intermediate',
-    title: 'Free conversation — Intermediate',
+    title: 'Intermediate',
     description: 'Can hold a basic conversation. Mostly Portuguese.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) =>
@@ -179,7 +179,7 @@ ${memoryAwareFreeOpener('intermediate', ctx) ?? intermediateOpener(ctx)}`,
   },
   {
     id: 'free-advanced',
-    title: 'Free conversation — Advanced',
+    title: 'Advanced',
     description: 'Fluent-ish. Full Portuguese, any topic, idioms and nuance.',
     vadEagerness: 'high',
     buildPromptAddon: (ctx) =>

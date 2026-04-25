@@ -44,3 +44,14 @@ export function useAuth(): {
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut()
 }
+
+/**
+ * Returns the current access token from Supabase, asking it to refresh first
+ * if needed. Use this right before any authenticated API call instead of a
+ * React-cached `accessToken` — Supabase rotates the token transparently and
+ * a stale cached copy can cause spurious 401s mid-session.
+ */
+export async function getFreshAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
+}

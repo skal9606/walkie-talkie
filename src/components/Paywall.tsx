@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { startCheckout } from '../lib/checkout'
 import { type Plan } from '../lib/subscription'
 import { supabase } from '../lib/supabase'
+import { getFreshAccessToken } from '../lib/auth'
 
 export function Paywall({
   accessToken,
@@ -23,7 +24,8 @@ export function Paywall({
     setError(null)
     setLoading(true)
     try {
-      await startCheckout(plan, accessToken)
+      const fresh = (await getFreshAccessToken()) ?? accessToken
+      await startCheckout(plan, fresh)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setLoading(false)
@@ -48,7 +50,8 @@ export function Paywall({
       return
     }
     try {
-      await startCheckout(selectedPlan, accessToken)
+      const fresh = (await getFreshAccessToken()) ?? accessToken
+      await startCheckout(selectedPlan, fresh)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setLoading(false)

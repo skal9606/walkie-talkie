@@ -1285,6 +1285,21 @@ body {
   gap: 12px;
 }
 
+/* --- Streak pill (shown on /practice nav) --- */
+
+.streak-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
 /* --- Practice portal --- */
 
 .practice-modes {

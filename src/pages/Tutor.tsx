@@ -19,7 +19,8 @@ import { SignIn } from '../components/SignIn'
 import { Onboarding } from '../components/Onboarding'
 import { clearProfile, loadProfile, saveProfile, type LearnerProfile } from '../lib/profile'
 import { addMemoryItems, loadMemory } from '../lib/memory'
-import { signOut, useAuth } from '../lib/auth'
+import { PRACTICE_THRESHOLD_MS, recordPractice } from '../lib/streak'
+import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
 import { trackSubscribe } from '../lib/tiktok'
@@ -84,6 +85,9 @@ export default function Tutor() {
 
   const tutorRef = useRef<RealtimeTutor | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  // Timestamp of when the current session went live; used to decide whether
+  // the session was long enough to count toward the daily-practice streak.
+  const sessionStartedAtRef = useRef<number | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
   const scenario = useMemo(
@@ -149,9 +153,15 @@ export default function Tutor() {
     const next = new URLSearchParams(searchParams)
     next.delete('checkout')
     setSearchParams(next, { replace: true })
-    startCheckout(plan as Plan, accessToken).catch((err) => {
-      setError(err instanceof Error ? err.message : String(err))
-    })
+    ;(async () => {
+      try {
+        const fresh = await getFreshAccessToken()
+        if (!fresh) throw new Error('Not signed in.')
+        await startCheckout(plan as Plan, fresh)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err))
+      }
+    })()
   }, [accessToken, searchParams, setSearchParams])
 
   // --- One-shot /chat?reset=1 handler (for testing the onboarding flow) ---
@@ -286,11 +296,13 @@ export default function Tutor() {
     if (status !== 'live' || subscribed || !accessToken) return
     const interval = setInterval(async () => {
       try {
+        const fresh = await getFreshAccessToken()
+        if (!fresh) return
         const res = await fetch('/api/heartbeat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${fresh}`,
           },
           body: JSON.stringify({ seconds: HEARTBEAT_INTERVAL_MS / 1000 }),
         })
@@ -319,6 +331,13 @@ export default function Tutor() {
       tutorRef.current?.disconnect()
       tutorRef.current = null
 
+      // If the session was long enough, count it toward the daily streak.
+      const startedAt = sessionStartedAtRef.current
+      sessionStartedAtRef.current = null
+      if (startedAt && Date.now() - startedAt >= PRACTICE_THRESHOLD_MS) {
+        recordPractice()
+      }
+
       if (options.reason === 'exhausted') {
         setPaywallOpen('exhausted')
       }
@@ -332,11 +351,12 @@ export default function Tutor() {
 
       setStatus('reviewing')
       try {
+        const fresh = await getFreshAccessToken()
         const res = await fetch('/api/review', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            ...(fresh ? { Authorization: `Bearer ${fresh}` } : {}),
           },
           body: JSON.stringify({
             scenario: scenario.title,
@@ -456,12 +476,14 @@ export default function Tutor() {
     })
 
     try {
+      const freshToken = await getFreshAccessToken()
       const info = await tutor.connect(instructions, {
         vadEagerness: activeScenario.vadEagerness,
-        accessToken,
+        accessToken: freshToken ?? undefined,
       })
       setSubscribed(info.subscribed)
       setSecondsRemaining(info.secondsRemaining)
+      sessionStartedAtRef.current = Date.now()
       setStatus('live')
     } catch (err) {
       tutor.disconnect()
@@ -493,11 +515,12 @@ export default function Tutor() {
 
     setTranslations((prev) => ({ ...prev, [turn.id]: 'loading' }))
     try {
+      const fresh = await getFreshAccessToken()
       const res = await fetch('/api/translate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...(fresh ? { Authorization: `Bearer ${fresh}` } : {}),
         },
         body: JSON.stringify({ text: turn.text }),
       })

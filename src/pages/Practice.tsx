@@ -4,6 +4,7 @@ import { signOut, useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import { loadProfile } from '../lib/profile'
 import { PRACTICE_MODES, type ModeId } from '../lib/scenarios'
+import { currentStreak } from '../lib/streak'
 import { trackSubscribe } from '../lib/tiktok'
 
 // The "home" for any signed-in learner with a saved profile. Five mode
@@ -25,6 +26,9 @@ export default function Practice() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [subscribed, setSubscribed] = useState<boolean | null>(null)
   const profile = loadProfile()
+  // Computed once on mount — fresh number every time the user lands here,
+  // including after a session via /chat that just bumped the streak.
+  const [streak] = useState(() => currentStreak())
 
   const refreshStatus = useCallback(async () => {
     if (!user) return
@@ -87,6 +91,14 @@ export default function Practice() {
           ← Home
         </Link>
         <div className="tutor-nav-right">
+          {streak > 0 && (
+            <div
+              className="streak-pill"
+              title={`${streak}-day practice streak — keep it going!`}
+            >
+              <span aria-hidden>🔥</span> {streak}
+            </div>
+          )}
           {subscribed === null ? null : subscribed ? (
             <div className="tutor-nav-badge">Subscribed</div>
           ) : (
