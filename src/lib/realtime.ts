@@ -129,9 +129,12 @@ export class RealtimeTutor {
           initialResponseFired = true
           this.send({ type: 'response.create' })
         }
-        // Whenever the model starts streaming audio, hard-mute the mic so
-        // its own speaker output can't loop back as input.
-        if (event.type === 'response.audio.delta') {
+        // Mute the mic the MOMENT a response is created — not when audio
+        // first streams. There's a small gap between response.created and
+        // the first response.audio.delta during which background noise can
+        // trigger server-side VAD and cancel the response, leaving Natalia
+        // with a full transcript but truncated audio.
+        if (event.type === 'response.created') {
           muteMic()
         }
         // After a response is fully done, schedule the mic to re-open with
@@ -161,6 +164,13 @@ export class RealtimeTutor {
           turn_detection: {
             type: 'semantic_vad',
             eagerness: options.vadEagerness ?? 'low',
+            // Tell the server NOT to cancel an in-flight response when it
+            // detects mic input. Combined with our client-side mic mute
+            // during model speech, this guarantees Natalia finishes every
+            // sentence even if a stray noise bursts through. The trade-off
+            // is the learner can't barge in mid-reply, which is the right
+            // call for a tutor (and consistent with our half-duplex model).
+            interrupt_response: false,
           },
         },
       })
