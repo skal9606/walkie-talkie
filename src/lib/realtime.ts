@@ -1,3 +1,5 @@
+import { AudioCapture, pcmFrameToBase64, type PcmFrame } from './audio-capture'
+
 type EventHandler = (event: RealtimeEvent) => void
 
 export type RealtimeEvent = {
@@ -13,6 +15,7 @@ export class RealtimeTutor {
   private dc: RTCDataChannel | null = null
   private audioEl: HTMLAudioElement | null = null
   private localStream: MediaStream | null = null
+  private capture: AudioCapture | null = null
   private handlers = new Set<EventHandler>()
 
   onEvent(handler: EventHandler): () => void {
@@ -89,17 +92,19 @@ export class RealtimeTutor {
     })
     this.localStream = stream
 
-    // Half-duplex tutoring: the mic is muted whenever Natalia is speaking
-    // and only re-enabled between her turns. This is a HARD guarantee that
-    // her response can never be interrupted — the server-side
-    // `interrupt_response: false` flag (in the session config below) is
-    // additional defense, but the mic-mute is the load-bearing protection.
+    // Full-duplex with hard-uninterruptible Natalia: we keep the WebRTC mic
+    // track muted permanently (track.enabled = false), so the server never
+    // receives audio over the media stream. Input flows through a separate
+    // path: a Web Audio capture pipeline encodes mic audio as PCM16 and
+    // sends it to the server via `input_audio_buffer.append` events on the
+    // data channel.
     //
-    // Trade-off: the learner can't talk over her or barge in. ISSEN-style
-    // "speak during the teacher's turn and she replies after" would
-    // require capturing local audio with Web Audio API while the WebRTC
-    // mic is silenced, then injecting it via input_audio_buffer.append
-    // after response.done. Not implemented; revisit if requested.
+    // During Natalia's turn (response.created → response.done), captured
+    // frames are buffered locally and NOT sent. The server hears nothing,
+    // so it can't be tempted to interrupt her — there's no input to react
+    // to. After response.done we flush the buffer and switch to live mode,
+    // where new frames go straight through. Server VAD operates on the
+    // appended audio and naturally handles turn detection from there.
     const audioTracks = stream.getAudioTracks()
     audioTracks.forEach((track) => {
       track.enabled = false
@@ -109,31 +114,39 @@ export class RealtimeTutor {
     const dc = pc.createDataChannel('oai-events')
     this.dc = dc
 
-    // Initial response.create is gated on session.updated so the model
-    // doesn't start generating before our instructions are in effect.
     let initialResponseFired = false
+    // Audio gating state. Frames captured while `responseInFlight` is true
+    // go into the buffer; frames captured otherwise go straight to the wire.
+    let responseInFlight = false
+    let bufferedFrames: PcmFrame[] = []
+    // Small post-response delay before we start flushing — gives the audio
+    // element a beat to drain Natalia's last syllable before the server
+    // potentially produces a new response. Mirrors the old half-duplex
+    // unmute padding (1500ms first response, 800ms after).
     let firstResponseCompleted = false
-    let unmuteTimer: ReturnType<typeof setTimeout> | null = null
+    let flushTimer: ReturnType<typeof setTimeout> | null = null
 
-    function muteMic() {
-      if (unmuteTimer) {
-        clearTimeout(unmuteTimer)
-        unmuteTimer = null
-      }
-      audioTracks.forEach((track) => {
-        track.enabled = false
+    const sendFrame = (frame: PcmFrame) => {
+      this.send({
+        type: 'input_audio_buffer.append',
+        audio: pcmFrameToBase64(frame),
       })
     }
 
-    function scheduleUnmute(delayMs: number) {
-      if (unmuteTimer) clearTimeout(unmuteTimer)
-      unmuteTimer = setTimeout(() => {
-        audioTracks.forEach((track) => {
-          track.enabled = true
-        })
-        unmuteTimer = null
-      }, delayMs)
+    const flushBuffer = () => {
+      const queued = bufferedFrames
+      bufferedFrames = []
+      for (const frame of queued) sendFrame(frame)
     }
+
+    const capture = new AudioCapture((frame) => {
+      if (responseInFlight) {
+        bufferedFrames.push(frame)
+      } else {
+        sendFrame(frame)
+      }
+    })
+    this.capture = capture
 
     dc.addEventListener('message', (e) => {
       try {
@@ -142,26 +155,27 @@ export class RealtimeTutor {
           initialResponseFired = true
           this.send({ type: 'response.create' })
         }
-        // Mute the mic the MOMENT a response is created — not when audio
-        // first streams. There's a small gap between response.created and
-        // the first response.audio.delta during which background noise
-        // can trigger server-side VAD, which can disrupt the response
-        // even with interrupt_response: false on some platforms.
+        // Switch to buffering mode the moment a response starts. Anything
+        // the learner says from here on is held locally until she's done.
         if (event.type === 'response.created') {
-          muteMic()
-        }
-        // After a response is fully done, schedule the mic to re-open
-        // with a buffer-drain delay. The very first response is held
-        // longer (1500ms) so Natalia's opener has all the headroom to
-        // finish playing on a slow speaker / phone before the mic comes
-        // back online. Subsequent responses use a tighter 800ms.
-        if (event.type === 'response.done') {
-          if (!firstResponseCompleted) {
-            firstResponseCompleted = true
-            scheduleUnmute(1500)
-          } else {
-            scheduleUnmute(800)
+          if (flushTimer) {
+            clearTimeout(flushTimer)
+            flushTimer = null
           }
+          responseInFlight = true
+        }
+        // Once she's done, schedule the buffer flush + return to live mode.
+        // First-response gets longer padding so the opener fully clears the
+        // speaker on a slow phone before any learner audio hits the server.
+        if (event.type === 'response.done') {
+          const delay = firstResponseCompleted ? 800 : 1500
+          firstResponseCompleted = true
+          if (flushTimer) clearTimeout(flushTimer)
+          flushTimer = setTimeout(() => {
+            flushTimer = null
+            responseInFlight = false
+            flushBuffer()
+          }, delay)
         }
         this.handlers.forEach((h) => h(event))
       } catch {
@@ -188,25 +202,20 @@ export class RealtimeTutor {
               ? { language: options.transcriptionLanguage }
               : {}),
           },
-          // server_vad with a stricter-than-default threshold. We previously
-          // used semantic_vad (smart turn-end detection), but it was too
-          // permissive about *what counts as speech to begin with* — any
-          // ambient noise during the post-Natalia unmute window would
-          // trigger a phantom turn. Energy-based VAD with threshold 0.6
-          // (default 0.5) is much harder to trip from room tone while still
-          // catching real speech. silence_duration_ms 600 gives beginners
-          // room to pause mid-sentence without their turn getting cut off.
+          // server_vad operates on whatever audio reaches input_audio_buffer
+          // — in our setup that's audio we explicitly append via events,
+          // which only happens between Natalia's turns. Threshold 0.6 is
+          // stricter than the 0.5 default to avoid phantom turns from room
+          // tone; silence_duration_ms 600 lets beginners pause without
+          // their turn getting cut off.
           turn_detection: {
             type: 'server_vad',
             threshold: 0.6,
             prefix_padding_ms: 300,
             silence_duration_ms: 600,
-            // Tell the server NOT to cancel an in-flight response when it
-            // detects mic input. Combined with our client-side mic mute
-            // during model speech, this guarantees Natalia finishes every
-            // sentence even if a stray noise bursts through. The trade-off
-            // is the learner can't barge in mid-reply, which is the right
-            // call for a tutor (and consistent with our half-duplex model).
+            // Belt-and-suspenders: even though we don't send audio during
+            // her turn, tell the server not to cancel the in-flight
+            // response if it somehow detects input.
             interrupt_response: false,
           },
         },
@@ -214,6 +223,11 @@ export class RealtimeTutor {
       // We deliberately don't send response.create here — the message
       // handler above does it after `session.updated` arrives.
     })
+
+    // Start capturing. Frames will buffer locally until the data channel
+    // opens and session.updated arrives; that's fine — the user generally
+    // isn't speaking during the connection handshake anyway.
+    await capture.start(stream)
 
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
@@ -249,6 +263,7 @@ export class RealtimeTutor {
     } catch {
       /* noop */
     }
+    this.capture?.stop()
     this.pc?.getSenders().forEach((s) => s.track?.stop())
     this.localStream?.getTracks().forEach((t) => t.stop())
     this.pc?.close()
@@ -257,6 +272,7 @@ export class RealtimeTutor {
     this.dc = null
     this.localStream = null
     this.audioEl = null
+    this.capture = null
     this.handlers.clear()
   }
 }
