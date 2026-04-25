@@ -125,7 +125,10 @@ export class RealtimeTutor {
         type: 'session.update',
         session: {
           instructions,
-          input_audio_transcription: { model: 'whisper-1' },
+          // gpt-4o-transcribe is significantly more resistant than whisper-1
+          // to hallucinating filler phrases ("I'm just a cat", "thanks for
+          // watching") from silent or low-energy audio.
+          input_audio_transcription: { model: 'gpt-4o-transcribe' },
           // semantic_vad lets the model decide when the learner is done
           // speaking (vs. a silence threshold). Eagerness tunes how long it
           // waits: 'low' (default) for beginners who pause mid-sentence,
