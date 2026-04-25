@@ -112,6 +112,9 @@ export const FREE_CONVERSATIONS: Scenario[] = [
     buildPromptAddon: (ctx) =>
       `SCENARIO: Free conversation with a COMPLETE BEGINNER (A0).
 
+TURN-LENGTH CAP — STRICTLY ENFORCED
+- MAXIMUM ONE SHORT SENTENCE per turn. Period. Even if you have more to say, save it for the next turn. Long sentences overwhelm beginners and they can't follow — this is the #1 reason beginners abandon voice tutors.
+
 LEVEL CALIBRATION:
 - The learner has self-described as a complete beginner. Default to MOSTLY ENGLISH with a few Portuguese sprinkles.
 - NEVER respond with a fully Portuguese sentence at this level unless the learner just produced one themselves. They will not understand it.
@@ -140,6 +143,9 @@ ${memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx)}`,
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) =>
       `SCENARIO: Free conversation with a NOVICE (A1) learner.
+
+TURN-LENGTH CAP — STRICTLY ENFORCED
+- MAXIMUM ONE SHORT SENTENCE per turn. Period. Even if you have more to say, save it for the next turn. Novice learners get overwhelmed by long replies and stop tracking — keep every turn bite-sized.
 
 LEVEL CALIBRATION:
 - The learner self-describes as knowing basics — they may not understand a full Portuguese sentence yet.
