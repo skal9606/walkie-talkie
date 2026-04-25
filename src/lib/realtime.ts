@@ -89,15 +89,25 @@ export class RealtimeTutor {
     })
     this.localStream = stream
 
-    // Start with the mic muted; we'll only enable it between Natalia's
-    // turns, never while she's speaking. This is half-duplex tutoring —
-    // the trade-off is that the learner can't interrupt mid-sentence,
-    // but we eliminate the entire class of speaker-echo / hallucinated-
-    // user-turn bugs that come from leaving the mic open while audio
-    // plays out the speaker.
+    // Full-duplex tutoring (ISSEN model): the mic stays open the entire
+    // session. The learner CAN speak while Natalia is speaking, and any
+    // speech the server VAD detects gets buffered as a user turn. Natalia
+    // never gets cut off mid-sentence — `interrupt_response: false` in the
+    // session config below tells the server not to cancel her in-flight
+    // response. After she finishes (response.done), the server consumes
+    // the buffered learner audio and generates a new response to it.
+    //
+    // The bug class we're trading off against: speaker-to-mic acoustic
+    // echo of Natalia's own voice can trip server VAD and produce a
+    // phantom learner turn that Natalia then "responds to." Defenses:
+    //   - browser-level echoCancellation/noiseSuppression on getUserMedia
+    //   - server_vad threshold 0.6 (stricter than default 0.5)
+    //   - language pin on the transcriber (no cross-language gibberish)
+    // If feedback loops resurface in practice, the half-duplex mute/unmute
+    // logic from before is recoverable from git history.
     const audioTracks = stream.getAudioTracks()
     audioTracks.forEach((track) => {
-      track.enabled = false
+      track.enabled = true
       pc.addTrack(track, stream)
     })
 
@@ -107,28 +117,6 @@ export class RealtimeTutor {
     // Initial response.create is gated on session.updated so the model
     // doesn't start generating before our instructions are in effect.
     let initialResponseFired = false
-    let firstResponseCompleted = false
-    let unmuteTimer: ReturnType<typeof setTimeout> | null = null
-
-    function muteMic() {
-      if (unmuteTimer) {
-        clearTimeout(unmuteTimer)
-        unmuteTimer = null
-      }
-      audioTracks.forEach((track) => {
-        track.enabled = false
-      })
-    }
-
-    function scheduleUnmute(delayMs: number) {
-      if (unmuteTimer) clearTimeout(unmuteTimer)
-      unmuteTimer = setTimeout(() => {
-        audioTracks.forEach((track) => {
-          track.enabled = true
-        })
-        unmuteTimer = null
-      }, delayMs)
-    }
 
     dc.addEventListener('message', (e) => {
       try {
@@ -136,28 +124,6 @@ export class RealtimeTutor {
         if (event.type === 'session.updated' && !initialResponseFired) {
           initialResponseFired = true
           this.send({ type: 'response.create' })
-        }
-        // Mute the mic the MOMENT a response is created — not when audio
-        // first streams. There's a small gap between response.created and
-        // the first response.audio.delta during which background noise can
-        // trigger server-side VAD and cancel the response, leaving Natalia
-        // with a full transcript but truncated audio.
-        if (event.type === 'response.created') {
-          muteMic()
-        }
-        // After a response is fully done, schedule the mic to re-open
-        // with a buffer-drain delay. The very first response is held
-        // longer (1500ms) so Natalia's opener has all the headroom in
-        // the world to finish playing on a slow speaker / phone before
-        // the mic comes back online. Subsequent responses use a tighter
-        // 800ms.
-        if (event.type === 'response.done') {
-          if (!firstResponseCompleted) {
-            firstResponseCompleted = true
-            scheduleUnmute(1500)
-          } else {
-            scheduleUnmute(800)
-          }
         }
         this.handlers.forEach((h) => h(event))
       } catch {
