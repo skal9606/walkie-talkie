@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import {
   createCheckoutSession,
   reviewTranscript,
@@ -50,6 +51,48 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: [
+          'apple-touch-icon.png',
+          'icon-192.png',
+          'icon-512.png',
+          'icon-maskable-512.png',
+        ],
+        manifest: {
+          name: 'Walkie Talkie',
+          short_name: 'Walkie Talkie',
+          description:
+            'Master Brazilian Portuguese with a real-time AI voice tutor. Speak, listen, and learn.',
+          theme_color: '#0f1115',
+          background_color: '#0f1115',
+          display: 'standalone',
+          orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
+          icons: [
+            { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+            {
+              src: '/icon-maskable-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
+        },
+        workbox: {
+          // SPA navigation fallback for the app shell. The Realtime voice
+          // session needs network anyway, so we don't try to cache /api or
+          // serve anything offline beyond the shell.
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api\//],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        },
+        devOptions: {
+          enabled: false,
+        },
+      }),
       {
         name: 'dev-api',
         configureServer(server) {
