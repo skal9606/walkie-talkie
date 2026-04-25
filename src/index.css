@@ -32,6 +32,14 @@ body {
     Helvetica,
     Arial,
     sans-serif;
+  /* Kill the gray flash iOS adds on tap; we use our own hover/active styles. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  /* Removes the 300ms tap-delay some mobile browsers still apply. */
+  touch-action: manipulation;
 }
 
 .app {
@@ -357,6 +365,11 @@ body {
   color: var(--muted);
   text-decoration: none;
   font-size: 14px;
+  /* 44px tap target for iOS — text alone is too small to hit reliably. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
 }
 
 .tutor-nav-back:hover {
@@ -387,10 +400,16 @@ body {
   background: transparent;
   border: 0;
   color: var(--muted);
-  font-size: 12px;
-  padding: 4px 8px;
+  font-size: 13px;
+  padding: 10px 12px;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
+  /* Hit-friendly tap target on phones. */
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-family: inherit;
 }
 
 .tutor-nav-signout:hover {
@@ -434,7 +453,8 @@ body {
   border-radius: 10px;
   padding: 12px 14px;
   color: var(--fg);
-  font-size: 15px;
+  /* 16px minimum prevents iOS Safari from auto-zooming on focus. */
+  font-size: 16px;
   width: 100%;
   font-family: inherit;
 }
@@ -665,6 +685,11 @@ body {
   color: var(--muted);
   text-decoration: none;
   font-size: 14px;
+  /* 44px tap target for iOS. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 6px;
 }
 
 .landing-nav-link:hover {
@@ -675,12 +700,14 @@ body {
   background: var(--accent);
   color: #0f1115;
   text-decoration: none;
-  padding: 10px 18px;
+  padding: 12px 20px;
   border-radius: 999px;
   font-size: 14px;
   font-weight: 600;
   transition: transform 0.08s ease;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
 }
 
 .landing-cta:hover {

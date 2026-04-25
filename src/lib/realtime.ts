@@ -56,6 +56,12 @@ export class RealtimeTutor {
 
     const audioEl = document.createElement('audio')
     audioEl.autoplay = true
+    // iOS Safari (especially in installed-PWA / standalone mode) is finicky
+    // about playing audio from elements that aren't both attached to the DOM
+    // and marked playsInline. Set both before attaching the stream.
+    audioEl.setAttribute('playsinline', 'true')
+    audioEl.style.display = 'none'
+    document.body.appendChild(audioEl)
     this.audioEl = audioEl
     pc.ontrack = (e) => {
       audioEl.srcObject = e.streams[0]
