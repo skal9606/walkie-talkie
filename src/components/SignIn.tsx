@@ -15,7 +15,7 @@ export function SignIn() {
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email: clean,
       options: {
-        emailRedirectTo: `${window.location.origin}/chat`,
+        emailRedirectTo: `${window.location.origin}/practice`,
       },
     })
     if (sendError) {

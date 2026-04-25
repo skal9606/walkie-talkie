@@ -126,8 +126,9 @@ export async function reviewTranscript(
 - "corrections": array of { "original": string, "corrected": string, "explanation": string }. Only include meaningful mistakes the learner made — skip tiny slips. Use the learner's exact words for "original". Keep "explanation" brief (one line), in English.
 - "newVocabulary": array of { "word": string, "translation": string, "example": string }. Portuguese words/phrases the tutor introduced that are worth reviewing. Use a natural example sentence in Portuguese.
 - "practiceNextTime": array of 2-4 short strings suggesting what to focus on next time.
+- "memory": array of 2-4 short third-person factual bullets about the LEARNER that would be useful to recall in a future session. Examples: "Has a daughter named Lucy who is 7", "Works as a venture capitalist", "Lives in San Francisco but visits Brazil yearly", "Recently started reading Clarice Lispector". ONLY include facts the learner actually shared (people, places, work, hobbies, life events). Skip language-mechanics observations and anything trivial. Use empty array if the learner shared nothing personal.
 
-All four keys must be present. Use empty arrays if there is genuinely nothing to report. Be concise.`,
+All five keys must be present. Use empty arrays if there is genuinely nothing to report. Be concise.`,
           },
           { role: 'user', content: scenarioLine + transcriptText },
         ],
@@ -167,6 +168,7 @@ const ALLOWED_REDIRECT_HOSTS = new Set([
   'www.walkietalkie.so',
   'localhost:5173',
   'localhost:5174',
+  'localhost:5175',
 ])
 
 function isAllowedRedirectUrl(url: string | undefined): boolean {

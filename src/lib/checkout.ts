@@ -15,7 +15,7 @@ export async function startCheckout(plan: Plan, accessToken: string): Promise<vo
     },
     body: JSON.stringify({
       plan,
-      successUrl: `${window.location.origin}/chat?subscribed=${plan}`,
+      successUrl: `${window.location.origin}/practice?subscribed=${plan}`,
       cancelUrl: `${window.location.origin}/chat`,
     }),
   })

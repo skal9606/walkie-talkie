@@ -5,8 +5,12 @@ import { TUTOR_INSTRUCTIONS } from '../lib/tutor-prompt'
 import {
   ALL_SCENARIOS,
   FREE_CONVERSATIONS,
+  PRACTICE_MODES,
   ROLEPLAY_SCENARIOS,
+  buildModePromptAddon,
   scenarioForLevel,
+  vadForMode,
+  type ModeId,
   type Scenario,
 } from '../lib/scenarios'
 import { FREE_TIER_SECONDS, type Plan } from '../lib/subscription'
@@ -14,6 +18,7 @@ import { Paywall } from '../components/Paywall'
 import { SignIn } from '../components/SignIn'
 import { Onboarding } from '../components/Onboarding'
 import { clearProfile, loadProfile, saveProfile, type LearnerProfile } from '../lib/profile'
+import { addMemoryItems, loadMemory } from '../lib/memory'
 import { signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
@@ -33,6 +38,7 @@ type ReviewData = {
   corrections?: Array<{ original: string; corrected: string; explanation: string }>
   newVocabulary?: Array<{ word: string; translation: string; example: string }>
   practiceNextTime?: string[]
+  memory?: string[]
 }
 
 type TranslationState = Record<string, string | 'loading'>
@@ -201,11 +207,71 @@ export default function Tutor() {
     if (status !== 'idle') return
     if (!profile) return
     setAutoStartAfterAuth(false)
-    start(scenarioForLevel(profile.level))
+    const baseScenario = scenarioForLevel(profile.level)
+    // Inject memory so a returning learner gets the memory-aware opener.
+    const memory = loadMemory()
+    const withMemory: Scenario = {
+      ...baseScenario,
+      buildPromptAddon: () =>
+        baseScenario.buildPromptAddon({ name: profile.name, memory }),
+    }
+    start(withMemory)
     // start() reads from refs/state and is defined below; intentionally not
     // in deps to avoid re-firing every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartAfterAuth, user, accessToken, statusLoaded, status, profile])
+
+  // --- Mode launcher: /chat?mode=free|grammar|scenario|repeat|translations ---
+  // Set by the /practice portal. We auto-start the right kind of session,
+  // strip the param so a session-end doesn't re-trigger, and for `scenario`
+  // we just land the user on the picker.
+  useEffect(() => {
+    const mode = searchParams.get('mode') as ModeId | null
+    if (!mode) return
+    if (!user || !accessToken) return
+    if (!profile) return
+    if (!statusLoaded) return
+    if (status !== 'idle') return
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('mode')
+    setSearchParams(next, { replace: true })
+
+    if (mode === 'scenario') {
+      // Default the picker selection to the first roleplay so they have
+      // somewhere to start.
+      setScenarioId(ROLEPLAY_SCENARIOS[0].id)
+      return
+    }
+
+    const meta = PRACTICE_MODES.find((m) => m.id === mode)
+    if (!meta) return
+    // Only Free Conversation reads memory; other modes are level-only.
+    const memory = mode === 'free' ? loadMemory() : undefined
+    const synthetic: Scenario = {
+      id: `mode-${mode}-${profile.level}`,
+      title: meta.title,
+      description: meta.blurb,
+      buildPromptAddon: () =>
+        buildModePromptAddon(mode, {
+          name: profile.name,
+          level: profile.level,
+          memory,
+        }),
+      vadEagerness: vadForMode(mode, profile.level),
+    }
+    start(synthetic)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, user, accessToken, profile, statusLoaded, status, setSearchParams])
+
+  // --- Tear down the WebRTC session if the user navigates away ---
+  // Without this, /chat → / leaves Natalia talking in the background.
+  useEffect(() => {
+    return () => {
+      tutorRef.current?.disconnect()
+      tutorRef.current = null
+    }
+  }, [])
 
   // --- Auto-scroll transcript ---
 
@@ -282,6 +348,10 @@ export default function Tutor() {
           throw new Error(data.error ?? `Review failed (${res.status})`)
         }
         setReview(data)
+        // Persist memory bullets so the next Free Conversation can reference them.
+        if (Array.isArray(data.memory) && data.memory.length > 0) {
+          addMemoryItems(data.memory)
+        }
         setStatus('review')
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
@@ -312,7 +382,10 @@ export default function Tutor() {
     setReview(null)
 
     const activeScenario = overrideScenario ?? scenario
-    const addon = activeScenario.buildPromptAddon({ name: profile?.name })
+    const addon = activeScenario.buildPromptAddon({
+      name: profile?.name,
+      memory: loadMemory(),
+    })
     const instructions = addon ? `${TUTOR_INSTRUCTIONS}\n\n${addon}` : TUTOR_INSTRUCTIONS
 
     const tutor = new RealtimeTutor()
@@ -564,8 +637,11 @@ export default function Tutor() {
   return (
     <div className="app">
       <nav className="tutor-nav">
-        <Link to="/" className="tutor-nav-back">
-          ← Back
+        <Link
+          to={subscribed ? '/practice' : '/'}
+          className="tutor-nav-back"
+        >
+          {subscribed ? '← Back to practice' : '← Back'}
         </Link>
         <div className="tutor-nav-right">
           {!statusLoaded ? (

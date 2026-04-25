@@ -1284,3 +1284,57 @@ body {
   flex-direction: column;
   gap: 12px;
 }
+
+/* --- Practice portal --- */
+
+.practice-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 640px;
+  margin: 16px auto 0;
+  padding: 0 20px;
+}
+
+.practice-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  color: var(--fg);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s ease, transform 0.08s ease, background 0.12s ease;
+}
+
+.practice-mode:hover {
+  border-color: var(--accent-dim);
+  transform: translateY(-1px);
+}
+
+.practice-mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.practice-mode-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.practice-mode-blurb {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.practice-mode-arrow {
+  color: var(--muted);
+  font-size: 28px;
+  line-height: 1;
+  margin-left: 16px;
+}

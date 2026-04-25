@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Landing from './pages/Landing'
 import Tutor from './pages/Tutor'
+import Login from './pages/Login'
+import Practice from './pages/Practice'
 import AdNeymarDM from './pages/Ad'
 import { trackPage } from './lib/tiktok'
 
@@ -11,6 +13,8 @@ export default function App() {
       <PageTracker />
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/practice" element={<Practice />} />
         <Route path="/chat" element={<Tutor />} />
         <Route path="/ad/neymar-dm" element={<AdNeymarDM />} />
       </Routes>

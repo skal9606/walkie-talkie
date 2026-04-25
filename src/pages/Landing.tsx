@@ -1,8 +1,22 @@
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
+import { useAuth } from '../lib/auth'
+import { loadProfile } from '../lib/profile'
 
 export default function Landing() {
   const navigate = useNavigate()
+  const { user, loading } = useAuth()
+
+  // Returning learners with a real (non-anonymous) account and a saved
+  // profile go straight to /practice. Anonymous trial users stay on the
+  // landing page so they can still see pricing / FAQ / chat.
+  useEffect(() => {
+    if (loading || !user) return
+    if (user.is_anonymous) return
+    if (!loadProfile()) return
+    navigate('/practice', { replace: true })
+  }, [user, loading, navigate])
 
   // Pricing cards navigate to /chat with a ?checkout=<plan> param. Tutor.tsx
   // sends the user through sign-in if needed, then auto-starts checkout.
@@ -21,6 +35,9 @@ export default function Landing() {
           <a href="#faq" className="landing-nav-link">
             FAQ
           </a>
+          <Link to="/login" className="landing-nav-link">
+            Login
+          </Link>
           <Link to="/chat" className="landing-cta">
             Chat Now
           </Link>

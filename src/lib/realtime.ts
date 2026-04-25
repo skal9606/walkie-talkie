@@ -61,15 +61,54 @@ export class RealtimeTutor {
       audioEl.srcObject = e.streams[0]
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    // Explicit audio constraints — without these, mic echo of Natalia's voice
+    // can be misread as the learner speaking and cut her off mid-sentence.
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    })
     this.localStream = stream
-    stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream))
+
+    // Mute the mic until Natalia finishes her opener. Server hears nothing
+    // during the first response — no echo, no accidental interruption, no
+    // chance of the model abandoning the opener and re-starting it. We
+    // unmute when `response.done` fires for the first response.
+    const audioTracks = stream.getAudioTracks()
+    audioTracks.forEach((track) => {
+      track.enabled = false
+      pc.addTrack(track, stream)
+    })
 
     const dc = pc.createDataChannel('oai-events')
     this.dc = dc
+
+    // The model can start generating a response the moment the channel opens.
+    // If we send `session.update` and `response.create` back-to-back, the
+    // server may produce a first response under default instructions, then a
+    // second one under our instructions — which surfaces as a disjointed,
+    // back-to-back opener with no pause for the learner. Gate the initial
+    // response.create on the `session.updated` ack so the model only ever
+    // speaks under the right instructions.
+    let initialResponseFired = false
+    let openerCompleted = false
+
     dc.addEventListener('message', (e) => {
       try {
         const event = JSON.parse(e.data) as RealtimeEvent
+        if (event.type === 'session.updated' && !initialResponseFired) {
+          initialResponseFired = true
+          this.send({ type: 'response.create' })
+        }
+        if (event.type === 'response.done' && !openerCompleted) {
+          openerCompleted = true
+          // Opener delivered — open the mic so the learner can respond.
+          audioTracks.forEach((track) => {
+            track.enabled = true
+          })
+        }
         this.handlers.forEach((h) => h(event))
       } catch {
         // non-JSON message; ignore
@@ -91,8 +130,8 @@ export class RealtimeTutor {
           },
         },
       })
-      // Ask the tutor to speak first so the learner has a prompt to respond to.
-      this.send({ type: 'response.create' })
+      // We deliberately don't send response.create here — the message
+      // handler above does it after `session.updated` arrives.
     })
 
     const offer = await pc.createOffer()
