@@ -104,10 +104,16 @@ export class RealtimeTutor {
         }
         if (event.type === 'response.done' && !openerCompleted) {
           openerCompleted = true
-          // Opener delivered — open the mic so the learner can respond.
-          audioTracks.forEach((track) => {
-            track.enabled = true
-          })
+          // Opener delivered. Hold the mic muted a bit longer so the WebRTC
+          // playback buffer drains — otherwise the speaker tail of Natalia's
+          // voice can leak back into the mic on a phone (echo cancellation
+          // isn't perfect on built-in speakers) and Whisper hallucinates
+          // phantom user input from it ("I'm just a cat" etc).
+          setTimeout(() => {
+            audioTracks.forEach((track) => {
+              track.enabled = true
+            })
+          }, 800)
         }
         this.handlers.forEach((h) => h(event))
       } catch {
