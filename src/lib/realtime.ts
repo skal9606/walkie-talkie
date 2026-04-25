@@ -96,6 +96,7 @@ export class RealtimeTutor {
     // Initial response.create is gated on session.updated so the model
     // doesn't start generating before our instructions are in effect.
     let initialResponseFired = false
+    let firstResponseCompleted = false
     let unmuteTimer: ReturnType<typeof setTimeout> | null = null
 
     function muteMic() {
@@ -108,18 +109,14 @@ export class RealtimeTutor {
       })
     }
 
-    function scheduleUnmute() {
+    function scheduleUnmute(delayMs: number) {
       if (unmuteTimer) clearTimeout(unmuteTimer)
-      // 800ms padding past response.done so the WebRTC playback buffer
-      // drains before we open the mic — otherwise the speaker tail of
-      // Natalia's voice leaks back in and the transcription model
-      // hallucinates phantom user turns.
       unmuteTimer = setTimeout(() => {
         audioTracks.forEach((track) => {
           track.enabled = true
         })
         unmuteTimer = null
-      }, 800)
+      }, delayMs)
     }
 
     dc.addEventListener('message', (e) => {
@@ -137,11 +134,19 @@ export class RealtimeTutor {
         if (event.type === 'response.created') {
           muteMic()
         }
-        // After a response is fully done, schedule the mic to re-open with
-        // a buffer-drain delay. Each response.done resets the timer, so a
-        // long-streaming response stays muted until it's truly finished.
+        // After a response is fully done, schedule the mic to re-open
+        // with a buffer-drain delay. The very first response is held
+        // longer (1500ms) so Natalia's opener has all the headroom in
+        // the world to finish playing on a slow speaker / phone before
+        // the mic comes back online. Subsequent responses use a tighter
+        // 800ms.
         if (event.type === 'response.done') {
-          scheduleUnmute()
+          if (!firstResponseCompleted) {
+            firstResponseCompleted = true
+            scheduleUnmute(1500)
+          } else {
+            scheduleUnmute(800)
+          }
         }
         this.handlers.forEach((h) => h(event))
       } catch {
