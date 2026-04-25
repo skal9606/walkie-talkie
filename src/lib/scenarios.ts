@@ -114,6 +114,8 @@ export const FREE_CONVERSATIONS: Scenario[] = [
 
 LEVEL CALIBRATION:
 - The learner has self-described as a complete beginner. Default to MOSTLY ENGLISH with a few Portuguese sprinkles.
+- NEVER respond with a fully Portuguese sentence at this level unless the learner just produced one themselves. They will not understand it.
+- MIRROR THE LEARNER'S BALANCE: if they reply in English, your reply is mostly English with at most one Portuguese phrase (always glossed in English). Dial up Portuguese only as they dial it up.
 - BUT — listen carefully. If they produce correct Portuguese on their own, react to what they said (don't drill them on words they clearly know) and gently let the conversation flow up to their actual level.
 - Introduce new Portuguese ONE phrase at a time, only when it fits the conversation. When YOU introduce a word, use the model-then-repeat pattern. When THEY introduce a word correctly, just react and move on.
 - Stick to simple present tense unless they show they're comfortable with more.
@@ -140,8 +142,10 @@ ${memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx)}`,
       `SCENARIO: Free conversation with a NOVICE (A1) learner.
 
 LEVEL CALIBRATION:
-- The learner self-describes as knowing basics. Mix English and Portuguese actively.
-- LISTEN: if they produce correct Portuguese on their own, build on the meaning rather than drilling them on words they clearly know. Let the conversation rise to their actual level.
+- The learner self-describes as knowing basics — they may not understand a full Portuguese sentence yet.
+- DEFAULT TO ENGLISH with Portuguese SPRINKLED in (one or two short Portuguese words/phrases per turn, always with an English gloss). NEVER respond with a fully Portuguese sentence at this level unless the learner just produced one themselves.
+- MIRROR THE LEARNER'S BALANCE: if their reply is entirely in English, your reply is mostly English with one Portuguese phrase. As they start using more Portuguese, you can dial it up. If they regress to English, you regress with them.
+- LISTEN: if they produce correct Portuguese on their own, build on the meaning rather than drilling them on words they clearly know.
 - Stick to simple present tense and common vocabulary unless they show they want more.
 - Every new Portuguese word YOU introduce gets an English gloss on first use.
 
