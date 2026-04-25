@@ -8,6 +8,7 @@ import {
   ROLEPLAY_SCENARIOS,
   buildModePromptAddon,
   scenarioForLevel,
+  transcriptionLangForLevel,
   vadForMode,
   type ModeId,
   type Scenario,
@@ -533,6 +534,9 @@ export default function Tutor() {
       const info = await tutor.connect(instructions, {
         vadEagerness: activeScenario.vadEagerness,
         accessToken: freshToken ?? undefined,
+        // Discover (level unknown) → undefined → no pin.
+        // complete-beginner → 'en'. novice / intermediate / advanced → 'pt'.
+        transcriptionLanguage: transcriptionLangForLevel(profile?.level),
       })
       setSubscribed(info.subscribed)
       setSecondsRemaining(info.secondsRemaining)

@@ -515,3 +515,20 @@ export function vadForMode(mode: ModeId, level: Level | undefined): VadEagerness
   }
   return 'medium'
 }
+
+/**
+ * Language pin for transcription, given the learner's level.
+ *   - undefined level (discover / first-ever session) → no pin, let the
+ *     model auto-detect. We don't yet know whether they'll reply in EN or PT.
+ *   - complete-beginner → 'en' (replies are mostly English with a sprinkle
+ *     of PT; pinning EN keeps the YOU bubble readable).
+ *   - novice / intermediate / advanced → 'pt' (paying users practicing PT;
+ *     the occasional English aside transcribed poorly is the right trade).
+ */
+export function transcriptionLangForLevel(
+  level: Level | undefined,
+): 'pt' | 'en' | undefined {
+  if (!level) return undefined
+  if (level === 'complete-beginner') return 'en'
+  return 'pt'
+}

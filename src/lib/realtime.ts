@@ -25,6 +25,17 @@ export class RealtimeTutor {
     options: {
       vadEagerness?: 'low' | 'medium' | 'high' | 'auto'
       accessToken?: string
+      /**
+       * ISO-639-1 hint for the transcription model. Pinning eliminates
+       * cross-language hallucinations (room tone rendered as Japanese,
+       * Korean, etc.) but at a cost: the model is *forced* to decode the
+       * audio into the pinned language, so an English reply under a 'pt'
+       * pin will come back as Portuguese-sounding gibberish. Leave
+       * undefined to let gpt-4o-transcribe auto-detect — appropriate
+       * during the level-discovery session, when we don't know yet
+       * whether the learner will reply in English or Portuguese.
+       */
+      transcriptionLanguage?: 'pt' | 'en'
     } = {},
   ): Promise<{ subscribed: boolean; secondsRemaining: number }> {
     const tokenRes = await fetch('/api/session', {
@@ -161,12 +172,17 @@ export class RealtimeTutor {
           // gpt-4o-transcribe is significantly more resistant than whisper-1
           // to hallucinating filler phrases ("I'm just a cat", "thanks for
           // watching") from silent or low-energy audio. Pinning `language`
-          // stops the worst failure mode: with no hint, the transcriber
-          // auto-detects per turn and will happily render room tone as
-          // Japanese / Korean / Hindi gibberish in the YOU bubble.
+          // (when known) stops the worst failure mode: with no hint, the
+          // transcriber auto-detects per turn and will happily render room
+          // tone as Japanese / Korean / Hindi gibberish in the YOU bubble.
+          // We omit the field during the level-discovery session — we don't
+          // know yet whether the learner will reply in EN or PT, and forcing
+          // either pin would mangle the wrong half of the population.
           input_audio_transcription: {
             model: 'gpt-4o-transcribe',
-            language: 'pt',
+            ...(options.transcriptionLanguage
+              ? { language: options.transcriptionLanguage }
+              : {}),
           },
           // server_vad with a stricter-than-default threshold. We previously
           // used semantic_vad (smart turn-end detection), but it was too
