@@ -160,15 +160,27 @@ export class RealtimeTutor {
           instructions,
           // gpt-4o-transcribe is significantly more resistant than whisper-1
           // to hallucinating filler phrases ("I'm just a cat", "thanks for
-          // watching") from silent or low-energy audio.
-          input_audio_transcription: { model: 'gpt-4o-transcribe' },
-          // semantic_vad lets the model decide when the learner is done
-          // speaking (vs. a silence threshold). Eagerness tunes how long it
-          // waits: 'low' (default) for beginners who pause mid-sentence,
-          // 'medium' or 'high' for more fluent speakers who don't.
+          // watching") from silent or low-energy audio. Pinning `language`
+          // stops the worst failure mode: with no hint, the transcriber
+          // auto-detects per turn and will happily render room tone as
+          // Japanese / Korean / Hindi gibberish in the YOU bubble.
+          input_audio_transcription: {
+            model: 'gpt-4o-transcribe',
+            language: 'pt',
+          },
+          // server_vad with a stricter-than-default threshold. We previously
+          // used semantic_vad (smart turn-end detection), but it was too
+          // permissive about *what counts as speech to begin with* — any
+          // ambient noise during the post-Natalia unmute window would
+          // trigger a phantom turn. Energy-based VAD with threshold 0.6
+          // (default 0.5) is much harder to trip from room tone while still
+          // catching real speech. silence_duration_ms 600 gives beginners
+          // room to pause mid-sentence without their turn getting cut off.
           turn_detection: {
-            type: 'semantic_vad',
-            eagerness: options.vadEagerness ?? 'low',
+            type: 'server_vad',
+            threshold: 0.6,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 600,
             // Tell the server NOT to cancel an in-flight response when it
             // detects mic input. Combined with our client-side mic mute
             // during model speech, this guarantees Natalia finishes every
