@@ -106,7 +106,14 @@ export default function Tutor() {
     () => ALL_SCENARIOS.find((s) => s.id === scenarioId) ?? ALL_SCENARIOS[0],
     [scenarioId],
   )
-  const showScenarioHeader = status !== 'idle'
+  // Only show the scenario name in the header for character-driven
+  // roleplays (Café, in-laws, etc.). For Free Conversation, Discover, and
+  // the other practice modes, the level/mode label is uninformative
+  // mid-session — we keep the generic "Walkie Talkie" header instead.
+  const isRoleplayScenario = ROLEPLAY_SCENARIOS.some(
+    (s) => s.id === scenario.id,
+  )
+  const showScenarioHeader = status !== 'idle' && isRoleplayScenario
 
   // --- Load subscription + usage from Supabase whenever the user changes ---
 
