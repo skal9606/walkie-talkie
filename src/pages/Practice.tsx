@@ -147,7 +147,7 @@ export default function Practice() {
       <header className="header">
         <h1>Choose any way to practice</h1>
         <p className="subtitle">
-          {profile?.name ? `Welcome back, ${profile.name}.` : 'Welcome back.'} Pick a mode and Natalia will take it from there.
+          {profile?.name ? `Welcome back, ${profile.name}.` : 'Welcome back.'} Pick a mode below — or tap the phone for a free-flowing chat.
         </p>
       </header>
 
@@ -158,14 +158,25 @@ export default function Practice() {
             className="practice-mode"
             onClick={() => pickMode(m.id)}
           >
+            <div className="practice-mode-icon" aria-hidden>{m.icon}</div>
             <div className="practice-mode-text">
               <div className="practice-mode-title">{m.title}</div>
               <div className="practice-mode-blurb">{m.blurb}</div>
             </div>
-            <div className="practice-mode-arrow">›</div>
+            <div className="practice-mode-arrow" aria-hidden>›</div>
           </button>
         ))}
       </div>
+
+      <button
+        type="button"
+        className="practice-free-cta"
+        onClick={() => pickMode('free')}
+        title="Free conversation with Natalia"
+      >
+        <span className="practice-free-cta-emoji" aria-hidden>📞</span>
+        <span className="practice-free-cta-label">Free conversation</span>
+      </button>
     </div>
   )
 }

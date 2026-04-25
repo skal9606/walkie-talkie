@@ -4,7 +4,6 @@ import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
 import { TUTOR_INSTRUCTIONS } from '../lib/tutor-prompt'
 import {
   ALL_SCENARIOS,
-  FREE_CONVERSATIONS,
   PRACTICE_MODES,
   ROLEPLAY_SCENARIOS,
   buildModePromptAddon,
@@ -304,6 +303,13 @@ export default function Tutor() {
     start(synthetic)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, user, accessToken, profile, statusLoaded, status, setSearchParams])
+
+  // Keep the local scenarioId in sync with profile.level. After /api/review
+  // fills in inferredLevel post-session, the next "Start free conversation"
+  // should use the updated level rather than whatever was set on mount.
+  useEffect(() => {
+    if (profile?.level) setScenarioId(`free-${profile.level}`)
+  }, [profile?.level])
 
   // --- Tear down the WebRTC session if the user navigates away ---
   // Without this, /chat → / leaves Natalia talking in the background.
@@ -725,12 +731,11 @@ export default function Tutor() {
       </header>
 
       {status === 'idle' && !paywallOpen && (
-        <ScenarioPicker
-          selectedId={scenarioId}
-          onSelect={setScenarioId}
-          freeConversations={FREE_CONVERSATIONS}
-          roleplayScenarios={ROLEPLAY_SCENARIOS}
-        />
+        <div className="empty" style={{ marginTop: 60 }}>
+          {subscribed
+            ? 'Pick a mode from the practice portal, or tap below to keep this conversation going.'
+            : 'Tap below to start a free conversation with Natalia.'}
+        </div>
       )}
 
       {(status === 'connecting' || status === 'live') && (
@@ -796,7 +801,7 @@ export default function Tutor() {
               ? 'Loading…'
               : freeExhausted
                 ? 'Free trial used — subscribe'
-                : 'Start session'}
+                : 'Start free conversation'}
           </button>
         )}
         {status === 'connecting' && (
@@ -837,70 +842,6 @@ export default function Tutor() {
         />
       )}
     </div>
-  )
-}
-
-function ScenarioPicker({
-  freeConversations,
-  roleplayScenarios,
-  selectedId,
-  onSelect,
-}: {
-  freeConversations: Scenario[]
-  roleplayScenarios: Scenario[]
-  selectedId: string
-  onSelect: (id: string) => void
-}) {
-  return (
-    <div className="scenarios">
-      <section className="picker-section">
-        <h3 className="picker-section-label">Free conversation</h3>
-        <div className="scenario-grid cols-3">
-          {freeConversations.map((s) => (
-            <ScenarioTile
-              key={s.id}
-              scenario={s}
-              selected={s.id === selectedId}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="picker-section">
-        <h3 className="picker-section-label">Scenarios</h3>
-        <div className="scenario-grid cols-2">
-          {roleplayScenarios.map((s) => (
-            <ScenarioTile
-              key={s.id}
-              scenario={s}
-              selected={s.id === selectedId}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function ScenarioTile({
-  scenario,
-  selected,
-  onSelect,
-}: {
-  scenario: Scenario
-  selected: boolean
-  onSelect: (id: string) => void
-}) {
-  return (
-    <button
-      className={`scenario-tile ${selected ? 'selected' : ''}`}
-      onClick={() => onSelect(scenario.id)}
-    >
-      <div className="scenario-title">{scenario.title}</div>
-      <div className="scenario-desc">{scenario.description}</div>
-    </button>
   )
 }
 

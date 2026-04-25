@@ -320,33 +320,37 @@ export type ModeMeta = {
   id: ModeId
   title: string
   blurb: string
+  /** Emoji shown in the portal card. */
+  icon: string
 }
 
+// Note: 'free' mode is intentionally NOT in this list — Free Conversation
+// is rendered as the prominent floating CTA at the bottom of /practice,
+// not as a card in the grid (matches the ISSEN portal pattern).
 export const PRACTICE_MODES: ModeMeta[] = [
-  {
-    id: 'free',
-    title: 'Free conversation',
-    blurb: 'Open-ended chat with Natalia at your level',
-  },
   {
     id: 'grammar',
     title: 'Grammar lesson',
-    blurb: 'Drill a specific grammar concept through conversation',
+    blurb: 'Learn and practice grammar concepts through conversation',
+    icon: '📚',
   },
   {
     id: 'scenario',
     title: 'Scenario',
-    blurb: 'Practice real-world conversations and roleplays',
+    blurb: 'Practice real-world conversations and role-play situations',
+    icon: '🎭',
   },
   {
     id: 'repeat',
     title: 'Repeat after me',
-    blurb: 'Echo Natalia to sharpen pronunciation',
+    blurb: 'Echo Natalia to practice your pronunciation and speaking skills',
+    icon: '🔁',
   },
   {
     id: 'translations',
     title: 'Translations',
-    blurb: 'Translate short English phrases on the fly',
+    blurb: 'Practice translating short phrases to hone your vocab',
+    icon: '🌐',
   },
 ]
 
