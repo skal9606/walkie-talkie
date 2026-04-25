@@ -104,9 +104,15 @@ export default function Practice() {
           ) : (
             <div className="tutor-nav-badge free">Free trial</div>
           )}
-          <button className="tutor-nav-signout" onClick={() => signOut()}>
-            Sign out
-          </button>
+          {user?.is_anonymous ? (
+            <Link to="/login" className="tutor-nav-signout">
+              Sign in
+            </Link>
+          ) : (
+            <button className="tutor-nav-signout" onClick={() => signOut()}>
+              Sign out
+            </button>
+          )}
         </div>
       </nav>
 

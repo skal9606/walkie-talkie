@@ -676,9 +676,15 @@ export default function Tutor() {
               Free trial · {formatSeconds(secondsRemaining)} left
             </div>
           )}
-          <button className="tutor-nav-signout" onClick={() => signOut()}>
-            Sign out
-          </button>
+          {user?.is_anonymous ? (
+            <Link to="/login" className="tutor-nav-signout">
+              Sign in
+            </Link>
+          ) : (
+            <button className="tutor-nav-signout" onClick={() => signOut()}>
+              Sign out
+            </button>
+          )}
         </div>
       </nav>
 
