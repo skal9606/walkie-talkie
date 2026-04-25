@@ -596,14 +596,6 @@ export default function Tutor() {
     }
   }
 
-  function newSession() {
-    setStatus('idle')
-    setReview(null)
-    setTurns([])
-    setTranslations({})
-    setError(null)
-  }
-
   const freeExhausted = !subscribed && secondsRemaining <= 0
 
   if (authLoading) {
@@ -824,7 +816,7 @@ export default function Tutor() {
           </button>
         )}
         {status === 'review' && !paywallOpen && (
-          <button className="mic-btn start" onClick={newSession}>
+          <button className="mic-btn start" onClick={() => start()}>
             Start another session
           </button>
         )}
