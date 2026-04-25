@@ -72,10 +72,12 @@ export class RealtimeTutor {
     })
     this.localStream = stream
 
-    // Mute the mic until Natalia finishes her opener. Server hears nothing
-    // during the first response — no echo, no accidental interruption, no
-    // chance of the model abandoning the opener and re-starting it. We
-    // unmute when `response.done` fires for the first response.
+    // Start with the mic muted; we'll only enable it between Natalia's
+    // turns, never while she's speaking. This is half-duplex tutoring —
+    // the trade-off is that the learner can't interrupt mid-sentence,
+    // but we eliminate the entire class of speaker-echo / hallucinated-
+    // user-turn bugs that come from leaving the mic open while audio
+    // plays out the speaker.
     const audioTracks = stream.getAudioTracks()
     audioTracks.forEach((track) => {
       track.enabled = false
@@ -85,15 +87,34 @@ export class RealtimeTutor {
     const dc = pc.createDataChannel('oai-events')
     this.dc = dc
 
-    // The model can start generating a response the moment the channel opens.
-    // If we send `session.update` and `response.create` back-to-back, the
-    // server may produce a first response under default instructions, then a
-    // second one under our instructions — which surfaces as a disjointed,
-    // back-to-back opener with no pause for the learner. Gate the initial
-    // response.create on the `session.updated` ack so the model only ever
-    // speaks under the right instructions.
+    // Initial response.create is gated on session.updated so the model
+    // doesn't start generating before our instructions are in effect.
     let initialResponseFired = false
-    let openerCompleted = false
+    let unmuteTimer: ReturnType<typeof setTimeout> | null = null
+
+    function muteMic() {
+      if (unmuteTimer) {
+        clearTimeout(unmuteTimer)
+        unmuteTimer = null
+      }
+      audioTracks.forEach((track) => {
+        track.enabled = false
+      })
+    }
+
+    function scheduleUnmute() {
+      if (unmuteTimer) clearTimeout(unmuteTimer)
+      // 800ms padding past response.done so the WebRTC playback buffer
+      // drains before we open the mic — otherwise the speaker tail of
+      // Natalia's voice leaks back in and the transcription model
+      // hallucinates phantom user turns.
+      unmuteTimer = setTimeout(() => {
+        audioTracks.forEach((track) => {
+          track.enabled = true
+        })
+        unmuteTimer = null
+      }, 800)
+    }
 
     dc.addEventListener('message', (e) => {
       try {
@@ -102,18 +123,16 @@ export class RealtimeTutor {
           initialResponseFired = true
           this.send({ type: 'response.create' })
         }
-        if (event.type === 'response.done' && !openerCompleted) {
-          openerCompleted = true
-          // Opener delivered. Hold the mic muted a bit longer so the WebRTC
-          // playback buffer drains — otherwise the speaker tail of Natalia's
-          // voice can leak back into the mic on a phone (echo cancellation
-          // isn't perfect on built-in speakers) and Whisper hallucinates
-          // phantom user input from it ("I'm just a cat" etc).
-          setTimeout(() => {
-            audioTracks.forEach((track) => {
-              track.enabled = true
-            })
-          }, 800)
+        // Whenever the model starts streaming audio, hard-mute the mic so
+        // its own speaker output can't loop back as input.
+        if (event.type === 'response.audio.delta') {
+          muteMic()
+        }
+        // After a response is fully done, schedule the mic to re-open with
+        // a buffer-drain delay. Each response.done resets the timer, so a
+        // long-streaming response stays muted until it's truly finished.
+        if (event.type === 'response.done') {
+          scheduleUnmute()
         }
         this.handlers.forEach((h) => h(event))
       } catch {
