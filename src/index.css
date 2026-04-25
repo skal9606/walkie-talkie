@@ -1219,6 +1219,25 @@ body {
   border-color: var(--accent);
 }
 
+.onboarding-textarea {
+  resize: vertical;
+  min-height: 64px;
+  font-family: inherit;
+}
+
+.onboarding-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onboarding-label-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
 .onboarding-levels {
   display: flex;
   flex-direction: column;

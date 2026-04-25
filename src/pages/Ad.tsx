@@ -258,7 +258,7 @@ function SceneEnd({ active }: { active: boolean }) {
         <div className="end-logo-name">Walkie Talkie</div>
       </div>
       <div className="end-tagline">Master Portuguese. Just in case.</div>
-      <div className="end-cta">Try 2 minutes free →</div>
+      <div className="end-cta">Try 5 minutes free →</div>
       <div className="end-footnote">Brazilian Portuguese · $10/month</div>
     </div>
   )

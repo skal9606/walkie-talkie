@@ -2,19 +2,17 @@ import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
 import { useAuth } from '../lib/auth'
-import { loadProfile } from '../lib/profile'
 
 export default function Landing() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
 
-  // Returning learners with a real (non-anonymous) account and a saved
-  // profile go straight to /practice. Anonymous trial users stay on the
-  // landing page so they can still see pricing / FAQ / chat.
+  // Returning learners with a real (non-anonymous) account go straight to
+  // /practice. Anonymous trial users stay on the landing page so they can
+  // still see pricing, FAQ, and re-enter the trial via Chat Now.
   useEffect(() => {
     if (loading || !user) return
     if (user.is_anonymous) return
-    if (!loadProfile()) return
     navigate('/practice', { replace: true })
   }, [user, loading, navigate])
 
@@ -63,7 +61,7 @@ export default function Landing() {
             <Link to="/chat" className="landing-cta landing-cta-large">
               Chat Now
             </Link>
-            <div className="hero-footnote">First 2 minutes free · $10/month after</div>
+            <div className="hero-footnote">First 5 minutes free · $10/month after</div>
           </div>
         </div>
 
@@ -113,7 +111,7 @@ export default function Landing() {
       <section id="pricing" className="pricing">
         <h2 className="section-title">Simple pricing</h2>
         <p className="section-subtitle">
-          Try 2 minutes free — or subscribe now to practice without limits.
+          Try 5 minutes free — or subscribe now to practice without limits.
         </p>
         <div className="price-cards">
           <PriceCard

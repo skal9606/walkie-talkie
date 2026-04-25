@@ -127,8 +127,10 @@ export async function reviewTranscript(
 - "newVocabulary": array of { "word": string, "translation": string, "example": string }. Portuguese words/phrases the tutor introduced that are worth reviewing. Use a natural example sentence in Portuguese.
 - "practiceNextTime": array of 2-4 short strings suggesting what to focus on next time.
 - "memory": array of 2-4 short third-person factual bullets about the LEARNER that would be useful to recall in a future session. Examples: "Has a daughter named Lucy who is 7", "Works as a venture capitalist", "Lives in San Francisco but visits Brazil yearly", "Recently started reading Clarice Lispector". ONLY include facts the learner actually shared (people, places, work, hobbies, life events). Skip language-mechanics observations and anything trivial. Use empty array if the learner shared nothing personal.
+- "name": string or null. The learner's first name if they explicitly told the tutor in this session (e.g. "I'm Steve" or "My name is Steve"). DO NOT guess from a transcription artifact. Null if they never said it.
+- "inferredLevel": one of "complete-beginner", "novice", "intermediate", "advanced", or null. Your best estimate of their actual proficiency based on what they produced — NOT what they claimed. Use these markers: complete-beginner = no Portuguese produced, only English; novice = a few words/phrases like "olá", "obrigado", numbers; intermediate = full sentences with present + past tense, occasional errors; advanced = fluent and idiomatic. Null if you don't have enough signal.
 
-All five keys must be present. Use empty arrays if there is genuinely nothing to report. Be concise.`,
+All seven keys must be present. Use empty arrays / null if there is genuinely nothing to report. Be concise.`,
           },
           { role: 'user', content: scenarioLine + transcriptText },
         ],

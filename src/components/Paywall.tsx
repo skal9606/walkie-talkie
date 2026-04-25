@@ -119,7 +119,7 @@ export function Paywall({
         <div className="paywall-header">
           {reason === 'exhausted' ? (
             <>
-              <h2>Your free 2 minutes are up</h2>
+              <h2>Your free 5 minutes are up</h2>
               <p>
                 Subscribe to keep practicing — unlimited conversations, reviews, and
                 scenarios.

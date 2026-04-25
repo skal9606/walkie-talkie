@@ -16,8 +16,12 @@ import {
 import { FREE_TIER_SECONDS, type Plan } from '../lib/subscription'
 import { Paywall } from '../components/Paywall'
 import { SignIn } from '../components/SignIn'
-import { Onboarding } from '../components/Onboarding'
-import { clearProfile, loadProfile, saveProfile, type LearnerProfile } from '../lib/profile'
+import {
+  clearProfile,
+  loadProfile,
+  mergeProfileBlanks,
+  type LearnerProfile,
+} from '../lib/profile'
 import { addMemoryItems, loadMemory } from '../lib/memory'
 import { PRACTICE_THRESHOLD_MS, recordPractice } from '../lib/streak'
 import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
@@ -34,12 +38,20 @@ type Turn = {
 
 type Status = 'idle' | 'connecting' | 'live' | 'error' | 'reviewing' | 'review'
 
+type InferredLevel =
+  | 'complete-beginner'
+  | 'novice'
+  | 'intermediate'
+  | 'advanced'
+
 type ReviewData = {
   summary?: string
   corrections?: Array<{ original: string; corrected: string; explanation: string }>
   newVocabulary?: Array<{ word: string; translation: string; example: string }>
   practiceNextTime?: string[]
   memory?: string[]
+  name?: string | null
+  inferredLevel?: InferredLevel | null
 }
 
 type TranslationState = Record<string, string | 'loading'>
@@ -57,20 +69,20 @@ function formatSeconds(total: number): string {
 export default function Tutor() {
   const { user, accessToken, loading: authLoading } = useAuth()
 
-  // Learner profile comes from localStorage. New visitors go through Onboarding
-  // which writes it; returning visitors skip straight to the tutor.
+  // Learner profile comes from localStorage. Empty on first visit; populated
+  // by /api/review extraction after each session and finalized by the
+  // post-subscribe questionnaire.
   const [profile, setProfile] = useState<LearnerProfile | null>(() => loadProfile())
   const [signingInAnon, setSigningInAnon] = useState(false)
   const [showSignIn, setShowSignIn] = useState(false)
-  // Set to true when onboarding just completed so we know to auto-start a
-  // session as soon as auth + status are ready (instead of parking on the
-  // scenario picker).
-  const [autoStartAfterAuth, setAutoStartAfterAuth] = useState(false)
+  // Set to true when we want to auto-start a session as soon as auth + status
+  // are ready (e.g. fresh first-time visitor, returning anon user, etc).
+  const [autoStartAfterAuth, setAutoStartAfterAuth] = useState(true)
 
   const [status, setStatus] = useState<Status>('idle')
   const [scenarioId, setScenarioId] = useState<string>(() => {
     const p = loadProfile()
-    return p ? `free-${p.level}` : 'free-complete-beginner'
+    return p?.level ? `free-${p.level}` : 'free-novice'
   })
   const [turns, setTurns] = useState<Turn[]>([])
   const [translations, setTranslations] = useState<TranslationState>({})
@@ -175,27 +187,22 @@ export default function Tutor() {
     })
   }, [searchParams])
 
-  // --- Onboarding → anon sign-in → auto-start trial ---
-
-  const handleOnboardingComplete = useCallback((p: LearnerProfile) => {
-    saveProfile(p)
-    setProfile(p)
-    setScenarioId(`free-${p.level}`)
-    setAutoStartAfterAuth(true)
-    // Anon sign-in is kicked off by the effect below, which also covers
-    // returning users whose anon session expired.
-  }, [])
-
-  // If a profile is on file but there's no active session (fresh onboarding,
-  // cleared cookies, expired anon session), sign the user in anonymously.
-  // Ref-guarded so we attempt once per mount and don't get into a retry loop
-  // if anon sign-in is disabled in Supabase.
+  // --- Anon sign-in for first-time / signed-out visitors ---
+  // Triggered any time we land on /chat without a Supabase session and
+  // we're not deliberately showing the SignIn form.
   const anonSignInAttempted = useRef(false)
   useEffect(() => {
-    if (!profile) return
     if (authLoading) return
     if (user) return
     if (showSignIn) return
+    // If the user clicked a pricing card, route them to magic-link sign-in
+    // instead — pricing intent means "I want to subscribe now."
+    if (
+      searchParams.get('checkout') === 'monthly' ||
+      searchParams.get('checkout') === 'yearly'
+    ) {
+      return
+    }
     if (anonSignInAttempted.current) return
     anonSignInAttempted.current = true
     setSigningInAnon(true)
@@ -208,28 +215,45 @@ export default function Tutor() {
         setAutoStartAfterAuth(false)
       }
     })
-  }, [profile, authLoading, user, showSignIn])
+  }, [authLoading, user, showSignIn, searchParams])
 
+  // --- Auto-start a session once auth + status are ready ---
+  // First-time visitors get the level-discovery scenario. Returning learners
+  // who don't arrive via ?mode= also auto-launch into Free Conversation at
+  // their inferred level (with memory). The mode launcher below overrides
+  // this when ?mode=... is present.
   useEffect(() => {
     if (!autoStartAfterAuth) return
     if (!user || !accessToken) return
     if (!statusLoaded) return
     if (status !== 'idle') return
-    if (!profile) return
-    setAutoStartAfterAuth(false)
-    const baseScenario = scenarioForLevel(profile.level)
-    // Inject memory so a returning learner gets the memory-aware opener.
+    // ?mode=... and ?checkout=... have their own effects; let those run first.
+    if (searchParams.get('mode')) return
+    if (searchParams.get('checkout')) return
+
     const memory = loadMemory()
-    const withMemory: Scenario = {
-      ...baseScenario,
-      buildPromptAddon: () =>
-        baseScenario.buildPromptAddon({ name: profile.name, memory }),
-    }
-    start(withMemory)
-    // start() reads from refs/state and is defined below; intentionally not
-    // in deps to avoid re-firing every render.
+    const isFirstSession = !profile?.level
+    const synthetic: Scenario = isFirstSession
+      ? {
+          id: 'discover',
+          title: 'Welcome',
+          description: 'Meet Natalia',
+          buildPromptAddon: () =>
+            buildModePromptAddon('discover', { name: profile?.name }),
+          vadEagerness: vadForMode('discover', undefined),
+        }
+      : (() => {
+          const baseScenario = scenarioForLevel(profile.level!)
+          return {
+            ...baseScenario,
+            buildPromptAddon: () =>
+              baseScenario.buildPromptAddon({ name: profile?.name, memory }),
+          }
+        })()
+    setAutoStartAfterAuth(false)
+    start(synthetic)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStartAfterAuth, user, accessToken, statusLoaded, status, profile])
+  }, [autoStartAfterAuth, user, accessToken, statusLoaded, status, profile, searchParams])
 
   // --- Mode launcher: /chat?mode=free|grammar|scenario|repeat|translations ---
   // Set by the /practice portal. We auto-start the right kind of session,
@@ -371,6 +395,22 @@ export default function Tutor() {
         // Persist memory bullets so the next Free Conversation can reference them.
         if (Array.isArray(data.memory) && data.memory.length > 0) {
           addMemoryItems(data.memory)
+        }
+        // Fill in any blanks the model could infer (name, level). Never
+        // overwrites a value the user has confirmed in the questionnaire.
+        const inferred: Partial<LearnerProfile> = {}
+        if (data.name && typeof data.name === 'string') inferred.name = data.name
+        if (
+          data.inferredLevel === 'complete-beginner' ||
+          data.inferredLevel === 'novice' ||
+          data.inferredLevel === 'intermediate' ||
+          data.inferredLevel === 'advanced'
+        ) {
+          inferred.level = data.inferredLevel
+        }
+        if (Object.keys(inferred).length > 0) {
+          const merged = mergeProfileBlanks(inferred)
+          setProfile(merged)
         }
         setStatus('review')
       } catch (err) {
@@ -583,26 +623,13 @@ export default function Tutor() {
     )
   }
 
-  // First visit — no profile yet. Collect name + level, then anon sign-in +
-  // auto-start trial. If they came from a pricing card (?checkout=…), skip
-  // onboarding and go straight to magic-link sign-in: they already know they
-  // want to subscribe.
+  // Pricing-card path: ?checkout=… means the user clicked a Subscribe
+  // button, so route them to magic-link sign-in instead of letting them
+  // fall into the anon trial flow.
   const hasCheckoutIntent =
     searchParams.get('checkout') === 'monthly' ||
     searchParams.get('checkout') === 'yearly'
-  if (!profile) {
-    if (hasCheckoutIntent && (!user || !accessToken)) {
-      return (
-        <div className="app">
-          <nav className="tutor-nav">
-            <Link to="/" className="tutor-nav-back">
-              ← Back
-            </Link>
-          </nav>
-          <SignIn />
-        </div>
-      )
-    }
+  if (hasCheckoutIntent && (!user || !accessToken)) {
     return (
       <div className="app">
         <nav className="tutor-nav">
@@ -610,20 +637,13 @@ export default function Tutor() {
             ← Back
           </Link>
         </nav>
-        <Onboarding
-          onComplete={handleOnboardingComplete}
-          onSignInInstead={() => setShowSignIn(true)}
-        />
-        {error && (
-          <div className="error" style={{ textAlign: 'center', marginTop: 16 }}>
-            {error}
-          </div>
-        )}
+        <SignIn />
       </div>
     )
   }
 
-  // Profile is set but we're still waiting on anon sign-in to complete.
+  // Anon sign-in is in flight — connection screen. The effect above kicked
+  // it off automatically; if it fails the error card lets the user retry.
   if (!user || !accessToken) {
     return (
       <div className="app">
@@ -645,8 +665,8 @@ export default function Tutor() {
               onClick={() => {
                 setError(null)
                 anonSignInAttempted.current = false
-                // Force the effect to re-evaluate by nudging a dep.
-                setProfile((p) => (p ? { ...p } : p))
+                // Nudge the effect by clearing + re-setting a dep.
+                setShowSignIn((s) => s)
               }}
             >
               Try again

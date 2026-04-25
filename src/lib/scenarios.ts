@@ -294,11 +294,18 @@ export const ALL_SCENARIOS: Scenario[] = [...FREE_CONVERSATIONS, ...ROLEPLAY_SCE
 // `free` and `scenario` reuse what's above. `grammar`, `repeat`, and
 // `translations` get their own level-aware prompts below.
 
-export type ModeId = 'free' | 'grammar' | 'scenario' | 'repeat' | 'translations'
+export type ModeId =
+  | 'free'
+  | 'grammar'
+  | 'scenario'
+  | 'repeat'
+  | 'translations'
+  | 'discover'
 
 export type ModeContext = {
   name?: string
-  level: Level
+  /** Level may be unknown for the very first session — see `discover` mode. */
+  level?: Level
   /** Optional memory bullets from prior sessions; used by free-mode opener. */
   memory?: string[]
 }
@@ -350,6 +357,7 @@ function nameOrFriend(ctx: ModeContext): string {
 
 function buildGrammarAddon(ctx: ModeContext): string {
   const n = nameOrFriend(ctx)
+  const level: Level = ctx.level ?? 'novice'
   const topicsByLevel: Record<Level, string> = {
     'complete-beginner':
       `"ser" vs "estar" (both mean "to be"), noun gender (o/a), or basic numbers`,
@@ -359,10 +367,10 @@ function buildGrammarAddon(ctx: ModeContext): string {
     advanced:
       `subjunctive moods, conditional, hypothetical "se" clauses, or tricky preposition pairings`,
   }
-  return `SCENARIO: GRAMMAR LESSON. Learner level: ${LEVEL_LABEL[ctx.level]}.
+  return `SCENARIO: GRAMMAR LESSON. Learner level: ${LEVEL_LABEL[level]}.
 
 OPENING — your full first message, max 3 sentences:
-"Oi ${n}! Let's do a grammar lesson today. We could work on ${topicsByLevel[ctx.level]} — which sounds good, or do you have something else in mind?"
+"Oi ${n}! Let's do a grammar lesson today. We could work on ${topicsByLevel[level]} — which sounds good, or do you have something else in mind?"
 
 After they pick (or you pick if they shrug), teach the rule briefly with one clear example, then DRILL them: get them to produce the form 3–4 times in different sentences. Correct gently and confirm before moving on.
 
@@ -371,6 +379,7 @@ Stay conversational — this is a tutoring session, not a textbook. Mix English 
 
 function buildRepeatAddon(ctx: ModeContext): string {
   const n = nameOrFriend(ctx)
+  const level: Level = ctx.level ?? 'novice'
   const wordlistByLevel: Record<Level, string> = {
     'complete-beginner':
       'simple greetings (oi, olá, tchau, bom dia, boa tarde) and basics (água, café, sim, não, obrigado/a)',
@@ -381,7 +390,7 @@ function buildRepeatAddon(ctx: ModeContext): string {
     advanced:
       'tongue-twisters (trava-línguas), regional slang, and fast colloquial phrases (sei lá, beleza, dar um jeito, fica tranquilo)',
   }
-  return `SCENARIO: REPEAT-AFTER-ME pronunciation drill. Learner level: ${LEVEL_LABEL[ctx.level]}.
+  return `SCENARIO: REPEAT-AFTER-ME pronunciation drill. Learner level: ${LEVEL_LABEL[level]}.
 
 OPENING — your full first message, max 3 sentences:
 "Oi ${n}! Let's work on pronunciation. I'll say a word, you repeat it back, and I'll tell you how it sounded — ready?"
@@ -392,13 +401,47 @@ After they confirm, start drilling. Each round:
 3. Quick reaction: "Perfect!" / "Close — the [sound] is more like [model]" / "Try once more: [word]".
 4. Next word.
 
-Pull from material like: ${wordlistByLevel[ctx.level]}.
+Pull from material like: ${wordlistByLevel[level]}.
 
 Keep moving — roughly one word per 20 seconds. Don't lecture; this is reps.`
 }
 
+function buildDiscoverAddon(_ctx: ModeContext): string {
+  // Level-discovery session — used the very first time a visitor clicks
+  // Chat Now. We don't yet know name or level. Natalia greets in mostly
+  // English (lowest common denominator), asks the learner's name, then asks
+  // a probe question. Within the first 1-2 turns she has enough signal to
+  // recalibrate per the DYNAMIC LEVEL CALIBRATION rule in the base prompt.
+  return `SCENARIO: FIRST-EVER SESSION — level discovery + warm welcome.
+
+CONTEXT: This is the learner's very first conversation with you. You don't know their name yet. You don't know their level yet. Your job in the first ~30 seconds is to find out, naturally, without making them fill out a form.
+
+OPENING — your full first message, max 3 sentences, exactly this script:
+"Oi! I'm Natalia, your Brazilian Portuguese tutor — what's your name?"
+
+Stop after the question and wait silently for their answer.
+
+AFTER THEY GIVE THEIR NAME:
+- Use it warmly. ("Nice to meet you, [name]!")
+- Ask a single probe in mostly English with one Portuguese sprinkle: e.g. "What brings you to Portuguese — work, family, travel, or just curiosity?"
+- LISTEN to the language and complexity of their answer. If they reply in confident Portuguese, you've found an intermediate or advanced learner — switch to mostly Portuguese. If they reply in English with a few words like "olá", they're a beginner — stay in English with a couple of Portuguese sprinkles. If pure English, they're a complete beginner — stay almost entirely in English.
+
+LANGUAGE BALANCE TO START:
+- Open in MOSTLY ENGLISH with one "Oi" sprinkle. Don't assume anything.
+- Recalibrate every turn based on what they actually produce, per the DYNAMIC LEVEL CALIBRATION rule.
+
+ACCEPTANCE:
+- Be warm, encouraging, and curious. Don't drill vocabulary in this session — focus on a friendly first chat.
+- If they say something correctly in Portuguese, react to the meaning (don't gloss it).
+- No corrections in the first session unless they explicitly ask.
+
+GOAL:
+- By the end of the first 5 minutes you should have shown them what Natalia is like — patient, friendly, voice-only, adaptive. The session should feel like meeting a friend, not taking a placement test.`
+}
+
 function buildTranslationsAddon(ctx: ModeContext): string {
   const n = nameOrFriend(ctx)
+  const level: Level = ctx.level ?? 'novice'
   const phrasesByLevel: Record<Level, string> = {
     'complete-beginner':
       `one-word and 2–3 word phrases like "good morning", "thank you", "I have a cat"`,
@@ -409,7 +452,7 @@ function buildTranslationsAddon(ctx: ModeContext): string {
     advanced:
       `idiomatic and abstract sentences, like "I would have done it if I had known" or "she's more stubborn than her brother"`,
   }
-  return `SCENARIO: ENGLISH-TO-PORTUGUESE TRANSLATION DRILL. Learner level: ${LEVEL_LABEL[ctx.level]}.
+  return `SCENARIO: ENGLISH-TO-PORTUGUESE TRANSLATION DRILL. Learner level: ${LEVEL_LABEL[level]}.
 
 OPENING — your full first message, max 3 sentences:
 "Oi ${n}! Let's practice translating. I'll give you a short English phrase, you give it back to me in Portuguese — ready?"
@@ -420,7 +463,7 @@ After they confirm, start drilling. Each round:
 3. If correct: brief praise + the model translation as confirmation. If off: gently give the correct version, explain the key word or structure, have them say it back.
 4. Next phrase.
 
-Difficulty calibration: ${phrasesByLevel[ctx.level]}.
+Difficulty calibration: ${phrasesByLevel[level]}.
 
 Aim for one phrase per ~25 seconds. Keep it moving and conversational.`
 }
@@ -428,11 +471,15 @@ Aim for one phrase per ~25 seconds. Keep it moving and conversational.`
 /** Returns the full SCENARIO addon for a given mode + level + name. */
 export function buildModePromptAddon(mode: ModeId, ctx: ModeContext): string {
   switch (mode) {
-    case 'free':
-      return scenarioForLevel(ctx.level).buildPromptAddon({
+    case 'discover':
+      return buildDiscoverAddon(ctx)
+    case 'free': {
+      const level = ctx.level ?? 'novice'
+      return scenarioForLevel(level).buildPromptAddon({
         name: ctx.name,
         memory: ctx.memory,
       })
+    }
     case 'grammar':
       return buildGrammarAddon(ctx)
     case 'repeat':
@@ -447,10 +494,11 @@ export function buildModePromptAddon(mode: ModeId, ctx: ModeContext): string {
 }
 
 /** VAD eagerness to use for a mode at a given level. */
-export function vadForMode(mode: ModeId, level: Level): VadEagerness {
+export function vadForMode(mode: ModeId, level: Level | undefined): VadEagerness {
+  if (mode === 'discover') return 'medium'
   if (mode === 'repeat' || mode === 'translations') return 'medium'
   if (mode === 'free' || mode === 'grammar') {
-    return scenarioForLevel(level).vadEagerness ?? 'medium'
+    return scenarioForLevel(level ?? 'novice').vadEagerness ?? 'medium'
   }
   return 'medium'
 }

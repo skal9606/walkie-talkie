@@ -75,7 +75,7 @@ export function SignIn() {
         {error && <div className="error auth-error">{error}</div>}
       </form>
       <div className="auth-footnote">
-        First 2 minutes of conversation free, then $10/month.
+        First 5 minutes of conversation free, then $10/month.
       </div>
     </div>
   )
