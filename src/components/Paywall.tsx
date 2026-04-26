@@ -4,6 +4,29 @@ import { type Plan } from '../lib/subscription'
 import { supabase } from '../lib/supabase'
 import { getFreshAccessToken } from '../lib/auth'
 
+const BENEFITS = [
+  {
+    icon: '💬',
+    title: 'Unlimited conversations',
+    body: 'Practice with Natalia for as long as you want, anytime.',
+  },
+  {
+    icon: '🇧🇷',
+    title: 'Real Brazilian immersion',
+    body: 'Voice-first practice with a native-sounding tutor — the fastest path to fluency.',
+  },
+  {
+    icon: '🎯',
+    title: 'Multiple ways to practice',
+    body: 'Free conversation, roleplays, grammar lessons, translation drills, and pronunciation.',
+  },
+  {
+    icon: '📈',
+    title: 'Daily progress you can feel',
+    body: 'Build a streak, see a review after every session, and watch your fluency compound.',
+  },
+]
+
 export function Paywall({
   accessToken,
   reason,
@@ -15,10 +38,14 @@ export function Paywall({
    *  checkout so their subscription can be restored on another device. */
   isAnonymous: boolean
 }) {
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>('yearly')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Anonymous users go through an extra "leave us your email" step before
+  // we redirect to Stripe. Tracked separately so we can show the email
+  // form WITHOUT losing the selectedPlan.
+  const [collectingEmail, setCollectingEmail] = useState(false)
 
   async function subscribe(plan: Plan) {
     setError(null)
@@ -40,9 +67,7 @@ export function Paywall({
     setError(null)
     setLoading(true)
     // Attach the email to the anonymous account so the subscription is
-    // recoverable from another device via magic-link sign-in. Supabase will
-    // send a confirmation email, but the current session remains valid and
-    // we can proceed straight to Stripe.
+    // recoverable from another device via magic-link sign-in.
     const { error: updateErr } = await supabase.auth.updateUser({ email: clean })
     if (updateErr) {
       setError(updateErr.message)
@@ -58,8 +83,17 @@ export function Paywall({
     }
   }
 
-  // Anonymous users who've picked a plan — show email form before Stripe.
-  if (isAnonymous && selectedPlan) {
+  function onUnlock() {
+    if (!selectedPlan) return
+    if (isAnonymous) {
+      setCollectingEmail(true)
+      return
+    }
+    subscribe(selectedPlan)
+  }
+
+  // Anonymous users who picked a plan — show email form before Stripe.
+  if (collectingEmail && selectedPlan) {
     return (
       <div className="paywall">
         <div className="paywall-card">
@@ -83,17 +117,17 @@ export function Paywall({
             />
             <button
               type="submit"
-              className="mic-btn start"
+              className="paywall-unlock-cta"
               disabled={loading || !email.trim()}
             >
               {loading
                 ? 'Redirecting…'
-                : `Continue to payment · ${selectedPlan === 'monthly' ? '$10/mo' : '$100/yr'}`}
+                : `Continue · ${selectedPlan === 'monthly' ? '$10/mo' : '$100/yr'}`}
             </button>
             <button
               type="button"
               className="onboarding-link-btn"
-              onClick={() => setSelectedPlan(null)}
+              onClick={() => setCollectingEmail(false)}
               disabled={loading}
             >
               ← Back to plans
@@ -105,68 +139,69 @@ export function Paywall({
     )
   }
 
-  function onPlanClick(plan: Plan) {
-    if (isAnonymous) {
-      setSelectedPlan(plan)
-      return
-    }
-    subscribe(plan)
-  }
-
   return (
     <div className="paywall">
-      <div className="paywall-card">
-        <div className="paywall-header">
-          {reason === 'exhausted' ? (
-            <>
-              <h2>Your free 5 minutes are up</h2>
-              <p>
-                Subscribe to keep practicing — unlimited conversations, reviews, and
-                scenarios.
-              </p>
-            </>
-          ) : (
-            <>
-              <h2>Subscribe to keep practicing</h2>
-              <p>You've used your free minutes. Pick a plan to continue.</p>
-            </>
-          )}
+      <div className="paywall-card paywall-card-pitch">
+        <div className="paywall-pitch-header">
+          <div className="paywall-pitch-title">Walkie Talkie</div>
+          <h2>
+            {reason === 'exhausted'
+              ? "You've used your free 5 minutes."
+              : "You've reached your free conversation limit."}
+            <br />
+            <span className="paywall-pitch-sub">
+              Subscribe for unlimited conversations.
+            </span>
+          </h2>
         </div>
 
-        <div className="paywall-plans">
+        <ul className="paywall-benefits">
+          {BENEFITS.map((b) => (
+            <li key={b.title} className="paywall-benefit">
+              <span className="paywall-benefit-icon" aria-hidden>
+                {b.icon}
+              </span>
+              <div className="paywall-benefit-text">
+                <div className="paywall-benefit-title">{b.title}</div>
+                <div className="paywall-benefit-body">{b.body}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="paywall-plans paywall-plans-pitch">
           <button
-            className="paywall-plan"
+            type="button"
+            className={`paywall-plan-tile ${selectedPlan === 'yearly' ? 'selected' : ''}`}
+            onClick={() => setSelectedPlan('yearly')}
             disabled={loading}
-            onClick={() => onPlanClick('monthly')}
           >
-            <div className="paywall-plan-title">Monthly</div>
-            <div className="paywall-plan-price">
-              <span className="paywall-plan-amount">$10</span>
-              <span className="paywall-plan-period"> / month</span>
-            </div>
-            <div className="paywall-plan-note">Cancel anytime</div>
-            <div className="paywall-plan-cta">
-              {loading && selectedPlan === 'monthly' ? 'Redirecting…' : 'Choose monthly'}
-            </div>
+            <div className="paywall-plan-tile-badge">Best value</div>
+            <div className="paywall-plan-tile-period">12 months</div>
+            <div className="paywall-plan-tile-price">$100</div>
+            <div className="paywall-plan-tile-note">$8.33 / month</div>
           </button>
 
           <button
-            className="paywall-plan highlighted"
+            type="button"
+            className={`paywall-plan-tile ${selectedPlan === 'monthly' ? 'selected' : ''}`}
+            onClick={() => setSelectedPlan('monthly')}
             disabled={loading}
-            onClick={() => onPlanClick('yearly')}
           >
-            <div className="paywall-plan-badge">Save $20</div>
-            <div className="paywall-plan-title">Yearly</div>
-            <div className="paywall-plan-price">
-              <span className="paywall-plan-amount">$100</span>
-              <span className="paywall-plan-period"> / year</span>
-            </div>
-            <div className="paywall-plan-note">~$8.33 / month</div>
-            <div className="paywall-plan-cta">
-              {loading && selectedPlan === 'yearly' ? 'Redirecting…' : 'Choose yearly'}
-            </div>
+            <div className="paywall-plan-tile-period">1 month</div>
+            <div className="paywall-plan-tile-price">$10</div>
+            <div className="paywall-plan-tile-note">$10 / month</div>
           </button>
         </div>
+
+        <button
+          type="button"
+          className="paywall-unlock-cta"
+          onClick={onUnlock}
+          disabled={!selectedPlan || loading}
+        >
+          {loading ? 'Redirecting…' : 'Unlock unlimited'}
+        </button>
 
         {error && <div className="paywall-error">{error}</div>}
       </div>
