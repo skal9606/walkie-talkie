@@ -132,8 +132,13 @@ export class RealtimeTutor {
     // Initial response.create is gated on session.updated so the model
     // doesn't start generating before our instructions are in effect.
     let initialResponseFired = false
-    let firstResponseCompleted = false
     let unmuteTimer: ReturnType<typeof setTimeout> | null = null
+    // Audio drain delay between Natalia finishing and the mic coming back
+    // online. Set generously: shorter values were leaving audio playing out
+    // the speaker while the mic was reactivated, which on iOS produces a
+    // self-echo loop that the server treats as user input and uses to pause
+    // Natalia's audio output.
+    const MIC_UNMUTE_DELAY_MS = 1500
 
     async function muteMic() {
       if (unmuteTimer) {
@@ -171,26 +176,28 @@ export class RealtimeTutor {
           initialResponseFired = true
           this.send({ type: 'response.create' })
         }
-        // Mute the mic the MOMENT a response is created — not when audio
-        // first streams. There's a small gap between response.created and
-        // the first response.audio.delta during which background noise
-        // can trigger server-side VAD, which can disrupt the response
-        // even with interrupt_response: false on some platforms.
-        if (event.type === 'response.created') {
+        // Mute the mic as EARLY as possible. We fire on both events:
+        //   - input_audio_buffer.committed: server has accepted the
+        //     learner's turn. Anything they say from here is post-turn
+        //     and we don't want it leaking into the response that's
+        //     about to be generated. (Subsequent-response path.)
+        //   - response.created: covers the opener path, where there's
+        //     no preceding committed event because we manually fired
+        //     response.create from session.updated.
+        // muteMic is idempotent — calling it twice is fine.
+        if (
+          event.type === 'input_audio_buffer.committed' ||
+          event.type === 'response.created'
+        ) {
           muteMic()
         }
         // After a response is fully done, schedule the mic to re-open
-        // with a buffer-drain delay. The very first response is held
-        // longer (1500ms) so Natalia's opener has all the headroom to
-        // finish playing on a slow speaker / phone before the mic comes
-        // back online. Subsequent responses use a tighter 800ms.
+        // with a generous drain delay. Shorter delays were leaving
+        // Natalia's tail audio still playing out the speaker when the
+        // mic came back online — on iOS that self-echo gets treated as
+        // user input by the server and pauses subsequent responses.
         if (event.type === 'response.done') {
-          if (!firstResponseCompleted) {
-            firstResponseCompleted = true
-            scheduleUnmute(1500)
-          } else {
-            scheduleUnmute(800)
-          }
+          scheduleUnmute(MIC_UNMUTE_DELAY_MS)
         }
         this.handlers.forEach((h) => h(event))
       } catch {
