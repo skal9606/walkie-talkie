@@ -13,6 +13,7 @@ export class RealtimeTutor {
   private dc: RTCDataChannel | null = null
   private audioEl: HTMLAudioElement | null = null
   private localStream: MediaStream | null = null
+  private silentAudioCtx: AudioContext | null = null
   private handlers = new Set<EventHandler>()
 
   onEvent(handler: EventHandler): () => void {
@@ -89,22 +90,41 @@ export class RealtimeTutor {
     })
     this.localStream = stream
 
-    // Half-duplex tutoring: the mic is muted whenever Natalia is speaking
-    // and only re-enabled between her turns. This is a HARD guarantee that
-    // her response can never be interrupted — the server-side
-    // `interrupt_response: false` flag (in the session config below) is
-    // additional defense, but the mic-mute is the load-bearing protection.
+    // Half-duplex tutoring with REPLACE-TRACK muting.
     //
-    // Trade-off: the learner can't talk over her or barge in. ISSEN-style
-    // "speak during the teacher's turn and she replies after" would
-    // require capturing local audio with Web Audio API while the WebRTC
-    // mic is silenced, then injecting it via input_audio_buffer.append
-    // after response.done. Not implemented; revisit if requested.
-    const audioTracks = stream.getAudioTracks()
-    audioTracks.forEach((track) => {
-      track.enabled = false
-      pc.addTrack(track, stream)
-    })
+    // Previously we used `track.enabled = false` to silence the mic during
+    // Natalia's turn. The spec says a disabled track outputs silence, but
+    // in practice — especially on iOS Safari standalone / PWA mode —
+    // disabled tracks have been observed to still emit non-silent audio,
+    // which the server then treats as a learner turn and uses to truncate
+    // Natalia's response.
+    //
+    // The bulletproof fix is to swap the WebRTC sender's track entirely.
+    // We create a Web Audio "silent track" (a ConstantSourceNode at zero
+    // amplitude piped through a MediaStreamAudioDestinationNode) and add
+    // THAT to the peer connection initially. When we want the learner to
+    // be heard, we replaceTrack with the real mic. When Natalia is
+    // speaking, we replaceTrack back to silent. There's no application-
+    // level "enabled" flag for Safari to ignore — the data flowing into
+    // the WebRTC pipeline is genuinely silent samples.
+    const realMicTrack = stream.getAudioTracks()[0]
+
+    const silentAudioCtx = new (window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    if (silentAudioCtx.state === 'suspended') {
+      await silentAudioCtx.resume()
+    }
+    this.silentAudioCtx = silentAudioCtx
+    const silentDest = silentAudioCtx.createMediaStreamDestination()
+    const silentSource = silentAudioCtx.createConstantSource()
+    silentSource.offset.value = 0
+    silentSource.connect(silentDest)
+    silentSource.start()
+    const silentTrack = silentDest.stream.getAudioTracks()[0]
+
+    // Initially add the SILENT track. Mic is effectively muted from t=0
+    // through the end of Natalia's first response.
+    const sender = pc.addTrack(silentTrack, silentDest.stream)
 
     const dc = pc.createDataChannel('oai-events')
     this.dc = dc
@@ -115,23 +135,32 @@ export class RealtimeTutor {
     let firstResponseCompleted = false
     let unmuteTimer: ReturnType<typeof setTimeout> | null = null
 
-    function muteMic() {
+    async function muteMic() {
       if (unmuteTimer) {
         clearTimeout(unmuteTimer)
         unmuteTimer = null
       }
-      audioTracks.forEach((track) => {
-        track.enabled = false
-      })
+      if (sender.track !== silentTrack) {
+        try {
+          await sender.replaceTrack(silentTrack)
+        } catch {
+          // replaceTrack can throw if the connection is tearing down;
+          // safe to swallow.
+        }
+      }
     }
 
     function scheduleUnmute(delayMs: number) {
       if (unmuteTimer) clearTimeout(unmuteTimer)
-      unmuteTimer = setTimeout(() => {
-        audioTracks.forEach((track) => {
-          track.enabled = true
-        })
+      unmuteTimer = setTimeout(async () => {
         unmuteTimer = null
+        if (sender.track !== realMicTrack) {
+          try {
+            await sender.replaceTrack(realMicTrack)
+          } catch {
+            // ditto
+          }
+        }
       }, delayMs)
     }
 
@@ -253,10 +282,14 @@ export class RealtimeTutor {
     this.localStream?.getTracks().forEach((t) => t.stop())
     this.pc?.close()
     this.audioEl?.remove()
+    this.silentAudioCtx?.close().catch(() => {
+      /* noop */
+    })
     this.pc = null
     this.dc = null
     this.localStream = null
     this.audioEl = null
+    this.silentAudioCtx = null
     this.handlers.clear()
   }
 }
