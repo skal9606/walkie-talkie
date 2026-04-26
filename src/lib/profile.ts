@@ -86,6 +86,40 @@ export function hasFullProfile(profile: LearnerProfile | null): boolean {
   return !!profile?.questionnaireCompleted
 }
 
+/**
+ * Renders the learner's profile as a prompt block for Natalia. Returns an
+ * empty string if there's nothing useful to say.
+ *
+ * The goal field is the most important part here: it's the *angle* the
+ * learner is approaching Portuguese from (in-laws, travel, work, etc.) and
+ * Natalia should weave it into her topic choices and follow-up questions.
+ */
+export function buildLearnerContextBlock(
+  profile: LearnerProfile | null,
+): string {
+  if (!profile) return ''
+  const lines: string[] = []
+  if (profile.name?.trim()) lines.push(`- Name: ${profile.name.trim()}`)
+  if (profile.nativeLanguage?.trim()) {
+    lines.push(`- Native language: ${profile.nativeLanguage.trim()}`)
+  }
+  if (profile.level) {
+    const levelLabel: Record<string, string> = {
+      'complete-beginner': 'First timer (knows zero Portuguese)',
+      novice: 'Basic (knows a little — greetings, a few words)',
+      intermediate: 'Intermediate (can hold a basic conversation)',
+      advanced: 'Advanced (fluent-ish)',
+    }
+    lines.push(`- Self-described level: ${levelLabel[profile.level] ?? profile.level}`)
+  }
+  if (profile.goals?.trim()) {
+    lines.push(`- Why they're learning: ${profile.goals.trim()}`)
+  }
+  if (lines.length === 0) return ''
+  return `LEARNER CONTEXT
+${lines.join('\n')}`
+}
+
 export function clearProfile(): void {
   try {
     localStorage.removeItem(STORAGE_KEY)

@@ -17,6 +17,7 @@ import { FREE_TIER_SECONDS, type Plan } from '../lib/subscription'
 import { Paywall } from '../components/Paywall'
 import { SignIn } from '../components/SignIn'
 import {
+  buildLearnerContextBlock,
   clearProfile,
   loadProfile,
   mergeProfileBlanks,
@@ -460,7 +461,10 @@ export default function Tutor() {
       name: profile?.name,
       memory: loadMemory(),
     })
-    const instructions = addon ? `${TUTOR_INSTRUCTIONS}\n\n${addon}` : TUTOR_INSTRUCTIONS
+    const learnerContext = buildLearnerContextBlock(profile)
+    const instructions = [TUTOR_INSTRUCTIONS, addon, learnerContext]
+      .filter(Boolean)
+      .join('\n\n')
 
     const tutor = new RealtimeTutor()
     tutorRef.current = tutor
