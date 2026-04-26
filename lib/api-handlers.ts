@@ -369,6 +369,60 @@ export async function cancelSubscription(
   }
 }
 
+// -- Reactivate subscription (clears cancel_at_period_end on Stripe) ------
+
+export async function reactivateSubscription(
+  userId: string,
+  stripeSecretKey: string | undefined,
+): Promise<HandlerResult> {
+  if (!stripeSecretKey) {
+    return { status: 500, body: { error: 'Stripe not configured.' } }
+  }
+  const { data: row } = await supabaseAdmin()
+    .from('subscriptions')
+    .select('stripe_subscription_id, status')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!row?.stripe_subscription_id) {
+    return { status: 400, body: { error: 'No subscription to reactivate.' } }
+  }
+  // Only valid while the subscription is still active in Stripe (i.e. they
+  // haven't yet hit currentPeriodEnd). After that the subscription is gone
+  // and they'd need a fresh checkout instead.
+  if (row.status === 'canceled') {
+    return {
+      status: 400,
+      body: {
+        error:
+          'Your subscription has already ended. Start a new one from the home screen.',
+      },
+    }
+  }
+  const form = new URLSearchParams()
+  form.set('cancel_at_period_end', 'false')
+  const r = await fetch(
+    `https://api.stripe.com/v1/subscriptions/${row.stripe_subscription_id}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${stripeSecretKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: form.toString(),
+    },
+  )
+  if (!r.ok) {
+    const body = (await r.json().catch(() => ({}))) as {
+      error?: { message?: string }
+    }
+    return {
+      status: r.status,
+      body: { error: body.error?.message ?? 'Stripe reactivation failed.' },
+    }
+  }
+  return { status: 200, body: { ok: true } }
+}
+
 // -- Delete account (immediate Stripe cancel + Supabase user delete) ------
 
 export async function deleteAccount(

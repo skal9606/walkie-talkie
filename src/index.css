@@ -1960,6 +1960,115 @@ a {
   font-size: 13px;
 }
 
+.settings-btn-primary {
+  background: var(--accent);
+  color: #0f1115;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 40px;
+  transition: opacity 0.15s ease;
+}
+
+.settings-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.settings-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* --- Save Changes bar (Profile / Tutor tabs) ---------------------------- */
+
+.settings-save-bar {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-save-hint {
+  color: var(--muted);
+  font-size: 12px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.settings-save-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-save-confirm {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  animation: settings-fade-in 0.15s ease;
+}
+
+@keyframes settings-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Subscription detail card ------------------------------------------ */
+
+.settings-sub-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-sub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.settings-sub-label {
+  color: var(--muted);
+}
+
+.settings-sub-value {
+  color: var(--fg);
+  font-weight: 500;
+  text-align: right;
+}
+
+.settings-sub-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.settings-sub-warning {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(231, 111, 81, 0.08);
+  border: 1px solid rgba(231, 111, 81, 0.25);
+  border-radius: 8px;
+  color: var(--danger);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
 /* --- Legal pages (Terms / Privacy) -------------------------------------- */
 
 .legal {

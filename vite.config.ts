@@ -7,6 +7,7 @@ import {
   createCheckoutSession,
   deleteAccount,
   getSubscriptionDetail,
+  reactivateSubscription,
   reviewTranscript,
   translate,
   type HandlerResult,
@@ -188,6 +189,15 @@ export default defineConfig(({ mode }) => {
             const userId = await getUserIdFromAuthHeader(authHeader(req))
             if (!userId) return sendResult(res, { status: 401, body: { error: 'Not signed in.' } })
             sendResult(res, await cancelSubscription(userId, env.STRIPE_SECRET_KEY))
+          })
+
+          server.middlewares.use('/api/reactivate-subscription', async (req, res) => {
+            if (req.method !== 'POST') {
+              return sendResult(res, { status: 405, body: { error: 'Method not allowed' } })
+            }
+            const userId = await getUserIdFromAuthHeader(authHeader(req))
+            if (!userId) return sendResult(res, { status: 401, body: { error: 'Not signed in.' } })
+            sendResult(res, await reactivateSubscription(userId, env.STRIPE_SECRET_KEY))
           })
 
           server.middlewares.use('/api/delete-account', async (req, res) => {

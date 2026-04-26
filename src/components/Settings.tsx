@@ -42,6 +42,8 @@ export function Settings({
   onProfileChange: (p: LearnerProfile) => void
 }) {
   const [tab, setTab] = useState<Tab>('profile')
+  // Persisted state — only updated when the user clicks Save Changes (or for
+  // the theme, which is a UI setting and applies instantly).
   const [profile, setProfile] = useState<LearnerProfile>(
     () => loadProfile() ?? {},
   )
@@ -53,17 +55,24 @@ export function Settings({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  // Persist profile + preferences whenever they change. Profile saves bubble
-  // up to the parent so the portal reflects the new name immediately.
-  useEffect(() => {
-    saveProfile(profile)
-    onProfileChange(profile)
-  }, [profile, onProfileChange])
+  function handleProfileSave(next: LearnerProfile) {
+    saveProfile(next)
+    setProfile(next)
+    onProfileChange(next)
+  }
 
-  useEffect(() => {
-    savePreferences(prefs)
-    applyTheme(prefs.theme)
-  }, [prefs])
+  function handlePrefsSave(next: Preferences) {
+    savePreferences(next)
+    setPrefs(next)
+  }
+
+  // Theme toggles apply instantly — it's a UI choice, not a tutor setting.
+  function handleThemeChange(theme: Theme) {
+    const next = { ...prefs, theme }
+    savePreferences(next)
+    applyTheme(theme)
+    setPrefs(next)
+  }
 
   // Load subscription detail when the Account tab is opened (or on mount).
   useEffect(() => {
@@ -164,17 +173,19 @@ export function Settings({
         </nav>
 
         {tab === 'profile' && (
-          <ProfileTab profile={profile} onChange={setProfile} />
+          <ProfileTab profile={profile} onSave={handleProfileSave} />
         )}
 
-        {tab === 'tutor' && <TutorTab prefs={prefs} onChange={setPrefs} />}
+        {tab === 'tutor' && <TutorTab prefs={prefs} onSave={handlePrefsSave} />}
 
         {tab === 'account' && (
           <AccountTab
+            accessToken={accessToken}
             sub={sub}
             subLoading={subLoading}
-            prefs={prefs}
-            onPrefsChange={setPrefs}
+            setSub={setSub}
+            theme={prefs.theme}
+            onThemeChange={handleThemeChange}
             confirmingCancel={confirmingCancel}
             setConfirmingCancel={setConfirmingCancel}
             confirmingDelete={confirmingDelete}
@@ -182,6 +193,8 @@ export function Settings({
             onCancel={handleCancel}
             onDelete={handleDelete}
             busy={busy}
+            setBusy={setBusy}
+            setError={setError}
           />
         )}
 
@@ -193,21 +206,40 @@ export function Settings({
 
 function ProfileTab({
   profile,
-  onChange,
+  onSave,
 }: {
   profile: LearnerProfile
-  onChange: (p: LearnerProfile) => void
+  onSave: (p: LearnerProfile) => void
 }) {
+  // Draft state — what the user is editing. Only flushed to localStorage and
+  // bubbled up when they click Save Changes. Reset whenever the persisted
+  // profile changes (e.g. after a successful save).
+  const [draft, setDraft] = useState<LearnerProfile>(profile)
+  const [justSaved, setJustSaved] = useState(false)
+  useEffect(() => {
+    setDraft(profile)
+  }, [profile])
+
+  const dirty = !shallowEqualProfile(draft, profile)
+
   function update<K extends keyof LearnerProfile>(key: K, value: LearnerProfile[K]) {
-    onChange({ ...profile, [key]: value })
+    setDraft((d) => ({ ...d, [key]: value }))
+    setJustSaved(false)
   }
+
+  function handleSave() {
+    onSave(draft)
+    setJustSaved(true)
+    window.setTimeout(() => setJustSaved(false), 2000)
+  }
+
   return (
     <div className="settings-tab-body">
       <Field label="Your name">
         <input
           type="text"
           className="settings-input"
-          value={profile.name ?? ''}
+          value={draft.name ?? ''}
           onChange={(e) => update('name', e.target.value)}
           placeholder="What should Natalia call you?"
         />
@@ -217,7 +249,7 @@ function ProfileTab({
         <input
           type="text"
           className="settings-input"
-          value={profile.nativeLanguage ?? ''}
+          value={draft.nativeLanguage ?? ''}
           onChange={(e) => update('nativeLanguage', e.target.value)}
           placeholder="English, Spanish, etc."
         />
@@ -232,13 +264,13 @@ function ProfileTab({
           {LEVEL_OPTIONS.map((opt) => (
             <label
               key={opt.id}
-              className={`settings-radio ${profile.level === opt.id ? 'selected' : ''}`}
+              className={`settings-radio ${draft.level === opt.id ? 'selected' : ''}`}
             >
               <input
                 type="radio"
                 name="level"
                 value={opt.id}
-                checked={profile.level === opt.id}
+                checked={draft.level === opt.id}
                 onChange={() => update('level', opt.id)}
               />
               <span>{opt.label}</span>
@@ -250,23 +282,61 @@ function ProfileTab({
       <Field label="Why you're learning">
         <textarea
           className="settings-input settings-textarea"
-          value={profile.goals ?? ''}
+          value={draft.goals ?? ''}
           onChange={(e) => update('goals', e.target.value)}
           placeholder="To talk to my Brazilian in-laws, traveling to Rio next year, etc."
           rows={3}
         />
       </Field>
+
+      <SaveBar
+        dirty={dirty}
+        justSaved={justSaved}
+        onSave={handleSave}
+        hint="Changes apply to your next conversation with Natalia."
+      />
     </div>
+  )
+}
+
+function shallowEqualProfile(a: LearnerProfile, b: LearnerProfile): boolean {
+  return (
+    (a.name ?? '') === (b.name ?? '') &&
+    (a.nativeLanguage ?? '') === (b.nativeLanguage ?? '') &&
+    (a.goals ?? '') === (b.goals ?? '') &&
+    (a.level ?? null) === (b.level ?? null)
   )
 }
 
 function TutorTab({
   prefs,
-  onChange,
+  onSave,
 }: {
   prefs: Preferences
-  onChange: (p: Preferences) => void
+  onSave: (p: Preferences) => void
 }) {
+  const [draft, setDraft] = useState<Preferences>(prefs)
+  const [justSaved, setJustSaved] = useState(false)
+  useEffect(() => {
+    setDraft(prefs)
+  }, [prefs])
+
+  const dirty =
+    draft.formality !== prefs.formality || draft.strictness !== prefs.strictness
+
+  function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
+    setDraft((d) => ({ ...d, [key]: value }))
+    setJustSaved(false)
+  }
+
+  function handleSave() {
+    // Theme isn't edited from this tab — preserve whatever the persisted
+    // value is.
+    onSave({ ...draft, theme: prefs.theme })
+    setJustSaved(true)
+    window.setTimeout(() => setJustSaved(false), 2000)
+  }
+
   return (
     <div className="settings-tab-body">
       <Field
@@ -277,14 +347,14 @@ function TutorTab({
           {(['casual', 'neutral', 'formal'] as Formality[]).map((f) => (
             <label
               key={f}
-              className={`settings-radio ${prefs.formality === f ? 'selected' : ''}`}
+              className={`settings-radio ${draft.formality === f ? 'selected' : ''}`}
             >
               <input
                 type="radio"
                 name="formality"
                 value={f}
-                checked={prefs.formality === f}
-                onChange={() => onChange({ ...prefs, formality: f })}
+                checked={draft.formality === f}
+                onChange={() => update('formality', f)}
               />
               <span>{f === 'casual' ? 'Casual' : f === 'neutral' ? 'Neutral' : 'Formal'}</span>
             </label>
@@ -300,29 +370,38 @@ function TutorTab({
           {(['lax', 'strict'] as Strictness[]).map((s) => (
             <label
               key={s}
-              className={`settings-radio ${prefs.strictness === s ? 'selected' : ''}`}
+              className={`settings-radio ${draft.strictness === s ? 'selected' : ''}`}
             >
               <input
                 type="radio"
                 name="strictness"
                 value={s}
-                checked={prefs.strictness === s}
-                onChange={() => onChange({ ...prefs, strictness: s })}
+                checked={draft.strictness === s}
+                onChange={() => update('strictness', s)}
               />
               <span>{s === 'lax' ? 'Let things flow' : 'Correct me'}</span>
             </label>
           ))}
         </div>
       </Field>
+
+      <SaveBar
+        dirty={dirty}
+        justSaved={justSaved}
+        onSave={handleSave}
+        hint="Changes apply to your next conversation with Natalia."
+      />
     </div>
   )
 }
 
 function AccountTab({
+  accessToken,
   sub,
   subLoading,
-  prefs,
-  onPrefsChange,
+  setSub,
+  theme,
+  onThemeChange,
   confirmingCancel,
   setConfirmingCancel,
   confirmingDelete,
@@ -330,11 +409,15 @@ function AccountTab({
   onCancel,
   onDelete,
   busy,
+  setBusy,
+  setError,
 }: {
+  accessToken: string
   sub: SubscriptionDetail | null
   subLoading: boolean
-  prefs: Preferences
-  onPrefsChange: (p: Preferences) => void
+  setSub: (s: SubscriptionDetail) => void
+  theme: Theme
+  onThemeChange: (t: Theme) => void
   confirmingCancel: boolean
   setConfirmingCancel: (b: boolean) => void
   confirmingDelete: boolean
@@ -342,11 +425,38 @@ function AccountTab({
   onCancel: () => void
   onDelete: () => void
   busy: boolean
+  setBusy: (b: boolean) => void
+  setError: (e: string | null) => void
 }) {
+  async function handleReactivate() {
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await fetch('/api/reactivate-subscription', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!r.ok) {
+        const body = (await r.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? 'Reactivation failed')
+      }
+      const refreshed = await fetch('/api/subscription-status', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      setSub((await refreshed.json()) as SubscriptionDetail)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="settings-tab-body">
       <Field label="Subscription">
-        <SubscriptionStatus sub={sub} loading={subLoading} />
+        <SubscriptionDetailCard sub={sub} loading={subLoading} />
+
+        {/* Active, not scheduled to cancel — show Cancel CTA */}
         {sub && sub.plan && !sub.cancelAtPeriodEnd && (
           <>
             {!confirmingCancel ? (
@@ -365,7 +475,7 @@ function AccountTab({
                   {sub.currentPeriodEnd
                     ? new Date(sub.currentPeriodEnd).toLocaleDateString()
                     : 'the end of your current period'}
-                  .
+                  . You can change your mind anytime before then.
                 </p>
                 <div className="settings-confirm-actions">
                   <button
@@ -389,6 +499,18 @@ function AccountTab({
             )}
           </>
         )}
+
+        {/* Cancellation scheduled — show Reactivate CTA */}
+        {sub && sub.plan && sub.cancelAtPeriodEnd && (
+          <button
+            type="button"
+            className="settings-btn-primary"
+            onClick={handleReactivate}
+            disabled={busy}
+          >
+            {busy ? 'Reactivating…' : 'Reactivate subscription'}
+          </button>
+        )}
       </Field>
 
       <Field label="Theme">
@@ -396,14 +518,14 @@ function AccountTab({
           {(['dark', 'light'] as Theme[]).map((t) => (
             <label
               key={t}
-              className={`settings-radio ${prefs.theme === t ? 'selected' : ''}`}
+              className={`settings-radio ${theme === t ? 'selected' : ''}`}
             >
               <input
                 type="radio"
                 name="theme"
                 value={t}
-                checked={prefs.theme === t}
-                onChange={() => onPrefsChange({ ...prefs, theme: t })}
+                checked={theme === t}
+                onChange={() => onThemeChange(t)}
               />
               <span>{t === 'dark' ? 'Dark' : 'Light'}</span>
             </label>
@@ -463,7 +585,14 @@ function AccountTab({
   )
 }
 
-function SubscriptionStatus({
+// Pricing source of truth for the subscription panel. Mirrors the Paywall
+// copy — keep in sync if pricing changes.
+const PLAN_DISPLAY: Record<'monthly' | 'yearly', { label: string; price: string }> = {
+  monthly: { label: 'Monthly', price: '$10 / month' },
+  yearly: { label: 'Annual', price: '$100 / year ($8.33 / month)' },
+}
+
+function SubscriptionDetailCard({
   sub,
   loading,
 }: {
@@ -474,25 +603,83 @@ function SubscriptionStatus({
   if (!sub) return <div className="settings-readonly">Unknown</div>
 
   if (sub.status === 'trial' || !sub.plan) {
-    return <div className="settings-readonly">Free trial</div>
-  }
-  const planLabel = sub.plan === 'yearly' ? 'Annual' : 'Monthly'
-  if (sub.cancelAtPeriodEnd) {
     return (
-      <div className="settings-readonly">
-        Subscribed ({planLabel}) — cancels{' '}
-        {sub.currentPeriodEnd
-          ? new Date(sub.currentPeriodEnd).toLocaleDateString()
-          : 'at period end'}
+      <div className="settings-sub-card">
+        <div className="settings-sub-row">
+          <span className="settings-sub-label">Plan</span>
+          <span className="settings-sub-value">Free trial</span>
+        </div>
+        <div className="settings-sub-hint">
+          Subscribe from the home screen to unlock unlimited conversations.
+        </div>
       </div>
     )
   }
-  if (sub.status === 'past_due') {
-    return (
-      <div className="settings-readonly">Subscribed ({planLabel}) — payment past due</div>
-    )
-  }
-  return <div className="settings-readonly">Subscribed ({planLabel})</div>
+
+  const display = PLAN_DISPLAY[sub.plan]
+  const renewDate = sub.currentPeriodEnd
+    ? new Date(sub.currentPeriodEnd).toLocaleDateString()
+    : null
+
+  return (
+    <div className="settings-sub-card">
+      <div className="settings-sub-row">
+        <span className="settings-sub-label">Plan</span>
+        <span className="settings-sub-value">{display.label}</span>
+      </div>
+      <div className="settings-sub-row">
+        <span className="settings-sub-label">Price</span>
+        <span className="settings-sub-value">{display.price}</span>
+      </div>
+      {renewDate && (
+        <div className="settings-sub-row">
+          <span className="settings-sub-label">
+            {sub.cancelAtPeriodEnd ? 'Access ends' : 'Next billed'}
+          </span>
+          <span className="settings-sub-value">{renewDate}</span>
+        </div>
+      )}
+      {sub.status === 'past_due' && (
+        <div className="settings-sub-warning">
+          Payment past due — please update your card to keep access.
+        </div>
+      )}
+      {sub.cancelAtPeriodEnd && (
+        <div className="settings-sub-warning">
+          Cancellation scheduled. You'll keep access until the date above.
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SaveBar({
+  dirty,
+  justSaved,
+  onSave,
+  hint,
+}: {
+  dirty: boolean
+  justSaved: boolean
+  onSave: () => void
+  hint?: string
+}) {
+  return (
+    <div className="settings-save-bar">
+      {hint && <div className="settings-save-hint">{hint}</div>}
+      <div className="settings-save-actions">
+        {justSaved && <span className="settings-save-confirm">Saved</span>}
+        <button
+          type="button"
+          className="settings-btn-primary"
+          onClick={onSave}
+          disabled={!dirty}
+        >
+          Save Changes
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function Field({
