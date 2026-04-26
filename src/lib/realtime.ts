@@ -14,6 +14,7 @@ export class RealtimeTutor {
   private audioEl: HTMLAudioElement | null = null
   private localStream: MediaStream | null = null
   private silentAudioCtx: AudioContext | null = null
+  private vadTimer: ReturnType<typeof setInterval> | null = null
   private handlers = new Set<EventHandler>()
 
   onEvent(handler: EventHandler): () => void {
@@ -126,6 +127,32 @@ export class RealtimeTutor {
     // through the end of Natalia's first response.
     const sender = pc.addTrack(silentTrack, silentDest.stream)
 
+    // ---- Client-side VAD ---------------------------------------------------
+    // Server-side VAD (turn_detection) is disabled — the server now never
+    // tries to detect speech or auto-pause Natalia's audio output. We take
+    // over turn-end detection in the browser by tapping the real mic stream
+    // through a Web Audio AnalyserNode and computing rolling RMS energy.
+    // When the learner speaks and then stays quiet for SILENCE_DURATION_MS,
+    // we manually fire input_audio_buffer.commit + response.create.
+    const vadSource = silentAudioCtx.createMediaStreamSource(stream)
+    const vadAnalyser = silentAudioCtx.createAnalyser()
+    vadAnalyser.fftSize = 1024
+    vadSource.connect(vadAnalyser)
+    const vadBuf = new Float32Array(vadAnalyser.fftSize)
+
+    // Energy threshold for "speech vs silence." With AGC + noise suppression
+    // on the input stream, normal speech RMS sits in the 0.05–0.3 range and
+    // background quiet is well under 0.01. 0.02 is a safe split. Tune up if
+    // we see false positives from room tone.
+    const VAD_SPEECH_THRESHOLD = 0.02
+    // How much continuous silence after speech to count the turn done. Same
+    // value we previously used for server VAD — generous, so mid-sentence
+    // thinking pauses don't fire a commit.
+    const VAD_SILENCE_DURATION_MS = 1800
+    // How often to sample. Smaller = lower latency on turn-end; larger =
+    // less main-thread work. 80ms is a fine default for voice.
+    const VAD_TICK_INTERVAL_MS = 80
+
     const dc = pc.createDataChannel('oai-events')
     this.dc = dc
 
@@ -133,6 +160,13 @@ export class RealtimeTutor {
     // doesn't start generating before our instructions are in effect.
     let initialResponseFired = false
     let unmuteTimer: ReturnType<typeof setTimeout> | null = null
+    // VAD only listens between Natalia's turns. While she's speaking, or
+    // during the post-response drain delay, this is false and the timer
+    // body short-circuits.
+    let vadEnabled = false
+    let userIsSpeaking = false
+    let lastSpeechAt = 0
+    let speechSinceLastCommit = false
     // Audio drain delay between Natalia finishing and the mic coming back
     // online. Set generously: shorter values were leaving audio playing out
     // the speaker while the mic was reactivated, which on iOS produces a
@@ -140,11 +174,49 @@ export class RealtimeTutor {
     // Natalia's audio output.
     const MIC_UNMUTE_DELAY_MS = 1500
 
+    const sendCommit = () => {
+      this.send({ type: 'input_audio_buffer.commit' })
+      this.send({ type: 'response.create' })
+    }
+
+    this.vadTimer = setInterval(() => {
+      if (!vadEnabled) return
+      vadAnalyser.getFloatTimeDomainData(vadBuf)
+      let sumSquares = 0
+      for (let i = 0; i < vadBuf.length; i++) {
+        sumSquares += vadBuf[i] * vadBuf[i]
+      }
+      const rms = Math.sqrt(sumSquares / vadBuf.length)
+      const now = Date.now()
+      if (rms > VAD_SPEECH_THRESHOLD) {
+        lastSpeechAt = now
+        speechSinceLastCommit = true
+        userIsSpeaking = true
+      } else if (
+        userIsSpeaking &&
+        now - lastSpeechAt > VAD_SILENCE_DURATION_MS
+      ) {
+        userIsSpeaking = false
+        if (speechSinceLastCommit) {
+          // Lock VAD before firing — response.created will arrive shortly
+          // after, the mic will mute, and we don't want to fire a second
+          // commit if the learner makes any sound between now and then.
+          vadEnabled = false
+          speechSinceLastCommit = false
+          sendCommit()
+        }
+      }
+    }, VAD_TICK_INTERVAL_MS)
+
     async function muteMic() {
       if (unmuteTimer) {
         clearTimeout(unmuteTimer)
         unmuteTimer = null
       }
+      // Lock client-side VAD while Natalia is speaking.
+      vadEnabled = false
+      userIsSpeaking = false
+      speechSinceLastCommit = false
       if (sender.track !== silentTrack) {
         try {
           await sender.replaceTrack(silentTrack)
@@ -166,6 +238,12 @@ export class RealtimeTutor {
             // ditto
           }
         }
+        // Re-arm client-side VAD. From here on, the periodic timer body
+        // will start watching for speech → silence transitions.
+        userIsSpeaking = false
+        speechSinceLastCommit = false
+        lastSpeechAt = Date.now()
+        vadEnabled = true
       }, delayMs)
     }
 
@@ -224,27 +302,16 @@ export class RealtimeTutor {
               ? { language: options.transcriptionLanguage }
               : {}),
           },
-          // server_vad with a stricter-than-default threshold and a long
-          // silence window. We previously used semantic_vad but it was too
-          // permissive about what counts as speech (phantom turns from
-          // room tone). Threshold 0.6 (default 0.5) tightens that.
-          // silence_duration_ms 1800 is intentionally generous — closer to
-          // ISSEN's feel, where there's a deliberate pause between the
-          // learner finishing and the tutor replying. Shorter windows
-          // triggered Natalia mid-thinking-pause and felt rushed.
-          turn_detection: {
-            type: 'server_vad',
-            threshold: 0.6,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 1800,
-            // Tell the server NOT to cancel an in-flight response when it
-            // detects mic input. Combined with our client-side mic mute
-            // during model speech, this guarantees Natalia finishes every
-            // sentence even if a stray noise bursts through. The trade-off
-            // is the learner can't barge in mid-reply, which is the right
-            // call for a tutor (and consistent with our half-duplex model).
-            interrupt_response: false,
-          },
+          // Server-side turn detection is OFF. Even with interrupt_response
+          // false, server VAD was pausing Natalia's audio output whenever
+          // it thought it heard learner input — leaving her transcript
+          // complete but her audio truncated mid-sentence. With
+          // turn_detection: null the server stops listening for turns
+          // entirely, so it cannot pause her response on perceived input.
+          // Turn-end detection is now done client-side (see VAD analyzer
+          // setup above) which fires input_audio_buffer.commit +
+          // response.create manually when the learner pauses.
+          turn_detection: null,
         },
       })
       // We deliberately don't send response.create here — the message
@@ -280,6 +347,10 @@ export class RealtimeTutor {
   }
 
   disconnect() {
+    if (this.vadTimer) {
+      clearInterval(this.vadTimer)
+      this.vadTimer = null
+    }
     try {
       this.dc?.close()
     } catch {
