@@ -18,12 +18,12 @@ type LevelOption = {
 const LEVELS: LevelOption[] = [
   {
     id: 'complete-beginner',
-    title: 'Complete beginner',
+    title: 'First timer',
     blurb: `I don't know any Portuguese yet.`,
   },
   {
     id: 'novice',
-    title: 'Novice',
+    title: 'Basic',
     blurb: 'I know a little — greetings, a few words.',
   },
   {

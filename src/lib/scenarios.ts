@@ -106,7 +106,7 @@ Stop after the question and wait silently for their answer.`
 export const FREE_CONVERSATIONS: Scenario[] = [
   {
     id: 'free-complete-beginner',
-    title: 'Complete beginner',
+    title: 'First timer',
     description: 'Know zero Portuguese. Mostly English with a few Portuguese words.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) =>
@@ -138,7 +138,7 @@ ${memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx)}`,
   },
   {
     id: 'free-novice',
-    title: 'Novice',
+    title: 'Basic',
     description: 'Know a little. Can greet, say thanks, a few basics.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) =>
