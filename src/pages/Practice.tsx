@@ -12,6 +12,7 @@ import { PRACTICE_MODES, type ModeId } from '../lib/scenarios'
 import { currentStreak } from '../lib/streak'
 import { trackSubscribe } from '../lib/tiktok'
 import { Onboarding } from '../components/Onboarding'
+import { Settings } from '../components/Settings'
 
 // The "home" for any signed-in learner. After a successful subscription
 // the learner is bounced here, and we run a one-time questionnaire to
@@ -32,6 +33,7 @@ export default function Practice() {
   // Computed once on mount — fresh number every time the user lands here,
   // including after a session via /chat that just bumped the streak.
   const [streak] = useState(() => currentStreak())
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const refreshStatus = useCallback(async () => {
     if (!user) return
@@ -132,6 +134,15 @@ export default function Practice() {
           ) : (
             <div className="tutor-nav-badge free">Free trial</div>
           )}
+          <button
+            type="button"
+            className="tutor-nav-signout"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+            title="Settings"
+          >
+            ⚙ Settings
+          </button>
           {user?.is_anonymous ? (
             <Link to="/login" className="tutor-nav-signout">
               Sign in
@@ -143,6 +154,14 @@ export default function Practice() {
           )}
         </div>
       </nav>
+
+      {settingsOpen && accessToken && (
+        <Settings
+          accessToken={accessToken}
+          onClose={() => setSettingsOpen(false)}
+          onProfileChange={(p) => setProfile(p)}
+        />
+      )}
 
       <header className="header">
         <h1>Choose any way to practice</h1>

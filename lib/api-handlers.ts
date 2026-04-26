@@ -267,3 +267,147 @@ export async function createCheckoutSession(
     return { status: 500, body: { error: String(err) } }
   }
 }
+
+// -- Subscription detail (settings panel) ---------------------------------
+
+import { supabaseAdmin } from './supabase-admin.js'
+
+export async function getSubscriptionDetail(
+  userId: string,
+  stripeSecretKey: string | undefined,
+): Promise<HandlerResult> {
+  const { data: row } = await supabaseAdmin()
+    .from('subscriptions')
+    .select('status, plan, current_period_end, stripe_subscription_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  // No row at all = user is on free trial. Return a stable shape.
+  if (!row || !row.stripe_subscription_id) {
+    return {
+      status: 200,
+      body: {
+        plan: null,
+        status: 'trial',
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+      },
+    }
+  }
+  // Fetch cancel_at_period_end from Stripe — we don't store it in our DB.
+  let cancelAtPeriodEnd = false
+  if (stripeSecretKey) {
+    try {
+      const r = await fetch(
+        `https://api.stripe.com/v1/subscriptions/${row.stripe_subscription_id}`,
+        { headers: { Authorization: `Bearer ${stripeSecretKey}` } },
+      )
+      if (r.ok) {
+        const sub = (await r.json()) as { cancel_at_period_end?: boolean }
+        cancelAtPeriodEnd = sub.cancel_at_period_end ?? false
+      }
+    } catch {
+      // Surface the row anyway; cancelAtPeriodEnd just defaults to false.
+    }
+  }
+  return {
+    status: 200,
+    body: {
+      plan: row.plan,
+      status: row.status,
+      currentPeriodEnd: row.current_period_end,
+      cancelAtPeriodEnd,
+    },
+  }
+}
+
+// -- Cancel subscription (sets cancel_at_period_end on Stripe) ------------
+
+export async function cancelSubscription(
+  userId: string,
+  stripeSecretKey: string | undefined,
+): Promise<HandlerResult> {
+  if (!stripeSecretKey) {
+    return { status: 500, body: { error: 'Stripe not configured.' } }
+  }
+  const { data: row } = await supabaseAdmin()
+    .from('subscriptions')
+    .select('stripe_subscription_id, current_period_end')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!row?.stripe_subscription_id) {
+    return { status: 400, body: { error: 'No active subscription to cancel.' } }
+  }
+  // Sets cancel_at_period_end=true. Subscription stays active (and the user
+  // keeps full access) until the period naturally ends, at which point Stripe
+  // sends customer.subscription.deleted and our webhook flips status to
+  // 'canceled'.
+  const form = new URLSearchParams()
+  form.set('cancel_at_period_end', 'true')
+  const r = await fetch(
+    `https://api.stripe.com/v1/subscriptions/${row.stripe_subscription_id}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${stripeSecretKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: form.toString(),
+    },
+  )
+  if (!r.ok) {
+    const body = (await r.json().catch(() => ({}))) as {
+      error?: { message?: string }
+    }
+    return {
+      status: r.status,
+      body: { error: body.error?.message ?? 'Stripe cancellation failed.' },
+    }
+  }
+  return {
+    status: 200,
+    body: { ok: true, currentPeriodEnd: row.current_period_end },
+  }
+}
+
+// -- Delete account (immediate Stripe cancel + Supabase user delete) ------
+
+export async function deleteAccount(
+  userId: string,
+  stripeSecretKey: string | undefined,
+): Promise<HandlerResult> {
+  // Cancel any active subscription IMMEDIATELY (no grace period — they're
+  // deleting the account, they don't keep access). This is fire-and-forget:
+  // even if Stripe call fails we still proceed with the delete so the user
+  // doesn't get stuck.
+  if (stripeSecretKey) {
+    const { data: row } = await supabaseAdmin()
+      .from('subscriptions')
+      .select('stripe_subscription_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (row?.stripe_subscription_id) {
+      try {
+        await fetch(
+          `https://api.stripe.com/v1/subscriptions/${row.stripe_subscription_id}`,
+          {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${stripeSecretKey}` },
+          },
+        )
+      } catch {
+        // continue with delete regardless
+      }
+    }
+  }
+  // Wipe their rows from our tables. Order matters — children first.
+  const admin = supabaseAdmin()
+  await admin.from('subscriptions').delete().eq('user_id', userId)
+  await admin.from('usage').delete().eq('user_id', userId)
+  // Finally delete the Supabase auth user. Once this returns, their JWT
+  // becomes invalid and refresh-tokens won't issue new ones.
+  const { error } = await admin.auth.admin.deleteUser(userId)
+  if (error) {
+    return { status: 500, body: { error: error.message } }
+  }
+  return { status: 200, body: { ok: true } }
+}

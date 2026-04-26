@@ -3,7 +3,10 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import {
+  cancelSubscription,
   createCheckoutSession,
+  deleteAccount,
+  getSubscriptionDetail,
   reviewTranscript,
   translate,
   type HandlerResult,
@@ -170,6 +173,30 @@ export default defineConfig(({ mode }) => {
                 { ...body, userId },
               ),
             )
+          })
+
+          server.middlewares.use('/api/subscription-status', async (req, res) => {
+            const userId = await getUserIdFromAuthHeader(authHeader(req))
+            if (!userId) return sendResult(res, { status: 401, body: { error: 'Not signed in.' } })
+            sendResult(res, await getSubscriptionDetail(userId, env.STRIPE_SECRET_KEY))
+          })
+
+          server.middlewares.use('/api/cancel-subscription', async (req, res) => {
+            if (req.method !== 'POST') {
+              return sendResult(res, { status: 405, body: { error: 'Method not allowed' } })
+            }
+            const userId = await getUserIdFromAuthHeader(authHeader(req))
+            if (!userId) return sendResult(res, { status: 401, body: { error: 'Not signed in.' } })
+            sendResult(res, await cancelSubscription(userId, env.STRIPE_SECRET_KEY))
+          })
+
+          server.middlewares.use('/api/delete-account', async (req, res) => {
+            if (req.method !== 'POST') {
+              return sendResult(res, { status: 405, body: { error: 'Method not allowed' } })
+            }
+            const userId = await getUserIdFromAuthHeader(authHeader(req))
+            if (!userId) return sendResult(res, { status: 401, body: { error: 'Not signed in.' } })
+            sendResult(res, await deleteAccount(userId, env.STRIPE_SECRET_KEY))
           })
         },
       },

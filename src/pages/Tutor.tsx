@@ -23,6 +23,7 @@ import {
   mergeProfileBlanks,
   type LearnerProfile,
 } from '../lib/profile'
+import { buildPreferencesPromptBlock, loadPreferences } from '../lib/preferences'
 import { addMemoryItems, loadMemory } from '../lib/memory'
 import { PRACTICE_THRESHOLD_MS, recordPractice } from '../lib/streak'
 import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
@@ -462,7 +463,13 @@ export default function Tutor() {
       memory: loadMemory(),
     })
     const learnerContext = buildLearnerContextBlock(profile)
-    const instructions = [TUTOR_INSTRUCTIONS, addon, learnerContext]
+    const preferencesBlock = buildPreferencesPromptBlock(loadPreferences())
+    const instructions = [
+      TUTOR_INSTRUCTIONS,
+      addon,
+      learnerContext,
+      preferencesBlock,
+    ]
       .filter(Boolean)
       .join('\n\n')
 
