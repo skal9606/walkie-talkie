@@ -188,23 +188,19 @@ export class RealtimeTutor {
               ? { language: options.transcriptionLanguage }
               : {}),
           },
-          // server_vad with a stricter-than-default threshold. We previously
-          // used semantic_vad (smart turn-end detection), but it was too
-          // permissive about *what counts as speech to begin with* — any
-          // ambient noise during the post-Natalia unmute window would
-          // trigger a phantom turn. Energy-based VAD with threshold 0.6
-          // (default 0.5) is much harder to trip from room tone while still
-          // catching real speech. silence_duration_ms 1200 (default 500) is
-          // intentionally generous — a shorter window was triggering Natalia
-          // to start replying during the learner's mid-sentence thinking
-          // pauses, ending up with both speaking at once when the learner
-          // resumed. The trade-off is slightly slower replies; that's a
-          // better feel than getting talked over.
+          // server_vad with a stricter-than-default threshold and a long
+          // silence window. We previously used semantic_vad but it was too
+          // permissive about what counts as speech (phantom turns from
+          // room tone). Threshold 0.6 (default 0.5) tightens that.
+          // silence_duration_ms 1800 is intentionally generous — closer to
+          // ISSEN's feel, where there's a deliberate pause between the
+          // learner finishing and the tutor replying. Shorter windows
+          // triggered Natalia mid-thinking-pause and felt rushed.
           turn_detection: {
             type: 'server_vad',
             threshold: 0.6,
             prefix_padding_ms: 300,
-            silence_duration_ms: 1200,
+            silence_duration_ms: 1800,
             // Tell the server NOT to cancel an in-flight response when it
             // detects mic input. Combined with our client-side mic mute
             // during model speech, this guarantees Natalia finishes every
