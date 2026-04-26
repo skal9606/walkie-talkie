@@ -220,8 +220,6 @@ function ProfileTab({
     setDraft(profile)
   }, [profile])
 
-  const dirty = !shallowEqualProfile(draft, profile)
-
   function update<K extends keyof LearnerProfile>(key: K, value: LearnerProfile[K]) {
     setDraft((d) => ({ ...d, [key]: value }))
     setJustSaved(false)
@@ -290,21 +288,11 @@ function ProfileTab({
       </Field>
 
       <SaveBar
-        dirty={dirty}
         justSaved={justSaved}
         onSave={handleSave}
         hint="Changes apply to your next conversation with Natalia."
       />
     </div>
-  )
-}
-
-function shallowEqualProfile(a: LearnerProfile, b: LearnerProfile): boolean {
-  return (
-    (a.name ?? '') === (b.name ?? '') &&
-    (a.nativeLanguage ?? '') === (b.nativeLanguage ?? '') &&
-    (a.goals ?? '') === (b.goals ?? '') &&
-    (a.level ?? null) === (b.level ?? null)
   )
 }
 
@@ -320,9 +308,6 @@ function TutorTab({
   useEffect(() => {
     setDraft(prefs)
   }, [prefs])
-
-  const dirty =
-    draft.formality !== prefs.formality || draft.strictness !== prefs.strictness
 
   function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     setDraft((d) => ({ ...d, [key]: value }))
@@ -386,7 +371,6 @@ function TutorTab({
       </Field>
 
       <SaveBar
-        dirty={dirty}
         justSaved={justSaved}
         onSave={handleSave}
         hint="Changes apply to your next conversation with Natalia."
@@ -654,30 +638,28 @@ function SubscriptionDetailCard({
 }
 
 function SaveBar({
-  dirty,
   justSaved,
   onSave,
   hint,
 }: {
-  dirty: boolean
   justSaved: boolean
   onSave: () => void
   hint?: string
 }) {
+  // Always-enabled button. After a click, the label flips to "✓ Saved" for
+  // 2s and the button color shifts to communicate success — no greyed-out
+  // state, since that reads as "broken / click didn't register" right when
+  // the user wants confirmation.
   return (
     <div className="settings-save-bar">
       {hint && <div className="settings-save-hint">{hint}</div>}
-      <div className="settings-save-actions">
-        {justSaved && <span className="settings-save-confirm">Saved</span>}
-        <button
-          type="button"
-          className="settings-btn-primary"
-          onClick={onSave}
-          disabled={!dirty}
-        >
-          Save Changes
-        </button>
-      </div>
+      <button
+        type="button"
+        className={`settings-btn-primary ${justSaved ? 'just-saved' : ''}`}
+        onClick={onSave}
+      >
+        {justSaved ? '✓ Saved' : 'Save Changes'}
+      </button>
     </div>
   )
 }

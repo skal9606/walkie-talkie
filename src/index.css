@@ -1971,16 +1971,25 @@ a {
   font-size: 14px;
   -webkit-tap-highlight-color: transparent;
   min-height: 40px;
-  transition: opacity 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
-.settings-btn-primary:hover:not(:disabled) {
+.settings-btn-primary:hover {
   opacity: 0.9;
 }
 
-.settings-btn-primary:disabled {
-  opacity: 0.45;
-  cursor: default;
+.settings-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.settings-btn-primary.just-saved {
+  animation: settings-saved-pulse 0.4s ease;
+}
+
+@keyframes settings-saved-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
 }
 
 /* --- Save Changes bar (Profile / Tutor tabs) ---------------------------- */
@@ -2001,24 +2010,6 @@ a {
   font-size: 12px;
   flex: 1;
   min-width: 180px;
-}
-
-.settings-save-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.settings-save-confirm {
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 500;
-  animation: settings-fade-in 0.15s ease;
-}
-
-@keyframes settings-fade-in {
-  from { opacity: 0; transform: translateY(2px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* --- Subscription detail card ------------------------------------------ */
