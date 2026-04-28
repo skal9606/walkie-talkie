@@ -139,14 +139,6 @@ export class RealtimeTutor {
     const transceiver = pc.addTransceiver('audio', { direction: 'sendrecv' })
     const sender = transceiver.sender
 
-    // Mic-side analyser. Tapped (a) for diagnostic peak-RMS logs and
-    // (b) by scheduleUnmute() to detect when the user has stopped
-    // talking before swapping in the real mic post-opener.
-    const vadSource = silentAudioCtx.createMediaStreamSource(stream)
-    const vadAnalyser = silentAudioCtx.createAnalyser()
-    vadAnalyser.fftSize = 1024
-    vadSource.connect(vadAnalyser)
-    const vadBuf = new Float32Array(vadAnalyser.fftSize)
 
     const dc = pc.createDataChannel('oai-events')
     this.dc = dc
@@ -175,24 +167,23 @@ export class RealtimeTutor {
       }
     }
 
-    // Audio-silence + mic-silence-driven unmute. Only swap in the real
-    // mic once both:
-    //   - Natalia's audio has finished playing in the speaker (inbound
-    //     analyser RMS below threshold)
-    //   - The learner is silent (mic analyser RMS below threshold)
-    // The min-total-wait covers cases where the inbound analyser reads
-    // silence too early (it reads the WebRTC network stream, not the
-    // audio that's still in the jitter buffer playing in the speaker).
+    // Audio-silence-driven unmute. Activate the real mic as soon as
+    // Natalia's audio has finished playing in the speaker (so we don't
+    // pick up speaker→mic echo on the first user turn). Floor of
+    // MIN_TOTAL_WAIT_MS covers the case where the inbound analyser sees
+    // network silence before the audio has actually drained from the
+    // browser jitter buffer. Mic state is intentionally NOT a gate — if
+    // we wait for the user to stop talking first, the user's natural
+    // immediate-reply gets dropped while the sender still has no track.
     function scheduleUnmute() {
       if (unmuteTimer) clearTimeout(unmuteTimer)
 
       const SILENCE_THRESHOLD = 0.005
-      const MIC_SILENCE_THRESHOLD = 0.02
       const SILENCE_DURATION_MS = 300
-      const MIN_TOTAL_WAIT_MS = 1500
+      const MIN_TOTAL_WAIT_MS = 600
       const SAFETY_MAX_MS = 6000
       const POLL_INTERVAL_MS = 50
-      const FALLBACK_DELAY_MS = 2000
+      const FALLBACK_DELAY_MS = 1500
 
       if (!inboundAnalyser) {
         unmuteTimer = setTimeout(() => void activateMic(), FALLBACK_DELAY_MS)
@@ -200,7 +191,7 @@ export class RealtimeTutor {
       }
 
       const startedAt = Date.now()
-      let bothSilentSince = 0
+      let inboundSilentSince = 0
 
       const tick = () => {
         const analyser = inboundAnalyser
@@ -214,28 +205,19 @@ export class RealtimeTutor {
           inboundSumSquares += inboundBuf[i] * inboundBuf[i]
         }
         const inboundRms = Math.sqrt(inboundSumSquares / inboundBuf.length)
-
-        vadAnalyser.getFloatTimeDomainData(vadBuf)
-        let micSumSquares = 0
-        for (let i = 0; i < vadBuf.length; i++) {
-          micSumSquares += vadBuf[i] * vadBuf[i]
-        }
-        const micRms = Math.sqrt(micSumSquares / vadBuf.length)
-
         const now = Date.now()
-        const bothSilent = inboundRms < SILENCE_THRESHOLD && micRms < MIC_SILENCE_THRESHOLD
         const elapsedMs = now - startedAt
 
-        if (bothSilent) {
-          if (bothSilentSince === 0) bothSilentSince = now
-          const silenceMet = now - bothSilentSince >= SILENCE_DURATION_MS
+        if (inboundRms < SILENCE_THRESHOLD) {
+          if (inboundSilentSince === 0) inboundSilentSince = now
+          const silenceMet = now - inboundSilentSince >= SILENCE_DURATION_MS
           const minWaitMet = elapsedMs >= MIN_TOTAL_WAIT_MS
           if (silenceMet && minWaitMet) {
             void activateMic()
             return
           }
         } else {
-          bothSilentSince = 0
+          inboundSilentSince = 0
         }
 
         if (elapsedMs >= SAFETY_MAX_MS) {
