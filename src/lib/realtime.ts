@@ -168,11 +168,15 @@ export class RealtimeTutor {
     let lastSpeechAt = 0
     let speechSinceLastCommit = false
     // Audio drain delay between Natalia finishing and the mic coming back
-    // online. Set generously: shorter values were leaving audio playing out
-    // the speaker while the mic was reactivated, which on iOS produces a
-    // self-echo loop that the server treats as user input and uses to pause
-    // Natalia's audio output.
-    const MIC_UNMUTE_DELAY_MS = 1500
+    // online. Originally 1500ms because shorter values let server-side VAD
+    // pick up Natalia's tail audio as user input and truncate her next
+    // response. That failure mode is gone now that turn_detection is null
+    // (server no longer listens for turns at all). The remaining risk is
+    // purely client-side: our own VAD analyzer firing a spurious commit on
+    // self-echo. Worst case is Natalia responding to nothing — survivable.
+    // Tuned down to cut the inter-turn gap that was making the conversation
+    // feel sluggish. If iOS PWAs start firing phantom commits, raise back.
+    const MIC_UNMUTE_DELAY_MS = 600
 
     const sendCommit = () => {
       this.send({ type: 'input_audio_buffer.commit' })
