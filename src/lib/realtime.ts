@@ -76,8 +76,36 @@ export class RealtimeTutor {
     audioEl.style.display = 'none'
     document.body.appendChild(audioEl)
     this.audioEl = audioEl
+    // Inbound-audio analyser. Set when Natalia's audio track arrives via
+    // pc.ontrack. scheduleUnmute() polls this to detect when her voice
+    // has actually finished playing in the speaker, so we can swap in
+    // the real mic precisely at audio-silence rather than on a guessed
+    // fixed timer.
+    let inboundAnalyser: AnalyserNode | null = null
+    const inboundBuf = new Float32Array(1024)
+
     pc.ontrack = (e) => {
-      audioEl.srcObject = e.streams[0]
+      const stream = e.streams[0]
+      audioEl.srcObject = stream
+      // Browser quirk: if we createMediaStreamSource on the same stream
+      // that's bound to audioEl, the analyser reads near-silence because
+      // the audio element consumed the stream first (especially Safari).
+      // Clone the audio track and create the source from a fresh stream
+      // wrapping the clone — gives the analyser its own independent
+      // audio path.
+      try {
+        const originalTrack = stream.getAudioTracks()[0]
+        if (!originalTrack) return
+        const clonedTrack = originalTrack.clone()
+        const cloneStream = new MediaStream([clonedTrack])
+        const source = silentAudioCtx.createMediaStreamSource(cloneStream)
+        const analyser = silentAudioCtx.createAnalyser()
+        analyser.fftSize = 1024
+        source.connect(analyser)
+        inboundAnalyser = analyser
+      } catch {
+        // Track clone failed; scheduleUnmute uses the fixed fallback delay.
+      }
     }
 
     // Explicit audio constraints — without these, mic echo of Natalia's voice
@@ -91,23 +119,14 @@ export class RealtimeTutor {
     })
     this.localStream = stream
 
-    // Half-duplex tutoring with REPLACE-TRACK muting.
-    //
-    // Previously we used `track.enabled = false` to silence the mic during
-    // Natalia's turn. The spec says a disabled track outputs silence, but
-    // in practice — especially on iOS Safari standalone / PWA mode —
-    // disabled tracks have been observed to still emit non-silent audio,
-    // which the server then treats as a learner turn and uses to truncate
-    // Natalia's response.
-    //
-    // The bulletproof fix is to swap the WebRTC sender's track entirely.
-    // We create a Web Audio "silent track" (a ConstantSourceNode at zero
-    // amplitude piped through a MediaStreamAudioDestinationNode) and add
-    // THAT to the peer connection initially. When we want the learner to
-    // be heard, we replaceTrack with the real mic. When Natalia is
-    // speaking, we replaceTrack back to silent. There's no application-
-    // level "enabled" flag for Safari to ignore — the data flowing into
-    // the WebRTC pipeline is genuinely silent samples.
+    // Bulletproof opener-non-interruptibility: the WebRTC sender starts
+    // with NO track at all (via addTransceiver). With sender.track ===
+    // null, no media is encoded — there's literally nothing for any
+    // codec or server VAD to act on during the opener. After the
+    // opener's response.done arrives, scheduleUnmute() polls for both
+    // audio drain (Natalia's voice has finished playing in the speaker)
+    // and mic silence (the user has stopped talking), then swaps in
+    // the real mic.
     const realMicTrack = stream.getAudioTracks()[0]
 
     const silentAudioCtx = new (window.AudioContext ||
@@ -116,35 +135,18 @@ export class RealtimeTutor {
       await silentAudioCtx.resume()
     }
     this.silentAudioCtx = silentAudioCtx
-    const silentDest = silentAudioCtx.createMediaStreamDestination()
-    const silentSource = silentAudioCtx.createConstantSource()
-    silentSource.offset.value = 0
-    silentSource.connect(silentDest)
-    silentSource.start()
-    const silentTrack = silentDest.stream.getAudioTracks()[0]
 
-    // Initially add the SILENT track. Mic is effectively muted from t=0
-    // through the end of Natalia's first response.
-    const sender = pc.addTrack(silentTrack, silentDest.stream)
+    const transceiver = pc.addTransceiver('audio', { direction: 'sendrecv' })
+    const sender = transceiver.sender
 
-    // ---- Client-side VAD ---------------------------------------------------
-    // Server-side VAD (turn_detection) is disabled — the server now never
-    // tries to detect speech or auto-pause Natalia's audio output. We take
-    // over turn-end detection in the browser by tapping the real mic stream
-    // through a Web Audio AnalyserNode and computing rolling RMS energy.
-    // When the learner speaks and then stays quiet for SILENCE_DURATION_MS,
-    // we manually fire input_audio_buffer.commit + response.create.
+    // Mic-side analyser. Tapped (a) for diagnostic peak-RMS logs and
+    // (b) by scheduleUnmute() to detect when the user has stopped
+    // talking before swapping in the real mic post-opener.
     const vadSource = silentAudioCtx.createMediaStreamSource(stream)
     const vadAnalyser = silentAudioCtx.createAnalyser()
     vadAnalyser.fftSize = 1024
     vadSource.connect(vadAnalyser)
     const vadBuf = new Float32Array(vadAnalyser.fftSize)
-
-    // How often the diagnostic analyzer samples the mic. The analyzer is
-    // no longer used to drive any behavior (server VAD does that now) —
-    // it just logs peak-RMS-per-second so we have visibility into what
-    // the mic is producing if barge-in misbehaves.
-    const VAD_TICK_INTERVAL_MS = 80
 
     const dc = pc.createDataChannel('oai-events')
     this.dc = dc
@@ -153,9 +155,6 @@ export class RealtimeTutor {
     // doesn't start generating before our instructions are in effect.
     let initialResponseFired = false
     let unmuteTimer: ReturnType<typeof setTimeout> | null = null
-    // Gates the diagnostic analyzer. Off during the opener (mic is on
-    // the silent track, nothing useful to measure); on otherwise.
-    let vadEnabled = false
     // Tracks whether the upcoming/current response is the very first
     // one of the session (the opener). The opener is non-interruptible
     // — mic stays on the silent track for its duration so server VAD
@@ -164,76 +163,90 @@ export class RealtimeTutor {
     // True between response.created and response.done. Used to mute
     // playing audio when a barge-in is detected by the server.
     let nataliaIsSpeaking = false
-    // Diagnostic-only peak-RMS-per-second tracker.
-    let diagPeakRms = 0
-    let diagLastLogAt = 0
-    // Audio drain delay between Natalia finishing and the mic coming back
-    // online. Originally 1500ms because shorter values let server-side VAD
-    // pick up Natalia's tail audio as user input and truncate her next
-    // response. That failure mode is gone now that turn_detection is null
-    // (server no longer listens for turns at all). The remaining risk is
-    // purely client-side: our own VAD analyzer firing a spurious commit on
-    // self-echo. Worst case is Natalia responding to nothing — survivable.
-    // Tuned down to cut the inter-turn gap that was making the conversation
-    // feel sluggish. If iOS PWAs start firing phantom commits, raise back.
-    const MIC_UNMUTE_DELAY_MS = 600
 
-    // Diagnostic-only client-side VAD. With server VAD enabled, the
-    // server handles turn detection, auto-commit, and interrupt-response.
-    // We keep this analyzer purely to log peak mic energy so we can see
-    // what the mic is producing if barge-in misbehaves. No actions
-    // (sendCommit, response.cancel, audio mute) are taken from here.
-    this.vadTimer = setInterval(() => {
-      if (!vadEnabled) return
-      vadAnalyser.getFloatTimeDomainData(vadBuf)
-      let sumSquares = 0
-      for (let i = 0; i < vadBuf.length; i++) {
-        sumSquares += vadBuf[i] * vadBuf[i]
-      }
-      const rms = Math.sqrt(sumSquares / vadBuf.length)
-      const now = Date.now()
-
-      if (nataliaIsSpeaking) {
-        diagPeakRms = Math.max(diagPeakRms, rms)
-        if (now - diagLastLogAt > 1000) {
-          console.log(`[VAD] peak rms in last 1s: ${diagPeakRms.toFixed(3)} (server-VAD active)`)
-          diagPeakRms = 0
-          diagLastLogAt = now
-        }
-      }
-    }, VAD_TICK_INTERVAL_MS)
-
-    async function muteMic() {
-      if (unmuteTimer) {
-        clearTimeout(unmuteTimer)
-        unmuteTimer = null
-      }
-      // Suppress diagnostic logging while the silent track is active.
-      vadEnabled = false
-      if (sender.track !== silentTrack) {
+    async function activateMic() {
+      unmuteTimer = null
+      if (sender.track !== realMicTrack) {
         try {
-          await sender.replaceTrack(silentTrack)
+          await sender.replaceTrack(realMicTrack)
         } catch {
-          // replaceTrack can throw if the connection is tearing down;
-          // safe to swallow.
+          // Connection torn down; ignore.
         }
       }
     }
 
-    function scheduleUnmute(delayMs: number) {
+    // Audio-silence + mic-silence-driven unmute. Only swap in the real
+    // mic once both:
+    //   - Natalia's audio has finished playing in the speaker (inbound
+    //     analyser RMS below threshold)
+    //   - The learner is silent (mic analyser RMS below threshold)
+    // The min-total-wait covers cases where the inbound analyser reads
+    // silence too early (it reads the WebRTC network stream, not the
+    // audio that's still in the jitter buffer playing in the speaker).
+    function scheduleUnmute() {
       if (unmuteTimer) clearTimeout(unmuteTimer)
-      unmuteTimer = setTimeout(async () => {
-        unmuteTimer = null
-        if (sender.track !== realMicTrack) {
-          try {
-            await sender.replaceTrack(realMicTrack)
-          } catch {
-            // ditto
-          }
+
+      const SILENCE_THRESHOLD = 0.005
+      const MIC_SILENCE_THRESHOLD = 0.02
+      const SILENCE_DURATION_MS = 300
+      const MIN_TOTAL_WAIT_MS = 1500
+      const SAFETY_MAX_MS = 6000
+      const POLL_INTERVAL_MS = 50
+      const FALLBACK_DELAY_MS = 2000
+
+      if (!inboundAnalyser) {
+        unmuteTimer = setTimeout(() => void activateMic(), FALLBACK_DELAY_MS)
+        return
+      }
+
+      const startedAt = Date.now()
+      let bothSilentSince = 0
+
+      const tick = () => {
+        const analyser = inboundAnalyser
+        if (!analyser) {
+          void activateMic()
+          return
         }
-        // Re-arm diagnostic logging now that the real mic is sending.
-        vadEnabled = true
-      }, delayMs)
+        analyser.getFloatTimeDomainData(inboundBuf)
+        let inboundSumSquares = 0
+        for (let i = 0; i < inboundBuf.length; i++) {
+          inboundSumSquares += inboundBuf[i] * inboundBuf[i]
+        }
+        const inboundRms = Math.sqrt(inboundSumSquares / inboundBuf.length)
+
+        vadAnalyser.getFloatTimeDomainData(vadBuf)
+        let micSumSquares = 0
+        for (let i = 0; i < vadBuf.length; i++) {
+          micSumSquares += vadBuf[i] * vadBuf[i]
+        }
+        const micRms = Math.sqrt(micSumSquares / vadBuf.length)
+
+        const now = Date.now()
+        const bothSilent = inboundRms < SILENCE_THRESHOLD && micRms < MIC_SILENCE_THRESHOLD
+        const elapsedMs = now - startedAt
+
+        if (bothSilent) {
+          if (bothSilentSince === 0) bothSilentSince = now
+          const silenceMet = now - bothSilentSince >= SILENCE_DURATION_MS
+          const minWaitMet = elapsedMs >= MIN_TOTAL_WAIT_MS
+          if (silenceMet && minWaitMet) {
+            void activateMic()
+            return
+          }
+        } else {
+          bothSilentSince = 0
+        }
+
+        if (elapsedMs >= SAFETY_MAX_MS) {
+          void activateMic()
+          return
+        }
+
+        unmuteTimer = setTimeout(tick, POLL_INTERVAL_MS)
+      }
+
+      unmuteTimer = setTimeout(tick, POLL_INTERVAL_MS)
     }
 
     dc.addEventListener('message', (e) => {
@@ -244,57 +257,55 @@ export class RealtimeTutor {
           this.send({ type: 'response.create' })
         }
 
-        // Server VAD detected the user started speaking. If Natalia is
-        // mid-response, this is a barge-in — the server will auto-cancel
-        // her response, but her tail audio is still in the browser's
-        // jitter buffer playing through the speaker. Mute it so the
-        // learner doesn't hear her while talking.
+        // Server VAD detected the user started speaking. Two cases:
+        //   - Opener (isFirstResponse): interrupt_response is FALSE, so
+        //     the server doesn't cancel the opener. Audio keeps playing.
+        //     Don't mute — let the user hear the opener through.
+        //   - Post-opener: interrupt_response is TRUE, server is
+        //     cancelling the in-flight response, but her tail audio is
+        //     still in the jitter buffer. Mute it so the learner
+        //     doesn't hear her while they're talking.
         if (event.type === 'input_audio_buffer.speech_started') {
-          console.log('[VAD] server detected speech_started')
-          if (nataliaIsSpeaking) {
-            console.log('[VAD] BARGE-IN — muting audio playback')
+          if (nataliaIsSpeaking && !isFirstResponse) {
             audioEl.muted = true
             audioEl.pause()
           }
         }
 
         if (event.type === 'response.created') {
-          console.log('[VAD] response.created — un-muting audio for new turn')
           nataliaIsSpeaking = true
           // If the previous turn was an interrupt, we muted audioEl to
           // kill her tail audio. New response means new audio coming
           // — un-mute so the learner can actually hear her.
           audioEl.muted = false
           audioEl.play().catch(() => {})
-          if (isFirstResponse) {
-            // Opener: keep the mic on the silent track. The opener is
-            // explicitly non-interruptible — server VAD can't detect
-            // speech in pure silence, so no auto-commit fires.
-            muteMic()
-          } else {
-            // Subsequent responses: mic stays open. Server VAD watches
-            // the incoming audio and will auto-commit + interrupt
-            // Natalia's response if it detects user speech.
-            vadEnabled = true
-          }
         }
 
         if (event.type === 'response.done') {
-          const status = (event.response as { status?: string } | undefined)?.status
-          console.log('[VAD] response.done — status:', status)
           nataliaIsSpeaking = false
           if (isFirstResponse) {
-            // One-time opener handoff: swap the silent track for the
-            // real mic with a drain delay so her tail audio doesn't
-            // bleed into the learner's first turn. After this fires,
-            // the mic stays open for the rest of the session.
-            scheduleUnmute(MIC_UNMUTE_DELAY_MS)
+            // Opener is complete. Two things to do:
+            //   1. Enable server VAD with interrupt_response: true so
+            //      subsequent responses can be barged in on.
+            //   2. Wait for audio to drain + user to be silent, THEN
+            //      swap in the real mic. Until then, sender.track is
+            //      still null and no audio reaches the server.
+            this.send({
+              type: 'session.update',
+              session: {
+                turn_detection: {
+                  type: 'server_vad',
+                  threshold: 0.65,
+                  prefix_padding_ms: 300,
+                  silence_duration_ms: 500,
+                  create_response: true,
+                  interrupt_response: true,
+                },
+              },
+            })
+            scheduleUnmute()
             isFirstResponse = false
           }
-          // Non-opener path: mic was open the whole time and stays open.
-          // VAD threshold automatically drops to the LOW value via the
-          // tick (nataliaIsSpeaking is now false), ready to catch the
-          // learner's next turn even if they speak quietly.
         }
 
         this.handlers.forEach((h) => h(event))
@@ -322,26 +333,18 @@ export class RealtimeTutor {
               ? { language: options.transcriptionLanguage }
               : {}),
           },
-          // Server-side VAD with auto-commit + interrupt_response. OpenAI's
-          // tuned VAD model is more reliable than our client-side RMS
-          // analyzer, which was getting suppressed by browser AEC during
-          // double-talk (and so couldn't detect barge-ins on speakers OR
-          // sometimes even on AirPods). The server:
-          //   - detects user speech start/stop on the audio it receives
-          //   - auto-commits the input buffer at end-of-turn
-          //   - auto-fires response.create for the new turn
-          //   - cancels Natalia's in-flight response if user interrupts
-          // The opener stays non-interruptible because the mic is on the
-          // silent track during it — server VAD can't detect anything in
-          // pure silence, so no auto-commit fires.
-          turn_detection: {
-            type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 500,
-            create_response: true,
-            interrupt_response: true,
-          },
+          // Turn detection OFF during the opener so the server ignores
+          // any incoming audio entirely. Combined with sender.track ===
+          // null (set up via addTransceiver above), the opener is
+          // guaranteed uninterruptible — there's no audio reaching the
+          // server, and even if there were, the server isn't listening.
+          //
+          // After the opener's response.done fires, the message handler
+          // sends a second session.update that switches turn_detection
+          // to server_vad with interrupt_response: true, and
+          // scheduleUnmute() swaps in the real mic when audio drain +
+          // mic silence are both detected.
+          turn_detection: null,
         },
       })
       // We deliberately don't send response.create here — the message
