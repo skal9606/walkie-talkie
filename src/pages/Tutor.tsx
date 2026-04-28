@@ -91,10 +91,17 @@ export default function Tutor() {
   const [review, setReview] = useState<ReviewData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Local dev bypass — when VITE_DEV_BYPASS_GATING=true, skip all trial /
+  // subscription checks and act as if the user is fully subscribed. Never
+  // set in production.
+  const devBypass = import.meta.env.VITE_DEV_BYPASS_GATING === 'true'
+
   // Server-authoritative state. Loaded on auth + updated from API responses.
-  const [subscribed, setSubscribed] = useState(false)
-  const [secondsRemaining, setSecondsRemaining] = useState(FREE_TIER_SECONDS)
-  const [statusLoaded, setStatusLoaded] = useState(false)
+  const [subscribed, setSubscribed] = useState(devBypass)
+  const [secondsRemaining, setSecondsRemaining] = useState(
+    devBypass ? Number.MAX_SAFE_INTEGER : FREE_TIER_SECONDS,
+  )
+  const [statusLoaded, setStatusLoaded] = useState(devBypass)
   const [paywallOpen, setPaywallOpen] = useState<null | 'exhausted' | 'blocked'>(null)
 
   const tutorRef = useRef<RealtimeTutor | null>(null)
@@ -120,6 +127,12 @@ export default function Tutor() {
   // --- Load subscription + usage from Supabase whenever the user changes ---
 
   const refreshStatus = useCallback(async () => {
+    if (devBypass) {
+      setSubscribed(true)
+      setSecondsRemaining(Number.MAX_SAFE_INTEGER)
+      setStatusLoaded(true)
+      return
+    }
     if (!user) return
     const [{ data: sub }, { data: usage }] = await Promise.all([
       supabase
@@ -137,7 +150,7 @@ export default function Tutor() {
         : Math.max(0, FREE_TIER_SECONDS - (usage?.seconds_used ?? 0)),
     )
     setStatusLoaded(true)
-  }, [user])
+  }, [user, devBypass])
 
   useEffect(() => {
     if (!user) return

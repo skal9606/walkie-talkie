@@ -20,6 +20,12 @@ function isActiveStatus(status: string | undefined | null): boolean {
  * but the server always re-checks here before minting a Realtime token.
  */
 export async function checkSessionAccess(userId: string): Promise<GateResult> {
+  // Local dev bypass — set DEV_BYPASS_GATING=true in .env.local to grant
+  // unlimited access without touching the subscriptions table. Never set
+  // this in production env.
+  if (process.env.DEV_BYPASS_GATING === 'true') {
+    return { allowed: true, subscribed: true, secondsRemaining: Number.MAX_SAFE_INTEGER }
+  }
   const db = supabaseAdmin()
 
   const [subResult, usageResult] = await Promise.all([
