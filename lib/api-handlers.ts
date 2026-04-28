@@ -28,7 +28,7 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
       },
       body: JSON.stringify({
         model: 'gpt-realtime',
-        voice: 'shimmer',
+        voice: 'coral',
       }),
     })
     const body = await response.json()
