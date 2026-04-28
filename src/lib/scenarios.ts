@@ -41,32 +41,32 @@ function nameGreeting(ctx?: PromptContext): string {
 
 function beginnerOpener(ctx?: PromptContext): string {
   const n = nameGreeting(ctx)
-  return `OPENING — your full first message, max 3 sentences, exactly this script:
-"Oi ${n} — I'm Natalia, your Brazilian Portuguese tutor! We'll start super simple, mostly in English with a few Portuguese words mixed in. Ready to learn your first word?"
+  return `OPENING — your full first message, MAX 2 SHORT SENTENCES, exactly this script:
+"Oi ${n} — sou a Natalia, sua tutora de português! Ready to learn your first word?"
 
 Stop after the question and wait silently for the learner's answer.`
 }
 
 function noviceOpener(ctx?: PromptContext): string {
   const n = nameGreeting(ctx)
-  return `OPENING — your full first message, max 3 sentences, exactly this script:
-"Oi, ${n}! I'm Natalia, your Portuguese tutor. We'll chat in a mix of English and Portuguese — so tell me, what's making you want to learn?"
+  return `OPENING — your full first message, MAX 2 SHORT SENTENCES, exactly this script:
+"Oi, ${n} — sou a Natalia! What's making you want to learn Portuguese?"
 
 Stop after the question and wait silently for the learner's answer.`
 }
 
 function intermediateOpener(ctx?: PromptContext): string {
   const n = nameGreeting(ctx)
-  return `OPENING — your full first message, max 3 sentences, in PORTUGUESE, exactly this script:
-"Oi, ${n}! Eu sou a Natalia, sua tutora de português. Me conta — como foi o seu dia hoje?"
+  return `OPENING — your full first message, MAX 2 SHORT SENTENCES, in PORTUGUESE, exactly this script:
+"Oi, ${n}! Sou a Natalia — como foi seu dia hoje?"
 
 Stop after the question and wait silently for the learner's answer.`
 }
 
 function advancedOpener(ctx?: PromptContext): string {
   const n = nameGreeting(ctx)
-  return `OPENING — your full first message, max 3 sentences, in PORTUGUESE, exactly this script:
-"E aí, ${n}, tudo joia? Sou a Natalia, sua tutora. Me conta — o que você andou fazendo essa semana?"
+  return `OPENING — your full first message, MAX 2 SHORT SENTENCES, in PORTUGUESE, exactly this script:
+"E aí, ${n}, sou a Natalia! O que você andou fazendo essa semana?"
 
 Stop after the question and wait silently for the learner's answer.`
 }
@@ -89,7 +89,7 @@ function memoryAwareFreeOpener(level: Level, ctx?: PromptContext): string | null
   if (memory.length === 0) return null
   const n = nameGreeting(ctx)
   const bullets = memory.map((m) => `- ${m}`).join('\n')
-  return `OPENING — your full first message, max 3 sentences.
+  return `OPENING — your full first message, MAX 2 SHORT SENTENCES.
 
 You're not meeting this learner for the first time — you've talked before. Here's what you remember about ${n}:
 ${bullets}
@@ -379,8 +379,8 @@ function buildGrammarAddon(ctx: ModeContext): string {
   }
   return `SCENARIO: GRAMMAR LESSON. Learner level: ${LEVEL_LABEL[level]}.
 
-OPENING — your full first message, max 3 sentences:
-"Oi ${n}! Let's do a grammar lesson today. We could work on ${topicsByLevel[level]} — which sounds good, or do you have something else in mind?"
+OPENING — your full first message, MAX 2 SHORT SENTENCES:
+"Oi ${n}, let's do grammar today! Want to try ${topicsByLevel[level]}, or got something else in mind?"
 
 After they pick (or you pick if they shrug), teach the rule briefly with one clear example, then DRILL them: get them to produce the form 3–4 times in different sentences. Correct gently and confirm before moving on.
 
@@ -402,8 +402,8 @@ function buildRepeatAddon(ctx: ModeContext): string {
   }
   return `SCENARIO: REPEAT-AFTER-ME pronunciation drill. Learner level: ${LEVEL_LABEL[level]}.
 
-OPENING — your full first message, max 3 sentences:
-"Oi ${n}! Let's work on pronunciation. I'll say a word, you repeat it back, and I'll tell you how it sounded — ready?"
+OPENING — your full first message, MAX 2 SHORT SENTENCES:
+"Oi ${n} — let's work on pronunciation! I'll say a word, you repeat it — ready?"
 
 After they confirm, start drilling. Each round:
 1. Say ONE Portuguese word or short phrase, slowly and clearly. Repeat it once.
@@ -426,8 +426,8 @@ function buildDiscoverAddon(_ctx: ModeContext): string {
 
 CONTEXT: This is the learner's very first conversation with you. You don't know their name yet. You don't know their level yet. Your job in the first ~30 seconds is to figure out the level naturally — by listening to how they answer, NOT by quizzing them.
 
-OPENING — your full first message, in PORTUGUESE, exactly this script:
-"Oi, oi! Eu sou a Natalia. Qual é o seu nome?"
+OPENING — your full first message, MAX 2 SHORT SENTENCES, in PORTUGUESE, exactly this script:
+"Oi! Sou a Natalia — qual é o seu nome?"
 
 Snappy, warm, energetic. Deliver it inviting, then stop and wait silently for their answer.
 
@@ -480,8 +480,8 @@ function buildTranslationsAddon(ctx: ModeContext): string {
   }
   return `SCENARIO: ENGLISH-TO-PORTUGUESE TRANSLATION DRILL. Learner level: ${LEVEL_LABEL[level]}.
 
-OPENING — your full first message, max 3 sentences:
-"Oi ${n}! Let's practice translating. I'll give you a short English phrase, you give it back to me in Portuguese — ready?"
+OPENING — your full first message, MAX 2 SHORT SENTENCES:
+"Oi ${n} — let's practice translating! I'll give you English, you give it back in Portuguese — ready?"
 
 After they confirm, start drilling. Each round:
 1. Say an English phrase clearly.
