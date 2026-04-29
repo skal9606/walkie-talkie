@@ -87,6 +87,13 @@ export class RealtimeTutor {
     pc.ontrack = (e) => {
       const stream = e.streams[0]
       audioEl.srcObject = stream
+      // Prime the playback pipeline immediately. Relying on autoplay alone
+      // can leave the decoder cold for the first ~150ms after a fresh
+      // srcObject bind (especially Safari / iOS PWA), which clips the
+      // first syllables of the opener. Calling play() explicitly here —
+      // before any audio actually arrives — ensures the audio element is
+      // hot the moment Natalia starts speaking.
+      audioEl.play().catch(() => {})
       // Browser quirk: if we createMediaStreamSource on the same stream
       // that's bound to audioEl, the analyser reads near-silence because
       // the audio element consumed the stream first (especially Safari).
@@ -179,8 +186,11 @@ export class RealtimeTutor {
       if (unmuteTimer) clearTimeout(unmuteTimer)
 
       const SILENCE_THRESHOLD = 0.005
-      const SILENCE_DURATION_MS = 300
-      const MIN_TOTAL_WAIT_MS = 600
+      // 500ms of continuous low RMS — long enough to skip past natural
+      // mid-sentence pauses (commas, brief breaths) without triggering
+      // an early replaceTrack that would clip Natalia's tail audio.
+      const SILENCE_DURATION_MS = 500
+      const MIN_TOTAL_WAIT_MS = 800
       const SAFETY_MAX_MS = 6000
       const POLL_INTERVAL_MS = 50
       const FALLBACK_DELAY_MS = 1500

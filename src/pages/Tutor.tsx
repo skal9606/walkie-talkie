@@ -508,14 +508,23 @@ export default function Tutor() {
         case 'conversation.item.input_audio_transcription.completed': {
           const id = (event.item_id as string) ?? crypto.randomUUID()
           const transcript = (event.transcript as string) ?? ''
+          // gpt-4o-transcribe occasionally returns punctuation-only or
+          // tiny filler transcriptions ("." / "..." / "Mm." / ",") when
+          // VAD commits a buffer that's actually background noise. Drop
+          // these so the YOU bubble doesn't fill with ghost dots.
+          const stripped = transcript.replace(/[\s.,!?…·]+/gu, '')
+          const isJunk = stripped.length === 0
           setTurns((prev) => {
             const idx = prev.findIndex((t) => t.id === id && t.role === 'user')
             if (idx >= 0) {
+              if (isJunk) {
+                return prev.filter((_, i) => i !== idx)
+              }
               const next = prev.slice()
               next[idx] = { ...next[idx], text: transcript, done: true }
               return next
             }
-            if (!transcript.trim()) return prev
+            if (isJunk) return prev
             return [...prev, { id, role: 'user', text: transcript, done: true }]
           })
           break
