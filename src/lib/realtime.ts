@@ -154,6 +154,13 @@ export class RealtimeTutor {
     // doesn't start generating before our instructions are in effect.
     let initialResponseFired = false
     let unmuteTimer: ReturnType<typeof setTimeout> | null = null
+    // Recovery watchdog: after VAD commits user audio, the server is
+    // configured with create_response:true so response.created should
+    // follow within ~1s. If it doesn't (occasional realtime API hiccup
+    // — the user's turn lands but the model never responds), we send
+    // response.create explicitly to unstick the conversation.
+    let responseWatchdog: ReturnType<typeof setTimeout> | null = null
+    const RESPONSE_RECOVERY_MS = 4000
     // Tracks whether the upcoming/current response is the very first
     // one of the session (the opener). The opener is non-interruptible
     // — mic stays on the silent track for its duration so server VAD
@@ -264,13 +271,41 @@ export class RealtimeTutor {
           }
         }
 
+        // VAD just committed the user's audio buffer. Arm the recovery
+        // watchdog — if response.created doesn't follow within
+        // RESPONSE_RECOVERY_MS, the model is stuck and we send
+        // response.create ourselves.
+        if (event.type === 'input_audio_buffer.committed') {
+          if (responseWatchdog) clearTimeout(responseWatchdog)
+          responseWatchdog = setTimeout(() => {
+            responseWatchdog = null
+            if (!nataliaIsSpeaking) {
+              this.send({ type: 'response.create' })
+            }
+          }, RESPONSE_RECOVERY_MS)
+        }
+
         if (event.type === 'response.created') {
+          if (responseWatchdog) {
+            clearTimeout(responseWatchdog)
+            responseWatchdog = null
+          }
           nataliaIsSpeaking = true
           // If the previous turn was an interrupt, we muted audioEl to
           // kill her tail audio. New response means new audio coming
           // — un-mute so the learner can actually hear her.
           audioEl.muted = false
           audioEl.play().catch(() => {})
+        }
+
+        // Server errors invalidate the in-flight commit — clear the
+        // watchdog so we don't redundantly nudge for a turn the server
+        // has already rejected.
+        if (event.type === 'error') {
+          if (responseWatchdog) {
+            clearTimeout(responseWatchdog)
+            responseWatchdog = null
+          }
         }
 
         if (event.type === 'response.done') {
