@@ -2,6 +2,21 @@ import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
 import { useAuth } from '../lib/auth'
+import { TUTORS } from '../lib/tutors'
+
+// Flags shown in the marquee. Live tutors come from the registry; "soon"
+// flags are aspirational marketing — they hint at the roadmap without
+// committing to a specific date.
+const COMING_SOON_FLAGS = [
+  { flag: '🇪🇸', label: 'Castilian Spanish' },
+  { flag: '🇦🇷', label: 'Argentinian Spanish' },
+  { flag: '🇫🇷', label: 'French' },
+  { flag: '🇮🇹', label: 'Italian' },
+  { flag: '🇩🇪', label: 'German' },
+  { flag: '🇯🇵', label: 'Japanese' },
+  { flag: '🇰🇷', label: 'Korean' },
+  { flag: '🇨🇳', label: 'Mandarin' },
+]
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -48,10 +63,10 @@ export default function Landing() {
         <div className="hero-content">
           <div className="hero-eyebrow">
             <span className="hero-eyebrow-dot" />
-            Brazilian Portuguese · AI voice tutor
+            Voice AI tutor for any language
           </div>
           <h1 className="hero-headline">
-            Master Portuguese with your personal AI tutor
+            Master a new language with your personal AI tutor
           </h1>
           <p className="hero-subtext">
             Real voice conversations with a tutor that hears you, corrects you, and speaks
@@ -86,6 +101,28 @@ export default function Landing() {
         </div>
       </section>
 
+      <FlagMarquee />
+
+      <section className="languages-available">
+        <h2 className="section-title">Available now</h2>
+        <p className="section-subtitle">
+          One subscription, every tutor. More languages and regional dialects landing soon.
+        </p>
+        <div className="language-tile-grid">
+          {TUTORS.map((t) => (
+            <div key={t.id} className="language-tile">
+              <span className="language-tile-flag" aria-hidden>{t.flag}</span>
+              <div className="language-tile-text">
+                <div className="language-tile-language">{t.languageLabel}</div>
+                <div className="language-tile-tutor">
+                  {t.name} · {t.city} · {t.age}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="features">
         <h2 className="section-title">Why learners love it</h2>
         <div className="feature-grid">
@@ -99,7 +136,7 @@ export default function Landing() {
           />
           <Feature
             title="Roleplays for real life"
-            body="Order coffee in São Paulo, meet the in-laws, check into a hotel — practice the conversations you'll actually have."
+            body="Order tacos in CDMX, meet the in-laws, check into a hotel — practice the conversations you'll actually have."
           />
           <Feature
             title="Every session, reviewed"
@@ -142,8 +179,12 @@ export default function Landing() {
             a="No. The tutor is available 24/7. Open the app and start talking."
           />
           <FaqItem
-            q="What accent does the tutor use?"
-            a="Brazilian Portuguese — warm, conversational, neutral São Paulo accent."
+            q="What languages can I learn?"
+            a="Brazilian Portuguese (Natalia in São Paulo) and Mexican Spanish (Santiago in Mexico City) are live today. Castilian Spanish, Argentinian Spanish, French, Italian, and more are next on the list."
+          />
+          <FaqItem
+            q="Do I need a different subscription per language?"
+            a="No — one subscription unlocks every tutor. Switch languages anytime from Settings."
           />
           <FaqItem
             q="Can I practice speaking without judgment?"
@@ -161,8 +202,33 @@ export default function Landing() {
       </section>
 
       <footer className="landing-footer">
-        <div>Walkie Talkie · Brazilian Portuguese for English speakers</div>
+        <div>Walkie Talkie · Voice AI tutor for English speakers</div>
       </footer>
+    </div>
+  )
+}
+
+function FlagMarquee() {
+  // Speak.com-style infinite scroll. Live tutors first (with names), then
+  // aspirational flags labeled "soon". Duplicated once so the CSS
+  // animation can loop seamlessly.
+  const items = [
+    ...TUTORS.map((t) => ({ flag: t.flag, label: t.languageLabel, live: true })),
+    ...COMING_SOON_FLAGS.map((f) => ({ ...f, live: false })),
+  ]
+  return (
+    <div className="flag-marquee" aria-hidden>
+      <div className="flag-marquee-track">
+        {[...items, ...items].map((item, i) => (
+          <div key={i} className={`flag-marquee-item ${item.live ? 'live' : ''}`}>
+            <span className="flag-marquee-flag">{item.flag}</span>
+            <span className="flag-marquee-label">
+              {item.label}
+              {!item.live && <span className="flag-marquee-soon"> · soon</span>}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

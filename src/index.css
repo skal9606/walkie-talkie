@@ -2162,3 +2162,108 @@ a {
   margin: 8px 0 0;
   text-align: center;
 }
+
+/* --- Flag marquee on the landing page (Speak.com-style scroll) ------- */
+
+.flag-marquee {
+  overflow: hidden;
+  width: 100%;
+  margin: 36px 0 12px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.flag-marquee-track {
+  display: flex;
+  gap: 14px;
+  width: max-content;
+  animation: marquee-scroll 45s linear infinite;
+}
+
+.flag-marquee:hover .flag-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.flag-marquee-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.flag-marquee-item.live {
+  border-color: var(--accent);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.flag-marquee-flag {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.flag-marquee-label {
+  font-size: 13px;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.flag-marquee-soon {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* --- Available-now tiles on the landing page ------------------------- */
+
+.languages-available {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.language-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.language-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.language-tile-flag {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.language-tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.language-tile-language {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.language-tile-tutor {
+  color: var(--muted);
+  font-size: 13px;
+}

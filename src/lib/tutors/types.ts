@@ -10,7 +10,7 @@ import type { Level, Scenario, ModeId, ModeContext, VadEagerness } from '../scen
  * exhaustively-switch and so the transcription model gets a clean pin. Add
  * new variants to this union as tutors come online.
  */
-export type LanguageCode = 'pt-BR' // | 'es-MX' | 'es-ES' | 'es-AR' | 'fr-FR' | 'it-IT'
+export type LanguageCode = 'pt-BR' | 'es-MX' // | 'es-ES' | 'es-AR' | 'fr-FR' | 'it-IT'
 
 /** Stable identifier for a tutor — used as the registry key and in storage. */
 export type TutorId = string

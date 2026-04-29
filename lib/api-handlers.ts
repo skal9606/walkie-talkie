@@ -43,7 +43,8 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
 /** Display label shown in the system prompt for each supported language. */
 const LANGUAGE_LABELS: Record<string, string> = {
   'pt-BR': 'Brazilian Portuguese',
-  // Future: 'es-MX': 'Mexican Spanish', 'es-ES': 'Castilian Spanish', etc.
+  'es-MX': 'Mexican Spanish',
+  // Future: 'es-ES': 'Castilian Spanish', 'es-AR': 'Rioplatense Spanish', etc.
 }
 
 function languageLabel(code: string | undefined): string {
