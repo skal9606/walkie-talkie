@@ -858,7 +858,14 @@ a {
 .landing {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 24px 24px 0;
+  /* Respect the iOS safe-area at top + sides (notches, status bar) — without
+     this the nav lives under the battery/wifi icons in standalone PWA and in
+     Safari with viewport-fit=cover. */
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    0
+    max(24px, env(safe-area-inset-left));
   color: var(--fg);
 }
 
