@@ -9,7 +9,7 @@ import {
 import { FREE_TIER_SECONDS, type Plan } from '../lib/subscription'
 import { Paywall } from '../components/Paywall'
 import { SignIn } from '../components/SignIn'
-import { LanguagePicker } from '../components/LanguagePicker'
+import { OnboardingFlow } from '../components/OnboardingFlow'
 import {
   buildLearnerContextBlock,
   clearProfile,
@@ -111,7 +111,7 @@ export default function Tutor() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   // The active tutor (language + region + persona). Defaults to Natalia for
-  // existing users; new users pick before the first session via LanguagePicker.
+  // existing users; new users pick before the first session via OnboardingFlow.
   const tutor = useMemo(
     () => getTutor(profile?.tutorId ?? DEFAULT_TUTOR_ID),
     [profile?.tutorId],
@@ -206,7 +206,7 @@ export default function Tutor() {
 
   // --- One-shot /chat?reset=1 handler (for testing the onboarding flow) ---
   // Clears profile + per-tutor memory/vocab/focus + signs out, then reloads
-  // without the param. Use this to land on the LanguagePicker as a true
+  // without the param. Use this to land on the OnboardingFlow as a true
   // first-time visitor.
   useEffect(() => {
     if (searchParams.get('reset') !== '1') return
@@ -266,7 +266,7 @@ export default function Tutor() {
     if (searchParams.get('mode')) return
     if (searchParams.get('checkout')) return
     // Don't request mic / start a session until the user has actually
-    // chosen a tutor. The render path shows LanguagePicker in this state;
+    // chosen a tutor. The render path shows OnboardingFlow in this state;
     // without this guard, getUserMedia fires under the picker and the
     // default tutor (Natalia) starts speaking before they pick.
     if (!hasLanguageSelection(profile)) return
@@ -772,10 +772,10 @@ export default function Tutor() {
             ← Back
           </Link>
         </nav>
-        <LanguagePicker
-          initialNativeLanguage={profile?.nativeLanguage}
+        <OnboardingFlow
           onComplete={(picked) => {
             const merged = mergeProfileBlanks({
+              name: picked.name,
               nativeLanguage: picked.nativeLanguage,
               targetLanguage: picked.targetLanguage,
               tutorId: picked.tutorId,
