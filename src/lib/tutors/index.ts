@@ -4,11 +4,11 @@
 
 import type { LanguageCode, Tutor, TutorId } from './types'
 import { natalia } from './pt-br/natalia'
-import { santiago } from './es-MX/santiago'
+import { maria } from './es-MX/maria'
 
 export const TUTORS: Tutor[] = [
   natalia,
-  santiago,
+  maria,
   // Coming next: Carlos (Madrid Spanish), Ana (Buenos Aires Spanish)
 ]
 
