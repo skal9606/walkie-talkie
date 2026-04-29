@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { TUTORS } from '../lib/tutors'
 import type { LanguageCode, TutorId } from '../lib/tutors/types'
 import { NATIVE_LANGUAGES, type NativeLanguage } from '../lib/profile'
@@ -7,17 +6,18 @@ import type { Level } from '../lib/scenarios'
 
 // Multi-step first-time onboarding (ISSEN/Speak-style). One question per
 // screen with a progress bar, back button, and continue CTA. Used for the
-// cold-start trial flow.
+// cold-start trial flow. The marketing landing page is the "welcome" — we
+// jump straight into the questionnaire here.
 //
 // Steps:
-//   welcome → name → native → target → level → onComplete()
+//   name → native → target → level → onComplete()
 //
 // Settings still uses simple selects to switch native/target — this
 // component is only for the first-time path.
 
-type Step = 'welcome' | 'name' | 'native' | 'target' | 'level'
+type Step = 'name' | 'native' | 'target' | 'level'
 
-const STEP_ORDER: Step[] = ['welcome', 'name', 'native', 'target', 'level']
+const STEP_ORDER: Step[] = ['name', 'native', 'target', 'level']
 
 type LevelOption = {
   id: Level
@@ -51,7 +51,7 @@ export function OnboardingFlow({
 }: {
   onComplete: (result: OnboardingResult) => void
 }) {
-  const [step, setStep] = useState<Step>('welcome')
+  const [step, setStep] = useState<Step>('name')
   const [name, setName] = useState('')
   const [nativeLanguage, setNativeLanguage] = useState<NativeLanguage>('English')
   const [tutorId, setTutorId] = useState<TutorId | null>(
@@ -61,7 +61,9 @@ export function OnboardingFlow({
 
   const stepIdx = STEP_ORDER.indexOf(step)
   const progressPct = ((stepIdx + 1) / STEP_ORDER.length) * 100
-  const showHeader = step !== 'welcome'
+  // Hide the back button on the first step — there's nothing to go back to
+  // within the flow (the parent's nav handles "← Back" to the landing page).
+  const canGoBack = stepIdx > 0
   const tutor = tutorId ? TUTORS.find((t) => t.id === tutorId) : null
 
   function goNext() {
@@ -93,8 +95,8 @@ export function OnboardingFlow({
 
   return (
     <div className="onboarding-flow">
-      {showHeader && (
-        <header className="onboarding-flow-header">
+      <header className="onboarding-flow-header">
+        {canGoBack ? (
           <button
             type="button"
             className="onboarding-flow-back"
@@ -103,38 +105,18 @@ export function OnboardingFlow({
           >
             ←
           </button>
-          <div className="onboarding-flow-progress" aria-hidden>
-            <div
-              className="onboarding-flow-progress-fill"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        </header>
-      )}
+        ) : (
+          <span className="onboarding-flow-back" aria-hidden />
+        )}
+        <div className="onboarding-flow-progress" aria-hidden>
+          <div
+            className="onboarding-flow-progress-fill"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </header>
 
       <div className="onboarding-flow-card">
-        {step === 'welcome' && (
-          <div className="onboarding-step onboarding-welcome">
-            <h2 className="onboarding-welcome-eyebrow">Welcome to</h2>
-            <h1 className="onboarding-welcome-title">Walkie Talkie</h1>
-            <p className="onboarding-welcome-tagline">
-              The fastest way to master a language
-            </p>
-            <div className="onboarding-flow-actions">
-              <button
-                type="button"
-                className="onboarding-flow-cta"
-                onClick={goNext}
-              >
-                Get started
-              </button>
-              <Link to="/login" className="onboarding-flow-secondary">
-                I already have an account
-              </Link>
-            </div>
-          </div>
-        )}
-
         {step === 'name' && (
           <form className="onboarding-step" onSubmit={handleNameSubmit}>
             <p className="onboarding-step-eyebrow">We'll pass it on to your tutor.</p>
