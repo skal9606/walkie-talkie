@@ -287,13 +287,13 @@ export class RealtimeTutor {
               session: {
                 turn_detection: {
                   type: 'server_vad',
-                  // Higher threshold + slightly longer silence window so
-                  // background noise / brief blips don't get committed as
-                  // a user turn. If this starts dropping quiet speech,
-                  // dial threshold back toward 0.7.
-                  threshold: 0.75,
+                  // High threshold + 700ms silence window so background
+                  // noise / brief blips don't get committed as a user
+                  // turn. If this starts dropping quiet speech, dial
+                  // threshold back toward 0.75.
+                  threshold: 0.82,
                   prefix_padding_ms: 300,
-                  silence_duration_ms: 650,
+                  silence_duration_ms: 700,
                   create_response: true,
                   interrupt_response: true,
                 },

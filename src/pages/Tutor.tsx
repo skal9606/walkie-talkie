@@ -19,15 +19,15 @@ import {
   type LearnerProfile,
 } from '../lib/profile'
 import { buildPreferencesPromptBlock, loadPreferences } from '../lib/preferences'
-import { addMemoryItems, loadMemory } from '../lib/memory'
-import { addVocabItems, buildVocabBlock, loadVocab } from '../lib/vocab'
-import { buildFocusBlock, loadFocus, saveFocus } from '../lib/focus'
+import { addMemoryItems, clearMemory, loadMemory } from '../lib/memory'
+import { addVocabItems, buildVocabBlock, clearVocab, loadVocab } from '../lib/vocab'
+import { buildFocusBlock, clearFocus, loadFocus, saveFocus } from '../lib/focus'
 import { PRACTICE_THRESHOLD_MS, recordPractice } from '../lib/streak'
 import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
 import { trackSubscribe } from '../lib/tiktok'
-import { DEFAULT_TUTOR_ID, getTutor } from '../lib/tutors'
+import { DEFAULT_TUTOR_ID, TUTORS, getTutor } from '../lib/tutors'
 
 type Turn = {
   id: string
@@ -205,10 +205,17 @@ export default function Tutor() {
   }, [accessToken, searchParams, setSearchParams])
 
   // --- One-shot /chat?reset=1 handler (for testing the onboarding flow) ---
-  // Clears profile + signs out, then reloads without the param.
+  // Clears profile + per-tutor memory/vocab/focus + signs out, then reloads
+  // without the param. Use this to land on the LanguagePicker as a true
+  // first-time visitor.
   useEffect(() => {
     if (searchParams.get('reset') !== '1') return
     clearProfile()
+    for (const t of TUTORS) {
+      clearMemory(t.id)
+      clearVocab(t.id)
+      clearFocus(t.id)
+    }
     setProfile(null)
     supabase.auth.signOut().finally(() => {
       window.location.replace('/chat')
