@@ -34,36 +34,38 @@ function nameOrFriend(ctx: ModeContext): string {
 
 // --- Free-conversation openers, one per level ---
 
-function beginnerOpener(ctx?: PromptContext): string {
-  const n = nameGreeting(ctx)
-  return `OPENING — your full first message, ONE short sentence, exactly this script:
-"Oi ${n} — ready to learn your first word in Portuguese?"
+// First-session openers (no name + no memory yet). Each introduces the
+// tutor and, where appropriate, asks for a quick self-intro that naturally
+// collects the learner's name and goal in their first reply. For
+// intermediate/advanced the opener stays light — the prompt's "weave goals
+// in early" rule carries the goal-asking into turns 2–3.
+
+function beginnerOpener(_ctx?: PromptContext): string {
+  return `OPENING — your full first message, in this exact script:
+"Hi, I'm Natalia, your Portuguese tutor! I'm here to help you learn português and hit your language goals. Tell me a little about yourself — what's your name, and what brings you to Portuguese?"
 
 Stop after the question and wait silently for the learner's answer.`
 }
 
-function noviceOpener(ctx?: PromptContext): string {
-  const n = nameGreeting(ctx)
-  return `OPENING — your full first message, ONE short sentence, exactly this script:
-"Oi ${n} — what brings you to Portuguese?"
+function noviceOpener(_ctx?: PromptContext): string {
+  return `OPENING — your full first message, in this exact script:
+"Oi! I'm Natalia, your tutor. I'm here to help you aprender português and hit your goals. Tell me a bit about yourself — what's your name, and what brings you to Portuguese?"
 
 Stop after the question and wait silently for the learner's answer.`
 }
 
-function intermediateOpener(ctx?: PromptContext): string {
-  const n = nameGreeting(ctx)
-  return `OPENING — your full first message, ONE short sentence, in PORTUGUESE, exactly this script:
-"Oi ${n}, como foi seu dia hoje?"
+function intermediateOpener(_ctx?: PromptContext): string {
+  return `OPENING — your full first message, ONE short sentence, in PORTUGUESE:
+"Oi, eu sou a Natalia! Como foi seu dia?"
 
-Stop after the question and wait silently for the learner's answer.`
+Stop after the question and wait silently for the learner's answer. (Their goal hasn't been collected yet — weave a "what brings you to Portuguese" question in casually within your first 2–3 turns, per the WEAVE-IN-GOALS rule.)`
 }
 
-function advancedOpener(ctx?: PromptContext): string {
-  const n = nameGreeting(ctx)
-  return `OPENING — your full first message, ONE short sentence, in PORTUGUESE, exactly this script:
-"E aí ${n}, o que você andou fazendo?"
+function advancedOpener(_ctx?: PromptContext): string {
+  return `OPENING — your full first message, ONE short sentence, in PORTUGUESE:
+"E aí, sou a Natalia! O que você andou fazendo?"
 
-Stop after the question and wait silently for the learner's answer.`
+Stop after the question and wait silently for the learner's answer. (Their goal hasn't been collected yet — weave a "por que português" question in casually within your first 2–3 turns, per the WEAVE-IN-GOALS rule.)`
 }
 
 // Memory-aware opener for Free Conversation. Used when the learner has at

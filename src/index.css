@@ -1010,6 +1010,15 @@ a {
   background-clip: text;
 }
 
+[data-theme='light'] .hero-headline {
+  /* Dark gradient on a near-white background — the dark-mode white→gray
+     gradient is invisible here, so flip the polarity. */
+  background: linear-gradient(180deg, #0f1115 0%, #4a5060 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .hero-subtext {
   font-size: 18px;
   color: var(--muted);
@@ -2168,6 +2177,85 @@ a {
   font-size: 12px;
   margin: 8px 0 0;
   text-align: center;
+}
+
+/* --- Level picker (proficiency bars) ------------------------------- */
+
+.level-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.level-picker-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.1s ease, background 0.1s ease;
+}
+
+.level-picker-tile:hover {
+  border-color: var(--accent-dim);
+}
+
+.level-picker-tile.selected {
+  border-color: var(--accent);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.level-picker-icon {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.level-picker-bar {
+  width: 5px;
+  border-radius: 1px;
+  background: var(--border);
+}
+
+.level-picker-tile.selected .level-picker-bar.filled,
+.level-picker-bar.filled {
+  background: var(--accent);
+}
+
+.level-picker-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.level-picker-label {
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.level-picker-tile.selected .level-picker-label {
+  color: var(--accent);
+}
+
+.level-picker-blurb {
+  font-size: 14px;
+  color: var(--fg);
+  line-height: 1.35;
 }
 
 /* --- Flag marquee on the landing page (Speak.com-style scroll) ------- */

@@ -2,10 +2,47 @@ import { useState } from 'react'
 import { TUTORS } from '../lib/tutors'
 import type { LanguageCode, TutorId } from '../lib/tutors/types'
 import { NATIVE_LANGUAGES, type NativeLanguage } from '../lib/profile'
+import type { Level } from '../lib/scenarios'
 
-// Pre-first-session onboarding: pick a native language + a tutor (each tutor
-// represents a language + region). Saved into the profile so the next visit
-// skips this screen and goes straight to the discover session.
+// Pre-first-session onboarding: pick a native language, a tutor (language +
+// region), and the learner's proficiency. Saved into the profile so the next
+// visit skips this screen and goes straight into a session at the right level.
+
+type LevelOption = {
+  id: Level
+  label: string
+  blurb: string
+  bars: number // 1..4 — visual fullness for the icon
+}
+
+// Labels follow the ISSEN convention (Novice = just starting out; Beginner =
+// knows some phrases). Internal IDs are unchanged for compatibility.
+const LEVELS: LevelOption[] = [
+  {
+    id: 'complete-beginner',
+    label: 'Novice',
+    blurb: `I'm just starting out`,
+    bars: 1,
+  },
+  {
+    id: 'novice',
+    label: 'Beginner',
+    blurb: 'I know some phrases and can have a short, basic conversation',
+    bars: 2,
+  },
+  {
+    id: 'intermediate',
+    label: 'Intermediate',
+    blurb: 'I can handle routine conversations',
+    bars: 3,
+  },
+  {
+    id: 'advanced',
+    label: 'Advanced',
+    blurb: 'I can discuss complex topics',
+    bars: 4,
+  },
+]
 
 export function LanguagePicker({
   initialNativeLanguage,
@@ -16,6 +53,7 @@ export function LanguagePicker({
     nativeLanguage: NativeLanguage
     targetLanguage: LanguageCode
     tutorId: TutorId
+    level: Level
   }) => void
 }) {
   const [nativeLanguage, setNativeLanguage] = useState<NativeLanguage>(
@@ -24,8 +62,11 @@ export function LanguagePicker({
   const [tutorId, setTutorId] = useState<TutorId | null>(
     TUTORS.length === 1 ? TUTORS[0].id : null,
   )
+  // Default to "Novice" so the worst case (a true beginner who clicks
+  // through quickly) lands somewhere safe — matches the ISSEN default.
+  const [level, setLevel] = useState<Level>('complete-beginner')
 
-  const canSubmit = !!nativeLanguage && !!tutorId
+  const canSubmit = !!nativeLanguage && !!tutorId && !!level
 
   function handleSubmit() {
     if (!canSubmit) return
@@ -35,6 +76,7 @@ export function LanguagePicker({
       nativeLanguage,
       targetLanguage: tutor.language,
       tutorId: tutor.id,
+      level,
     })
   }
 
@@ -91,6 +133,30 @@ export function LanguagePicker({
             </p>
           </div>
 
+          <div className="onboarding-label">
+            <span className="onboarding-label-text">
+              How proficient are you in {tutorId
+                ? TUTORS.find((t) => t.id === tutorId)?.languageLabel
+                : 'the language'}?
+            </span>
+            <div className="level-picker-list">
+              {LEVELS.map((opt) => (
+                <button
+                  type="button"
+                  key={opt.id}
+                  className={`level-picker-tile ${level === opt.id ? 'selected' : ''}`}
+                  onClick={() => setLevel(opt.id)}
+                >
+                  <LevelIcon bars={opt.bars} />
+                  <span className="level-picker-text">
+                    <span className="level-picker-label">{opt.label}</span>
+                    <span className="level-picker-blurb">{opt.blurb}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             type="button"
             className="mic-btn start"
@@ -102,5 +168,21 @@ export function LanguagePicker({
         </div>
       </div>
     </div>
+  )
+}
+
+// Three-bar signal-strength icon — fills `bars` of the four bars to show
+// proficiency level visually (1 = novice, 4 = advanced).
+function LevelIcon({ bars }: { bars: number }) {
+  return (
+    <span className="level-picker-icon" aria-hidden>
+      {[1, 2, 3, 4].map((i) => (
+        <span
+          key={i}
+          className={`level-picker-bar ${i <= bars ? 'filled' : ''}`}
+          style={{ height: `${30 + i * 18}%` }}
+        />
+      ))}
+    </span>
   )
 }

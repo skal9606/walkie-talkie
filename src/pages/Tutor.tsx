@@ -772,6 +772,7 @@ export default function Tutor() {
               nativeLanguage: picked.nativeLanguage,
               targetLanguage: picked.targetLanguage,
               tutorId: picked.tutorId,
+              level: picked.level,
             })
             setProfile(merged)
           }}

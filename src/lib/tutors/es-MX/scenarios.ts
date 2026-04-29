@@ -30,36 +30,38 @@ function nameOrFriend(ctx: ModeContext): string {
 
 // --- Free-conversation openers, one per level ---
 
-function beginnerOpener(ctx?: PromptContext): string {
-  const n = nameGreeting(ctx)
-  return `OPENING — your full first message, ONE short sentence, exactly this script:
-"Hola ${n} — ready to learn your first word in Spanish?"
+// First-session openers (no name + no memory yet). Each introduces María
+// and, where appropriate, asks for a quick self-intro that naturally
+// collects the learner's name and goal in their first reply. For
+// intermediate/advanced the opener stays light — the prompt's "weave goals
+// in early" rule carries the goal-asking into turns 2–3.
+
+function beginnerOpener(_ctx?: PromptContext): string {
+  return `OPENING — your full first message, in this exact script:
+"Hi, I'm María, your Spanish tutor! I'm here to help you aprender español and hit your language goals. Tell me a little about yourself — what's your name, and what brings you to Spanish?"
 
 Stop after the question and wait silently for the learner's answer.`
 }
 
-function noviceOpener(ctx?: PromptContext): string {
-  const n = nameGreeting(ctx)
-  return `OPENING — your full first message, ONE short sentence, exactly this script:
-"Hola ${n} — what brings you to Spanish?"
+function noviceOpener(_ctx?: PromptContext): string {
+  return `OPENING — your full first message, in this exact script:
+"¡Hola! I'm María, your tutor. I'm here to help you aprender español and hit your goals. Tell me a bit about yourself — what's your name, and what brings you to Spanish?"
 
 Stop after the question and wait silently for the learner's answer.`
 }
 
-function intermediateOpener(ctx?: PromptContext): string {
-  const n = nameGreeting(ctx)
-  return `OPENING — your full first message, ONE short sentence, in SPANISH, exactly this script:
-"Hola ${n}, ¿cómo estuvo tu día?"
+function intermediateOpener(_ctx?: PromptContext): string {
+  return `OPENING — your full first message, ONE short sentence, in SPANISH:
+"¡Hola! Soy María. ¿Cómo estuvo tu día?"
 
-Stop after the question and wait silently for the learner's answer.`
+Stop after the question and wait silently for the learner's answer. (Their goal hasn't been collected yet — weave a "¿qué te trajo al español?" question in casually within your first 2–3 turns, per the WEAVE-IN-GOALS rule.)`
 }
 
-function advancedOpener(ctx?: PromptContext): string {
-  const n = nameGreeting(ctx)
-  return `OPENING — your full first message, ONE short sentence, in SPANISH, exactly this script:
-"¿Qué onda, ${n}? ¿Qué has andado haciendo?"
+function advancedOpener(_ctx?: PromptContext): string {
+  return `OPENING — your full first message, ONE short sentence, in SPANISH:
+"¿Qué onda? Soy María. ¿Qué has andado haciendo?"
 
-Stop after the question and wait silently for the learner's answer.`
+Stop after the question and wait silently for the learner's answer. (Their goal hasn't been collected yet — weave a "¿por qué español?" question in casually within your first 2–3 turns, per the WEAVE-IN-GOALS rule.)`
 }
 
 const FREE_LANGUAGE_GUIDANCE: Record<Level, string> = {
