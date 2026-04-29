@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
 import { useAuth } from '../lib/auth'
 import { TUTORS } from '../lib/tutors'
+import { hasLanguageSelection, loadProfile } from '../lib/profile'
 import {
   applyTheme,
   loadPreferences,
@@ -36,13 +37,20 @@ export default function Landing() {
     applyTheme(next)
   }
 
-  // Returning learners with a real (non-anonymous) account go straight to
-  // /practice. Anonymous trial users stay on the landing page so they can
-  // still see pricing, FAQ, and re-enter the trial via Chat Now.
+  // Returning learners skip the marketing landing page:
+  //   - Signed-in (non-anonymous) users → /practice (subscriber portal).
+  //   - Anonymous users who already finished onboarding → /chat, which
+  //     auto-starts a free conversation that picks up prior memory.
+  // Brand-new visitors (no completed profile) stay here and see the pitch.
   useEffect(() => {
-    if (loading || !user) return
-    if (user.is_anonymous) return
-    navigate('/practice', { replace: true })
+    if (loading) return
+    if (user && !user.is_anonymous) {
+      navigate('/practice', { replace: true })
+      return
+    }
+    if (hasLanguageSelection(loadProfile())) {
+      navigate('/chat', { replace: true })
+    }
   }, [user, loading, navigate])
 
   // Pricing cards navigate to /chat with a ?checkout=<plan> param. Tutor.tsx
@@ -96,7 +104,7 @@ export default function Landing() {
             <Link to="/chat" className="landing-cta landing-cta-large">
               Chat Now
             </Link>
-            <div className="hero-footnote">First 5 minutes free · $15/month after</div>
+            <div className="hero-footnote">First 5 minutes free · $10/month after</div>
           </div>
         </div>
 
@@ -174,7 +182,7 @@ export default function Landing() {
           <PriceCard
             plan="monthly"
             title="Monthly"
-            price="$15"
+            price="$10"
             period="/ month"
             description="Cancel anytime"
             onSubscribe={handleSubscribe}
@@ -182,9 +190,9 @@ export default function Landing() {
           <PriceCard
             plan="yearly"
             title="Yearly"
-            price="$150"
+            price="$100"
             period="/ year"
-            description="Save $30 · $12.50/mo"
+            description="Save $20 · $8.33/mo"
             highlighted
             onSubscribe={handleSubscribe}
           />

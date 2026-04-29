@@ -10,14 +10,14 @@ import type { Level } from '../lib/scenarios'
 // cold-start trial flow.
 //
 // Steps:
-//   welcome → name → native → target → level → prep → onComplete()
+//   welcome → name → native → target → level → onComplete()
 //
 // Settings still uses simple selects to switch native/target — this
 // component is only for the first-time path.
 
-type Step = 'welcome' | 'name' | 'native' | 'target' | 'level' | 'prep'
+type Step = 'welcome' | 'name' | 'native' | 'target' | 'level'
 
-const STEP_ORDER: Step[] = ['welcome', 'name', 'native', 'target', 'level', 'prep']
+const STEP_ORDER: Step[] = ['welcome', 'name', 'native', 'target', 'level']
 
 type LevelOption = {
   id: Level
@@ -281,46 +281,8 @@ export function OnboardingFlow({
               <button
                 type="button"
                 className="onboarding-flow-cta"
-                onClick={goNext}
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 'prep' && tutor && (
-          <div className="onboarding-step">
-            <h1 className="onboarding-step-title">
-              You're about to start your first chat with {tutor.name}!
-            </h1>
-            <ul className="onboarding-prep-list">
-              <PrepBullet
-                emoji="👋"
-                title="Getting to know you"
-                body={`The journey begins with ${tutor.name} learning what matters to you and what you want to achieve in ${tutor.languageLabel}.`}
-              />
-              <PrepBullet
-                emoji="🎯"
-                title="Tuned to your level"
-                body={`${tutor.name} adjusts pace, vocabulary, and grammar in real time as you talk — meeting you where you are.`}
-              />
-              <PrepBullet
-                emoji="🎧"
-                title="Pick a quiet place"
-                body={`It helps ${tutor.name} hear you clearly and makes the conversation flow.`}
-              />
-              <PrepBullet
-                emoji="📈"
-                title="Keep the momentum"
-                body="Short daily sessions build the habit faster than long, infrequent ones."
-              />
-            </ul>
-            <div className="onboarding-flow-actions">
-              <button
-                type="button"
-                className="onboarding-flow-cta"
                 onClick={handleComplete}
+                disabled={!tutorId || !name.trim()}
               >
                 Start free trial
               </button>
@@ -329,28 +291,6 @@ export function OnboardingFlow({
         )}
       </div>
     </div>
-  )
-}
-
-function PrepBullet({
-  emoji,
-  title,
-  body,
-}: {
-  emoji: string
-  title: string
-  body: string
-}) {
-  return (
-    <li className="onboarding-prep-item">
-      <span className="onboarding-prep-emoji" aria-hidden>
-        {emoji}
-      </span>
-      <div className="onboarding-prep-text">
-        <div className="onboarding-prep-title">{title}</div>
-        <div className="onboarding-prep-body">{body}</div>
-      </div>
-    </li>
   )
 }
 

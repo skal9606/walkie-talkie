@@ -31,7 +31,7 @@ export function trackEvent(event: string, params?: TtqParams): void {
  */
 export function trackSubscribe(plan: 'monthly' | 'yearly'): void {
   trackEvent('Subscribe', {
-    value: plan === 'monthly' ? 15 : 150,
+    value: plan === 'monthly' ? 10 : 100,
     currency: 'USD',
     content_type: 'product',
     content_id: `walkie-talkie-${plan}`,

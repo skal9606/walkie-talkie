@@ -605,8 +605,8 @@ function AccountTab({
 // Pricing source of truth for the subscription panel. Mirrors the Paywall
 // copy — keep in sync if pricing changes.
 const PLAN_DISPLAY: Record<'monthly' | 'yearly', { label: string; price: string }> = {
-  monthly: { label: 'Monthly', price: '$15 / month' },
-  yearly: { label: 'Annual', price: '$150 / year ($12.50 / month)' },
+  monthly: { label: 'Monthly', price: '$10 / month' },
+  yearly: { label: 'Annual', price: '$100 / year ($8.33 / month)' },
 }
 
 function SubscriptionDetailCard({
