@@ -96,7 +96,7 @@ export default function Landing() {
             <Link to="/chat" className="landing-cta landing-cta-large">
               Chat Now
             </Link>
-            <div className="hero-footnote">First 5 minutes free · $10/month after</div>
+            <div className="hero-footnote">First 5 minutes free · $15/month after</div>
           </div>
         </div>
 
@@ -174,7 +174,7 @@ export default function Landing() {
           <PriceCard
             plan="monthly"
             title="Monthly"
-            price="$10"
+            price="$15"
             period="/ month"
             description="Cancel anytime"
             onSubscribe={handleSubscribe}
@@ -182,9 +182,9 @@ export default function Landing() {
           <PriceCard
             plan="yearly"
             title="Yearly"
-            price="$100"
+            price="$150"
             period="/ year"
-            description="Save $20 · ~$8.33/mo"
+            description="Save $30 · $12.50/mo"
             highlighted
             onSubscribe={handleSubscribe}
           />
