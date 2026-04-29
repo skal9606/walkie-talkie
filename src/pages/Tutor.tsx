@@ -258,6 +258,11 @@ export default function Tutor() {
     // ?mode=... and ?checkout=... have their own effects; let those run first.
     if (searchParams.get('mode')) return
     if (searchParams.get('checkout')) return
+    // Don't request mic / start a session until the user has actually
+    // chosen a tutor. The render path shows LanguagePicker in this state;
+    // without this guard, getUserMedia fires under the picker and the
+    // default tutor (Natalia) starts speaking before they pick.
+    if (!hasLanguageSelection(profile)) return
 
     const memory = loadMemory(tutor.id)
     const isFirstSession = !profile?.level
@@ -294,6 +299,7 @@ export default function Tutor() {
     if (!profile) return
     if (!statusLoaded) return
     if (status !== 'idle') return
+    if (!hasLanguageSelection(profile)) return
 
     const next = new URLSearchParams(searchParams)
     next.delete('mode')
