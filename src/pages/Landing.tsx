@@ -1,8 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
 import { useAuth } from '../lib/auth'
 import { TUTORS } from '../lib/tutors'
+import {
+  applyTheme,
+  loadPreferences,
+  savePreferences,
+  type Theme,
+} from '../lib/preferences'
 
 // Flags shown in the marquee. Live tutors come from the registry; "soon"
 // flags are aspirational marketing — they hint at the roadmap without
@@ -21,6 +27,14 @@ const COMING_SOON_FLAGS = [
 export default function Landing() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
+  const [theme, setTheme] = useState<Theme>(() => loadPreferences().theme)
+
+  function toggleTheme() {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    savePreferences({ ...loadPreferences(), theme: next })
+    applyTheme(next)
+  }
 
   // Returning learners with a real (non-anonymous) account go straight to
   // /practice. Anonymous trial users stay on the landing page so they can
@@ -45,12 +59,18 @@ export default function Landing() {
           <a href="#pricing" className="landing-nav-link">
             Pricing
           </a>
-          <a href="#faq" className="landing-nav-link">
-            FAQ
-          </a>
           <Link to="/login" className="landing-nav-link">
             Login
           </Link>
+          <button
+            type="button"
+            className="landing-theme-toggle"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
           <Link to="/chat" className="landing-cta">
             Chat Now
           </Link>
