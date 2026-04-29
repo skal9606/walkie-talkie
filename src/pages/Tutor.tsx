@@ -25,6 +25,8 @@ import {
 } from '../lib/profile'
 import { buildPreferencesPromptBlock, loadPreferences } from '../lib/preferences'
 import { addMemoryItems, loadMemory } from '../lib/memory'
+import { addVocabItems, buildVocabBlock, loadVocab } from '../lib/vocab'
+import { buildFocusBlock, loadFocus, saveFocus } from '../lib/focus'
 import { PRACTICE_THRESHOLD_MS, recordPractice } from '../lib/streak'
 import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
@@ -54,6 +56,7 @@ type ReviewData = {
   memory?: string[]
   name?: string | null
   inferredLevel?: InferredLevel | null
+  nextFocus?: string | null
 }
 
 type TranslationState = Record<string, string | 'loading'>
@@ -425,6 +428,21 @@ export default function Tutor() {
         if (Array.isArray(data.memory) && data.memory.length > 0) {
           addMemoryItems(data.memory)
         }
+        // Persist vocabulary for spaced retrieval — Natalia weaves these
+        // back into the next free conversation in fresh contexts.
+        if (Array.isArray(data.newVocabulary) && data.newVocabulary.length > 0) {
+          addVocabItems(
+            data.newVocabulary.map((v) => ({
+              word: v.word,
+              translation: v.translation,
+            })),
+          )
+        }
+        // Per-session silent focus for the next free conversation. Steers
+        // topic + form choices without being announced to the learner.
+        if (typeof data.nextFocus === 'string' && data.nextFocus.trim()) {
+          saveFocus(data.nextFocus)
+        }
         // Fill in any blanks the model could infer (name, level). Never
         // overwrites a value the user has confirmed in the questionnaire.
         const inferred: Partial<LearnerProfile> = {}
@@ -477,10 +495,18 @@ export default function Tutor() {
     })
     const learnerContext = buildLearnerContextBlock(profile)
     const preferencesBlock = buildPreferencesPromptBlock(loadPreferences())
+    // Vocab + focus blocks only make sense for free conversation. In a
+    // roleplay (barista, in-laws) Natalia is in character and asking her
+    // to weave in unrelated vocab from prior sessions would be jarring.
+    const isFreeConversation = activeScenario.id.startsWith('free-')
+    const vocabBlock = isFreeConversation ? buildVocabBlock(loadVocab()) : ''
+    const focusBlock = isFreeConversation ? buildFocusBlock(loadFocus()) : ''
     const instructions = [
       TUTOR_INSTRUCTIONS,
       addon,
       learnerContext,
+      vocabBlock,
+      focusBlock,
       preferencesBlock,
     ]
       .filter(Boolean)
