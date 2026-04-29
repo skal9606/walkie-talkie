@@ -2100,3 +2100,65 @@ a {
 .legal-body li {
   margin: 4px 0;
 }
+
+/* --- Language picker (initial onboarding + Settings switcher) -------- */
+
+.language-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.language-picker-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--fg);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.1s ease, background 0.1s ease;
+}
+
+.language-picker-tile:hover {
+  border-color: var(--accent-dim);
+}
+
+.language-picker-tile.selected {
+  border-color: var(--accent);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.language-picker-flag {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.language-picker-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.language-picker-language {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.language-picker-tutor {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.language-picker-coming-soon {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0 0;
+  text-align: center;
+}

@@ -1,9 +1,16 @@
 // Persistent vocab pool across Free Conversation sessions. The post-session
-// review extracts `newVocabulary` (words/phrases Natalia introduced); we save
-// them here so the next session's prompt can ask Natalia to weave them back
-// in for spaced retrieval.
+// review extracts `newVocabulary` (words/phrases the tutor introduced); we
+// save them here so the next session's prompt can ask the tutor to weave
+// them back in for spaced retrieval.
+//
+// Storage is scoped per tutor — Mexican Spanish vocab shouldn't bleed into
+// a Brazilian Portuguese session and vice versa. Legacy unscoped data from
+// before multi-tutor support is migrated to the default tutor on first read.
 
-const STORAGE_KEY = 'walkie_vocab_v1'
+import type { TutorId } from './tutors/types'
+import { DEFAULT_TUTOR_ID } from './tutors'
+
+const LEGACY_KEY = 'walkie_vocab_v1'
 const MAX_ITEMS = 10
 const PROMPT_ITEMS = 5
 
@@ -12,9 +19,32 @@ export type VocabItem = {
   translation: string
 }
 
-function readRaw(): VocabItem[] {
+function storageKey(tutorId: TutorId): string {
+  return `walkie_vocab_v2_${tutorId}`
+}
+
+/**
+ * One-shot migration: pre-multi-tutor data lived under the global
+ * walkie_vocab_v1 key. Move it to the default tutor's scope and forget.
+ */
+function migrateLegacyIfNeeded(): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(LEGACY_KEY)
+    if (!raw) return
+    const targetKey = storageKey(DEFAULT_TUTOR_ID)
+    if (!localStorage.getItem(targetKey)) {
+      localStorage.setItem(targetKey, raw)
+    }
+    localStorage.removeItem(LEGACY_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+function readRaw(tutorId: TutorId): VocabItem[] {
+  migrateLegacyIfNeeded()
+  try {
+    const raw = localStorage.getItem(storageKey(tutorId))
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
@@ -30,29 +60,29 @@ function readRaw(): VocabItem[] {
   }
 }
 
-function writeRaw(items: VocabItem[]): void {
+function writeRaw(tutorId: TutorId, items: VocabItem[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+    localStorage.setItem(storageKey(tutorId), JSON.stringify(items))
   } catch {
     // localStorage can throw (private browsing / quota); swallow.
   }
 }
 
-export function loadVocab(): VocabItem[] {
-  return readRaw()
+export function loadVocab(tutorId: TutorId): VocabItem[] {
+  return readRaw(tutorId)
 }
 
 /**
  * Merges new items in front (most-recent first), dedupes case-insensitively
  * by word, caps at MAX_ITEMS.
  */
-export function addVocabItems(items: VocabItem[]): void {
+export function addVocabItems(tutorId: TutorId, items: VocabItem[]): void {
   const cleanIncoming = items
     .map((v) => ({ word: v.word.trim(), translation: (v.translation ?? '').trim() }))
     .filter((v) => v.word.length > 0)
   if (cleanIncoming.length === 0) return
 
-  const merged = [...cleanIncoming, ...readRaw()]
+  const merged = [...cleanIncoming, ...readRaw(tutorId)]
   const seen = new Set<string>()
   const deduped: VocabItem[] = []
   for (const item of merged) {
@@ -62,12 +92,12 @@ export function addVocabItems(items: VocabItem[]): void {
     deduped.push(item)
     if (deduped.length >= MAX_ITEMS) break
   }
-  writeRaw(deduped)
+  writeRaw(tutorId, deduped)
 }
 
-export function clearVocab(): void {
+export function clearVocab(tutorId: TutorId): void {
   try {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(storageKey(tutorId))
   } catch {
     // ignore
   }

@@ -1,4 +1,12 @@
-export const TUTOR_INSTRUCTIONS = `You are Natalia. You're a Brazilian Portuguese tutor having a live voice conversation with an English speaker.
+// Natalia — the Brazilian Portuguese tutor (São Paulo, late 20s). The
+// canonical Walkie Talkie tutor; everything else (Spanish, French, Italian)
+// will follow this same module shape.
+
+import type { Tutor } from '../types'
+import type { Level } from '../../scenarios'
+import { ptBrScenarios } from './scenarios'
+
+export const NATALIA_INSTRUCTIONS = `You are Natalia. You're a Brazilian Portuguese tutor having a live voice conversation with an English speaker.
 
 WHO NATALIA IS
 - Late 20s, lives in Vila Madalena (a young, artsy neighborhood in São Paulo). Day job in marketing; on weekends she's at a music festival or a botequim with friends.
@@ -286,3 +294,27 @@ EASYGOING TONE — NOT STRICT
 - Avoid anything that sounds passive-aggressive, condescending, or schoolmarmish: "Actually...", "Well, technically...", "You should...", "That's not quite right...", "Almost!".
 - If the learner deflects, changes topics, gives a weird answer, or doesn't follow your structure — go with it. Don't redirect them back to your script. The conversation is theirs.
 - If you don't understand them, just say so casually ("Hmm, didn't catch that — say it again?") rather than asking them to repeat formally.`
+
+function transcriptionLanguage(level: Level | undefined): 'pt' | 'en' | undefined {
+  // Discover (level unknown) → undefined → no pin, let the model auto-detect.
+  // complete-beginner replies are mostly English with a sprinkle of PT;
+  // pinning EN keeps the YOU bubble readable. Other levels pin to PT — paying
+  // users practicing PT; the occasional English aside transcribed poorly is
+  // the right trade.
+  if (!level) return undefined
+  if (level === 'complete-beginner') return 'en'
+  return 'pt'
+}
+
+export const natalia: Tutor = {
+  id: 'pt-br-natalia',
+  name: 'Natalia',
+  language: 'pt-BR',
+  city: 'São Paulo',
+  flag: '🇧🇷',
+  age: 28,
+  languageLabel: 'Brazilian Portuguese',
+  buildSystemInstructions: () => NATALIA_INSTRUCTIONS,
+  scenarios: ptBrScenarios,
+  transcriptionLanguage,
+}

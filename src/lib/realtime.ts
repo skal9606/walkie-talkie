@@ -35,9 +35,9 @@ export class RealtimeTutor {
        * pin will come back as Portuguese-sounding gibberish. Leave
        * undefined to let gpt-4o-transcribe auto-detect — appropriate
        * during the level-discovery session, when we don't know yet
-       * whether the learner will reply in English or Portuguese.
+       * whether the learner will reply in English or the target language.
        */
-      transcriptionLanguage?: 'pt' | 'en'
+      transcriptionLanguage?: 'pt' | 'en' | 'es' | 'fr' | 'it'
     } = {},
   ): Promise<{ subscribed: boolean; secondsRemaining: number }> {
     const tokenRes = await fetch('/api/session', {

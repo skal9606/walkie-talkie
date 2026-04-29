@@ -1,24 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
-import { TUTOR_INSTRUCTIONS } from '../lib/tutor-prompt'
 import {
-  ALL_SCENARIOS,
   PRACTICE_MODES,
-  ROLEPLAY_SCENARIOS,
-  buildModePromptAddon,
-  scenarioForLevel,
-  transcriptionLangForLevel,
-  vadForMode,
   type ModeId,
   type Scenario,
 } from '../lib/scenarios'
 import { FREE_TIER_SECONDS, type Plan } from '../lib/subscription'
 import { Paywall } from '../components/Paywall'
 import { SignIn } from '../components/SignIn'
+import { LanguagePicker } from '../components/LanguagePicker'
 import {
   buildLearnerContextBlock,
   clearProfile,
+  hasLanguageSelection,
   loadProfile,
   mergeProfileBlanks,
   type LearnerProfile,
@@ -32,6 +27,7 @@ import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
 import { trackSubscribe } from '../lib/tiktok'
+import { DEFAULT_TUTOR_ID, getTutor } from '../lib/tutors'
 
 type Turn = {
   id: string
@@ -114,15 +110,22 @@ export default function Tutor() {
   const sessionStartedAtRef = useRef<number | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
+  // The active tutor (language + region + persona). Defaults to Natalia for
+  // existing users; new users pick before the first session via LanguagePicker.
+  const tutor = useMemo(
+    () => getTutor(profile?.tutorId ?? DEFAULT_TUTOR_ID),
+    [profile?.tutorId],
+  )
+
   const scenario = useMemo(
-    () => ALL_SCENARIOS.find((s) => s.id === scenarioId) ?? ALL_SCENARIOS[0],
-    [scenarioId],
+    () => tutor.scenarios.all.find((s) => s.id === scenarioId) ?? tutor.scenarios.all[0],
+    [scenarioId, tutor],
   )
   // Only show the scenario name in the header for character-driven
   // roleplays (Café, in-laws, etc.). For Free Conversation, Discover, and
   // the other practice modes, the level/mode label is uninformative
   // mid-session — we keep the generic "Walkie Talkie" header instead.
-  const isRoleplayScenario = ROLEPLAY_SCENARIOS.some(
+  const isRoleplayScenario = tutor.scenarios.roleplays.some(
     (s) => s.id === scenario.id,
   )
   const showScenarioHeader = status !== 'idle' && isRoleplayScenario
@@ -256,19 +259,19 @@ export default function Tutor() {
     if (searchParams.get('mode')) return
     if (searchParams.get('checkout')) return
 
-    const memory = loadMemory()
+    const memory = loadMemory(tutor.id)
     const isFirstSession = !profile?.level
     const synthetic: Scenario = isFirstSession
       ? {
           id: 'discover',
           title: 'Welcome',
-          description: 'Meet Natalia',
+          description: `Meet ${tutor.name}`,
           buildPromptAddon: () =>
-            buildModePromptAddon('discover', { name: profile?.name }),
-          vadEagerness: vadForMode('discover', undefined),
+            tutor.scenarios.buildModePromptAddon('discover', { name: profile?.name }),
+          vadEagerness: tutor.scenarios.vadForMode('discover', undefined),
         }
       : (() => {
-          const baseScenario = scenarioForLevel(profile.level!)
+          const baseScenario = tutor.scenarios.forLevel(profile.level!)
           return {
             ...baseScenario,
             buildPromptAddon: () =>
@@ -299,25 +302,25 @@ export default function Tutor() {
     if (mode === 'scenario') {
       // Default the picker selection to the first roleplay so they have
       // somewhere to start.
-      setScenarioId(ROLEPLAY_SCENARIOS[0].id)
+      setScenarioId(tutor.scenarios.roleplays[0].id)
       return
     }
 
     const meta = PRACTICE_MODES.find((m) => m.id === mode)
     if (!meta) return
     // Only Free Conversation reads memory; other modes are level-only.
-    const memory = mode === 'free' ? loadMemory() : undefined
+    const memory = mode === 'free' ? loadMemory(tutor.id) : undefined
     const synthetic: Scenario = {
       id: `mode-${mode}-${profile.level}`,
       title: meta.title,
       description: meta.blurb,
       buildPromptAddon: () =>
-        buildModePromptAddon(mode, {
+        tutor.scenarios.buildModePromptAddon(mode, {
           name: profile.name,
           level: profile.level,
           memory,
         }),
-      vadEagerness: vadForMode(mode, profile.level),
+      vadEagerness: tutor.scenarios.vadForMode(mode, profile.level),
     }
     start(synthetic)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -416,6 +419,7 @@ export default function Tutor() {
           },
           body: JSON.stringify({
             scenario: scenario.title,
+            language: tutor.language,
             transcript: finalTurns.map((t) => ({ role: t.role, text: t.text })),
           }),
         })
@@ -426,12 +430,13 @@ export default function Tutor() {
         setReview(data)
         // Persist memory bullets so the next Free Conversation can reference them.
         if (Array.isArray(data.memory) && data.memory.length > 0) {
-          addMemoryItems(data.memory)
+          addMemoryItems(tutor.id, data.memory)
         }
-        // Persist vocabulary for spaced retrieval — Natalia weaves these
+        // Persist vocabulary for spaced retrieval — the tutor weaves these
         // back into the next free conversation in fresh contexts.
         if (Array.isArray(data.newVocabulary) && data.newVocabulary.length > 0) {
           addVocabItems(
+            tutor.id,
             data.newVocabulary.map((v) => ({
               word: v.word,
               translation: v.translation,
@@ -441,7 +446,7 @@ export default function Tutor() {
         // Per-session silent focus for the next free conversation. Steers
         // topic + form choices without being announced to the learner.
         if (typeof data.nextFocus === 'string' && data.nextFocus.trim()) {
-          saveFocus(data.nextFocus)
+          saveFocus(tutor.id, data.nextFocus)
         }
         // Fill in any blanks the model could infer (name, level). Never
         // overwrites a value the user has confirmed in the questionnaire.
@@ -466,7 +471,7 @@ export default function Tutor() {
       }
       refreshStatus()
     },
-    [accessToken, refreshStatus, scenario.title, turns],
+    [accessToken, refreshStatus, scenario.title, turns, tutor],
   )
 
   // Ref indirection so the heartbeat useEffect can call stop() without
@@ -491,18 +496,18 @@ export default function Tutor() {
     const activeScenario = overrideScenario ?? scenario
     const addon = activeScenario.buildPromptAddon({
       name: profile?.name,
-      memory: loadMemory(),
+      memory: loadMemory(tutor.id),
     })
     const learnerContext = buildLearnerContextBlock(profile)
     const preferencesBlock = buildPreferencesPromptBlock(loadPreferences())
     // Vocab + focus blocks only make sense for free conversation. In a
-    // roleplay (barista, in-laws) Natalia is in character and asking her
-    // to weave in unrelated vocab from prior sessions would be jarring.
+    // roleplay (barista, in-laws) the tutor is in character and asking
+    // them to weave in unrelated vocab from prior sessions would be jarring.
     const isFreeConversation = activeScenario.id.startsWith('free-')
-    const vocabBlock = isFreeConversation ? buildVocabBlock(loadVocab()) : ''
-    const focusBlock = isFreeConversation ? buildFocusBlock(loadFocus()) : ''
+    const vocabBlock = isFreeConversation ? buildVocabBlock(loadVocab(tutor.id)) : ''
+    const focusBlock = isFreeConversation ? buildFocusBlock(loadFocus(tutor.id)) : ''
     const instructions = [
-      TUTOR_INSTRUCTIONS,
+      tutor.buildSystemInstructions(),
       addon,
       learnerContext,
       vocabBlock,
@@ -512,10 +517,10 @@ export default function Tutor() {
       .filter(Boolean)
       .join('\n\n')
 
-    const tutor = new RealtimeTutor()
-    tutorRef.current = tutor
+    const realtime = new RealtimeTutor()
+    tutorRef.current = realtime
 
-    tutor.onEvent((event: RealtimeEvent) => {
+    realtime.onEvent((event: RealtimeEvent) => {
       switch (event.type) {
         case 'conversation.item.created': {
           const item = event.item as
@@ -590,19 +595,17 @@ export default function Tutor() {
 
     try {
       const freshToken = await getFreshAccessToken()
-      const info = await tutor.connect(instructions, {
+      const info = await realtime.connect(instructions, {
         vadEagerness: activeScenario.vadEagerness,
         accessToken: freshToken ?? undefined,
-        // Discover (level unknown) → undefined → no pin.
-        // complete-beginner → 'en'. novice / intermediate / advanced → 'pt'.
-        transcriptionLanguage: transcriptionLangForLevel(profile?.level),
+        transcriptionLanguage: tutor.transcriptionLanguage(profile?.level),
       })
       setSubscribed(info.subscribed)
       setSecondsRemaining(info.secondsRemaining)
       sessionStartedAtRef.current = Date.now()
       setStatus('live')
     } catch (err) {
-      tutor.disconnect()
+      realtime.disconnect()
       tutorRef.current = null
       const typed = err as Error & { status?: number; secondsRemaining?: number }
       if (typed.status === 402) {
@@ -638,7 +641,7 @@ export default function Tutor() {
           'Content-Type': 'application/json',
           ...(fresh ? { Authorization: `Bearer ${fresh}` } : {}),
         },
-        body: JSON.stringify({ text: turn.text }),
+        body: JSON.stringify({ text: turn.text, language: tutor.language }),
       })
       const data = (await res.json()) as { translation?: string; error?: string }
       if (!res.ok || data.error) throw new Error(data.error ?? 'Translate failed')
@@ -745,6 +748,32 @@ export default function Tutor() {
     )
   }
 
+  // Brand-new visitor: ask for their native + target language before the
+  // first session. Existing users have these backfilled by profile load,
+  // so they skip this screen.
+  if (!hasLanguageSelection(profile)) {
+    return (
+      <div className="app">
+        <nav className="tutor-nav">
+          <Link to="/" className="tutor-nav-back">
+            ← Back
+          </Link>
+        </nav>
+        <LanguagePicker
+          initialNativeLanguage={profile?.nativeLanguage}
+          onComplete={(picked) => {
+            const merged = mergeProfileBlanks({
+              nativeLanguage: picked.nativeLanguage,
+              targetLanguage: picked.targetLanguage,
+              tutorId: picked.tutorId,
+            })
+            setProfile(merged)
+          }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <nav className="tutor-nav">
@@ -781,7 +810,7 @@ export default function Tutor() {
         <p className="subtitle">
           {showScenarioHeader
             ? scenario.description
-            : 'Voice conversation · Brazilian Portuguese'}
+            : `Voice conversation · ${tutor.languageLabel}`}
         </p>
       </header>
 

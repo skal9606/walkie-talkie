@@ -10,10 +10,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) {
     return res.status(401).json({ error: 'Not signed in.' })
   }
-  const body = (req.body ?? {}) as { transcript?: TranscriptEntry[]; scenario?: string }
+  const body = (req.body ?? {}) as {
+    transcript?: TranscriptEntry[]
+    scenario?: string
+    language?: string
+  }
   const result = await reviewTranscript(process.env.OPENAI_API_KEY, {
     transcript: body.transcript,
     scenario: body.scenario,
+    language: body.language,
   })
   res.status(result.status).json(result.body)
 }

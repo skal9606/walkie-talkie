@@ -38,11 +38,23 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
   }
 }
 
-// -- Translate a Portuguese utterance to English ----------------------------
+// -- Translate a target-language utterance to English ----------------------
+
+/** Display label shown in the system prompt for each supported language. */
+const LANGUAGE_LABELS: Record<string, string> = {
+  'pt-BR': 'Brazilian Portuguese',
+  // Future: 'es-MX': 'Mexican Spanish', 'es-ES': 'Castilian Spanish', etc.
+}
+
+function languageLabel(code: string | undefined): string {
+  if (!code) return 'Brazilian Portuguese'
+  return LANGUAGE_LABELS[code] ?? code
+}
 
 export async function translate(
   apiKey: string | undefined,
   text: string | undefined,
+  language?: string,
 ): Promise<HandlerResult> {
   if (!apiKey) {
     return { status: 500, body: { error: 'OPENAI_API_KEY not set.' } }
@@ -51,6 +63,7 @@ export async function translate(
   if (!trimmed) {
     return { status: 400, body: { error: 'No text provided.' } }
   }
+  const langLabel = languageLabel(language)
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -63,8 +76,7 @@ export async function translate(
         messages: [
           {
             role: 'system',
-            content:
-              "Translate the user's Brazilian Portuguese to natural, conversational English. If parts are already in English, leave them as-is. Return only the translation — no quotes, no explanation, no prefixes.",
+            content: `Translate the user's ${langLabel} to natural, conversational English. If parts are already in English, leave them as-is. Return only the translation — no quotes, no explanation, no prefixes.`,
           },
           { role: 'user', content: trimmed },
         ],
@@ -92,7 +104,7 @@ export type TranscriptEntry = { role: 'user' | 'tutor'; text: string }
 
 export async function reviewTranscript(
   apiKey: string | undefined,
-  params: { transcript?: TranscriptEntry[]; scenario?: string },
+  params: { transcript?: TranscriptEntry[]; scenario?: string; language?: string },
 ): Promise<HandlerResult> {
   if (!apiKey) {
     return { status: 500, body: { error: 'OPENAI_API_KEY not set.' } }
@@ -101,6 +113,7 @@ export async function reviewTranscript(
   if (transcript.length === 0) {
     return { status: 400, body: { error: 'Empty transcript.' } }
   }
+  const langLabel = languageLabel(params.language)
   try {
     const scenarioLine = params.scenario ? `SCENARIO: ${params.scenario}\n\n` : ''
     const transcriptText = transcript
@@ -120,7 +133,7 @@ export async function reviewTranscript(
         messages: [
           {
             role: 'system',
-            content: `You are reviewing a Brazilian Portuguese language-learning conversation between a tutor and an English-speaking learner. Produce a JSON object with these exact keys:
+            content: `You are reviewing a ${langLabel} language-learning conversation between a tutor and an English-speaking learner. Produce a JSON object with these exact keys:
 
 - "summary": string. One or two sentences on what was practiced.
 - "corrections": array of { "original": string, "corrected": string, "explanation": string }. Only include meaningful mistakes the learner made — skip tiny slips. Use the learner's exact words for "original". Keep "explanation" brief (one line), in English.

@@ -1,14 +1,38 @@
 // Persistent "next-session focus" — a one-line steering hint extracted by
-// the post-session review. Natalia uses it silently to bias topic and form
-// choices in the next free conversation. NOT shown to the learner; not
-// announced as a lesson plan.
+// the post-session review. The tutor uses it silently to bias topic and
+// form choices in the next free conversation. NOT shown to the learner;
+// not announced as a lesson plan.
+//
+// Scoped per tutor — focus from a PT session shouldn't leak into ES.
 
-const STORAGE_KEY = 'walkie_focus_v1'
+import type { TutorId } from './tutors/types'
+import { DEFAULT_TUTOR_ID } from './tutors'
+
+const LEGACY_KEY = 'walkie_focus_v1'
 const MAX_LENGTH = 200
 
-export function loadFocus(): string | null {
+function storageKey(tutorId: TutorId): string {
+  return `walkie_focus_v2_${tutorId}`
+}
+
+function migrateLegacyIfNeeded(): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(LEGACY_KEY)
+    if (!raw) return
+    const targetKey = storageKey(DEFAULT_TUTOR_ID)
+    if (!localStorage.getItem(targetKey)) {
+      localStorage.setItem(targetKey, raw)
+    }
+    localStorage.removeItem(LEGACY_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+export function loadFocus(tutorId: TutorId): string | null {
+  migrateLegacyIfNeeded()
+  try {
+    const raw = localStorage.getItem(storageKey(tutorId))
     if (!raw) return null
     const parsed = JSON.parse(raw)
     if (typeof parsed !== 'string') return null
@@ -19,19 +43,19 @@ export function loadFocus(): string | null {
   }
 }
 
-export function saveFocus(focus: string): void {
+export function saveFocus(tutorId: TutorId, focus: string): void {
   const trimmed = focus.trim().slice(0, MAX_LENGTH)
   if (!trimmed) return
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed))
+    localStorage.setItem(storageKey(tutorId), JSON.stringify(trimmed))
   } catch {
     // ignore
   }
 }
 
-export function clearFocus(): void {
+export function clearFocus(tutorId: TutorId): void {
   try {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(storageKey(tutorId))
   } catch {
     // ignore
   }

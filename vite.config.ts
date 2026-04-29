@@ -132,8 +132,8 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use('/api/translate', async (req, res) => {
             const userId = await getUserIdFromAuthHeader(authHeader(req))
             if (!userId) return sendResult(res, { status: 401, body: { error: 'Not signed in.' } })
-            const body = await readJsonBody<{ text?: string }>(req)
-            sendResult(res, await translate(env.OPENAI_API_KEY, body.text))
+            const body = await readJsonBody<{ text?: string; language?: string }>(req)
+            sendResult(res, await translate(env.OPENAI_API_KEY, body.text, body.language))
           })
 
           server.middlewares.use('/api/review', async (req, res) => {

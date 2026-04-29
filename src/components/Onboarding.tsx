@@ -1,13 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import type { Level } from '../lib/scenarios'
 import type { LearnerProfile } from '../lib/profile'
+import { getTutor } from '../lib/tutors'
 
-// Post-subscribe questionnaire. The trial flow no longer asks anything
-// upfront — Natalia infers name + level during the first session. This
-// form runs once after a learner subscribes, gathering the richer profile
-// (native language, goals) that helps tune the rest of the experience.
-//
-// Prefilled where possible from values inferred during the trial.
+// Post-subscribe questionnaire. Native language + tutor were captured in the
+// initial language picker before the first session, so this form only asks
+// for name, level (prefilled from the trial review), and goals.
 
 type LevelOption = {
   id: Level
@@ -19,7 +17,7 @@ const LEVELS: LevelOption[] = [
   {
     id: 'complete-beginner',
     title: 'First timer',
-    blurb: `I don't know any Portuguese yet.`,
+    blurb: `I don't know any of the language yet.`,
   },
   {
     id: 'novice',
@@ -38,18 +36,6 @@ const LEVELS: LevelOption[] = [
   },
 ]
 
-const NATIVE_LANGUAGES = [
-  'English',
-  'Spanish',
-  'French',
-  'German',
-  'Mandarin',
-  'Hindi',
-  'Arabic',
-  'Italian',
-  'Other',
-]
-
 export function Onboarding({
   initialProfile,
   onComplete,
@@ -58,18 +44,18 @@ export function Onboarding({
   onComplete: (profile: LearnerProfile) => void
 }) {
   const [name, setName] = useState(initialProfile?.name ?? '')
-  const [nativeLanguage, setNativeLanguage] = useState(
-    initialProfile?.nativeLanguage ?? 'English',
-  )
   const [level, setLevel] = useState<Level | null>(initialProfile?.level ?? null)
   const [goals, setGoals] = useState(initialProfile?.goals ?? '')
+
+  // Tutor is already chosen by this point (initial picker). Use their name
+  // and language label for the copy so it feels personal rather than generic.
+  const tutor = getTutor(initialProfile?.tutorId)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim() || !level) return
     onComplete({
       name: name.trim(),
-      nativeLanguage: nativeLanguage.trim(),
       level,
       goals: goals.trim() || undefined,
       questionnaireCompleted: true,
@@ -83,12 +69,12 @@ export function Onboarding({
       <div className="onboarding-card">
         <h2 className="onboarding-title">Welcome aboard! Tell us a bit about you</h2>
         <p className="onboarding-body">
-          Quick four-question setup so Natalia can tune the rest of your sessions.
+          Quick setup so {tutor.name} can tune the rest of your sessions.
         </p>
 
         <form onSubmit={handleSubmit} className="onboarding-form">
           <label className="onboarding-label">
-            <span className="onboarding-label-text">What should Natalia call you?</span>
+            <span className="onboarding-label-text">What should {tutor.name} call you?</span>
             <input
               type="text"
               value={name}
@@ -101,23 +87,10 @@ export function Onboarding({
             />
           </label>
 
-          <label className="onboarding-label">
-            <span className="onboarding-label-text">What's your native language?</span>
-            <select
-              value={nativeLanguage}
-              onChange={(e) => setNativeLanguage(e.target.value)}
-              className="onboarding-input"
-            >
-              {NATIVE_LANGUAGES.map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <div className="onboarding-label">
-            <span className="onboarding-label-text">What's your Portuguese level?</span>
+            <span className="onboarding-label-text">
+              What's your {tutor.languageLabel} level?
+            </span>
             <div className="onboarding-levels">
               {LEVELS.map((opt) => (
                 <button
@@ -140,7 +113,7 @@ export function Onboarding({
             <textarea
               value={goals}
               onChange={(e) => setGoals(e.target.value)}
-              placeholder="Talk to my Brazilian in-laws · travel · work · just curious…"
+              placeholder="Talk to my in-laws · travel · work · just curious…"
               className="onboarding-input onboarding-textarea"
               rows={3}
               maxLength={300}

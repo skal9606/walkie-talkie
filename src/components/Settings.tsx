@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { signOut } from '../lib/auth'
 import {
+  NATIVE_LANGUAGES,
   loadProfile,
   saveProfile,
   type LearnerProfile,
+  type NativeLanguage,
 } from '../lib/profile'
 import {
   applyTheme,
@@ -15,6 +17,8 @@ import {
   type Strictness,
   type Theme,
 } from '../lib/preferences'
+import { TUTORS, getTutor } from '../lib/tutors'
+import type { TutorId } from '../lib/tutors/types'
 
 type SubscriptionDetail = {
   plan: 'monthly' | 'yearly' | null
@@ -244,17 +248,46 @@ function ProfileTab({
       </Field>
 
       <Field label="Native language">
-        <input
-          type="text"
+        <select
           className="settings-input"
-          value={draft.nativeLanguage ?? ''}
-          onChange={(e) => update('nativeLanguage', e.target.value)}
-          placeholder="English, Spanish, etc."
-        />
+          value={draft.nativeLanguage ?? 'English'}
+          onChange={(e) => update('nativeLanguage', e.target.value as NativeLanguage)}
+        >
+          {NATIVE_LANGUAGES.map((lang) => (
+            <option key={lang} value={lang}>
+              {lang}
+            </option>
+          ))}
+        </select>
       </Field>
 
-      <Field label="Language being learned">
-        <div className="settings-readonly">Brazilian Portuguese</div>
+      <Field
+        label="Language being learned"
+        hint="Switching language resets your proficiency so the next session starts fresh."
+      >
+        <select
+          className="settings-input"
+          value={draft.tutorId ?? TUTORS[0].id}
+          onChange={(e) => {
+            const nextId = e.target.value as TutorId
+            const nextTutor = getTutor(nextId)
+            // Switching tutor → drop the old level + name so the next
+            // session goes through Discover for the new language.
+            setDraft((d) => ({
+              ...d,
+              tutorId: nextId,
+              targetLanguage: nextTutor.language,
+              level: d.tutorId === nextId ? d.level : undefined,
+            }))
+            setJustSaved(false)
+          }}
+        >
+          {TUTORS.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.flag} {t.languageLabel} — {t.name}, {t.city}
+            </option>
+          ))}
+        </select>
       </Field>
 
       <Field label="Proficiency level">
