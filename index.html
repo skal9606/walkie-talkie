@@ -6,11 +6,20 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <title>Walkie Talkie</title>
+    <title>Walkie Talkie — Voice AI tutor for languages</title>
+    <meta
+      name="description"
+      content="Practice languages by talking. Real-time voice AI tutors for Mexican Spanish, Brazilian Portuguese, and more. 24/7, no scheduling."
+    />
 
     <!-- PWA / iOS install metadata -->
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#0f1115" />
+    <!-- apple-* is the historical iOS spelling; the unprefixed form is the
+         cross-browser standard. iOS Safari still reads the apple-* variant
+         in standalone-launched mode, so we keep both. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Walkie Talkie" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
