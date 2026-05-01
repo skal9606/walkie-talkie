@@ -1,10 +1,21 @@
 import type { BeginnerCard, BeginnerTopic } from './types'
 
+function stripDiacritics(s: string): string {
+  // Decompose to base + combining marks, then strip the marks (U+0300–U+036F).
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
 /**
  * Returns the first card whose `word` (or any alias) appears as a discrete
  * token in `text`, excluding any whose word is already in `seen`. Token
  * boundaries are whitespace, common punctuation, and curly quotes — so
  * "água!" matches "água" but "águamonster" would not.
+ *
+ * Matches in two passes: an exact pass first, then a diacritic-stripped
+ * fallback (so "agua" matches the "água" card when the EN-pinned
+ * transcription drops the accent at complete-beginner level). The
+ * stripped pass is gated to card words longer than 2 characters to avoid
+ * collisions like Spanish "sí" (yes) → "si" (if).
  *
  * Designed to be called repeatedly with the cumulative tutor turn text as
  * Realtime audio_transcript deltas arrive. The `seen` set is the caller's
@@ -16,16 +27,44 @@ export function findBeginnerCardInText(
   seen: Set<string>,
 ): BeginnerCard | null {
   if (!text || cards.length === 0) return null
-  const tokens = new Set(
+  const rawTokens = new Set(
     text
       .toLowerCase()
       .split(/[\s.,!?;:()…—–"‘’“”]+/u)
       .filter(Boolean),
   )
+  const strippedTokens = new Set(
+    Array.from(rawTokens).map((t) => stripDiacritics(t)),
+  )
   for (const card of cards) {
     if (seen.has(card.word)) continue
-    if (tokens.has(card.word)) return card
-    if (card.aliases?.some((a) => tokens.has(a.toLowerCase()))) return card
+    // 1. Exact match (preserves diacritics — preferred when transcript is
+    //    pinned to the target language and renders accents correctly).
+    if (rawTokens.has(card.word)) return card
+    if (card.aliases?.some((a) => rawTokens.has(a.toLowerCase()))) return card
+    // 2. Diacritic-stripped fallback for longer words. Catches the common
+    //    case of EN-pinned transcripts dropping accents on target-language
+    //    words ("familia" instead of "família"). Skip ≤2-char card words
+    //    where stripping creates collisions (sí↔si, etc.).
+    if (card.word.length > 2) {
+      const strippedWord = stripDiacritics(card.word)
+      if (strippedWord !== card.word && strippedTokens.has(strippedWord)) {
+        return card
+      }
+    }
+    if (card.aliases) {
+      for (const alias of card.aliases) {
+        if (alias.length > 2) {
+          const strippedAlias = stripDiacritics(alias.toLowerCase())
+          if (
+            strippedAlias !== alias.toLowerCase() &&
+            strippedTokens.has(strippedAlias)
+          ) {
+            return card
+          }
+        }
+      }
+    }
   }
   return null
 }
