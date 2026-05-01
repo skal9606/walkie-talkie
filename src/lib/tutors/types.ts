@@ -42,8 +42,12 @@ export type Tutor = {
    * Returns the full base system prompt for a session with this tutor. Pulled
    * once at session start and concatenated with the scenario addon, learner
    * context, vocab/focus blocks, and preferences block.
+   *
+   * `nativeLanguage` is the learner's native language as an English name
+   * ("English", "Spanish", "French", …). It's templated into the persona
+   * wherever the prompt references the language the learner falls back to.
    */
-  buildSystemInstructions: () => string
+  buildSystemInstructions: (ctx: { nativeLanguage: string }) => string
 
   /** All scenarios this tutor can run (free convo per level + roleplays). */
   scenarios: TutorScenarios

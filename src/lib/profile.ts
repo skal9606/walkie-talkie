@@ -16,9 +16,41 @@ import { DEFAULT_TUTOR_ID, getTutor } from './tutors'
 
 const STORAGE_KEY = 'walkie_profile_v1'
 
-/** Native languages we currently let users pick from. English-only for now. */
-export type NativeLanguage = 'English'
-export const NATIVE_LANGUAGES: NativeLanguage[] = ['English']
+/**
+ * Native languages we currently let users pick from. The internal value is
+ * the English name (used directly in prompts as "respond in ${native}").
+ * Display labels and flags are in NATIVE_LANGUAGE_LABELS — keep that map in
+ * sync when adding a value here.
+ */
+export type NativeLanguage =
+  | 'English'
+  | 'Spanish'
+  | 'French'
+  | 'German'
+  | 'Italian'
+  | 'Mandarin'
+
+export const NATIVE_LANGUAGES: NativeLanguage[] = [
+  'English',
+  'Spanish',
+  'French',
+  'German',
+  'Italian',
+  'Mandarin',
+]
+
+/** Display name + flag for the picker. The internal value stays English. */
+export const NATIVE_LANGUAGE_LABELS: Record<
+  NativeLanguage,
+  { display: string; flag: string }
+> = {
+  English: { display: 'English', flag: '🇺🇸' },
+  Spanish: { display: 'Español', flag: '🇪🇸' },
+  French: { display: 'Français', flag: '🇫🇷' },
+  German: { display: 'Deutsch', flag: '🇩🇪' },
+  Italian: { display: 'Italiano', flag: '🇮🇹' },
+  Mandarin: { display: '普通话', flag: '🇨🇳' },
+}
 
 export type LearnerProfile = {
   name?: string
@@ -68,12 +100,21 @@ export function loadProfile(): LearnerProfile | null {
     if (isLevel(parsed.level)) profile.level = parsed.level
     if (isNativeLanguage(parsed.nativeLanguage)) {
       profile.nativeLanguage = parsed.nativeLanguage
-    } else if (
-      typeof parsed.nativeLanguage === 'string' &&
-      parsed.nativeLanguage.trim().toLowerCase() === 'english'
-    ) {
-      // Legacy "English" free-text → enum.
-      profile.nativeLanguage = 'English'
+    } else if (typeof parsed.nativeLanguage === 'string') {
+      // Tolerate legacy free-text values (e.g. "english" lowercased) and
+      // values written in their native script (e.g. "Español"). Map back to
+      // the canonical English-name enum.
+      const raw = parsed.nativeLanguage.trim()
+      const norm = raw.toLowerCase()
+      const fromDisplay = (Object.entries(NATIVE_LANGUAGE_LABELS) as [
+        NativeLanguage,
+        { display: string },
+      ][]).find(([, v]) => v.display.toLowerCase() === norm)?.[0]
+      if (fromDisplay) {
+        profile.nativeLanguage = fromDisplay
+      } else if (norm === 'english') {
+        profile.nativeLanguage = 'English'
+      }
     }
     if (typeof parsed.goals === 'string' && parsed.goals.trim()) {
       profile.goals = parsed.goals.trim()

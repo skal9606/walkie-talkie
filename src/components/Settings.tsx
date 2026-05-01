@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { signOut } from '../lib/auth'
 import {
   NATIVE_LANGUAGES,
+  NATIVE_LANGUAGE_LABELS,
   loadProfile,
   saveProfile,
   type LearnerProfile,
@@ -255,7 +256,7 @@ function ProfileTab({
         >
           {NATIVE_LANGUAGES.map((lang) => (
             <option key={lang} value={lang}>
-              {lang}
+              {NATIVE_LANGUAGE_LABELS[lang].flag} {NATIVE_LANGUAGE_LABELS[lang].display}
             </option>
           ))}
         </select>

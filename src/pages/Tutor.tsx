@@ -294,7 +294,10 @@ export default function Tutor() {
           title: 'Welcome',
           description: `Meet ${tutor.name}`,
           buildPromptAddon: () =>
-            tutor.scenarios.buildModePromptAddon('discover', { name: profile?.name }),
+            tutor.scenarios.buildModePromptAddon('discover', {
+              name: profile?.name,
+              nativeLanguage: profile?.nativeLanguage,
+            }),
           vadEagerness: tutor.scenarios.vadForMode('discover', undefined),
         }
       : (() => {
@@ -302,7 +305,11 @@ export default function Tutor() {
           return {
             ...baseScenario,
             buildPromptAddon: () =>
-              baseScenario.buildPromptAddon({ name: profile?.name, memory }),
+              baseScenario.buildPromptAddon({
+                name: profile?.name,
+                memory,
+                nativeLanguage: profile?.nativeLanguage,
+              }),
           }
         })()
     setAutoStartAfterAuth(false)
@@ -347,6 +354,7 @@ export default function Tutor() {
           name: profile.name,
           level: profile.level,
           memory,
+          nativeLanguage: profile.nativeLanguage,
         }),
       vadEagerness: tutor.scenarios.vadForMode(mode, profile.level),
     }
@@ -527,9 +535,11 @@ export default function Tutor() {
     tutorTurnTextRef.current = new Map()
 
     const activeScenario = overrideScenario ?? scenario
+    const nativeLanguage = profile?.nativeLanguage ?? 'English'
     const addon = activeScenario.buildPromptAddon({
       name: profile?.name,
       memory: loadMemory(tutor.id),
+      nativeLanguage,
     })
     const learnerContext = buildLearnerContextBlock(profile)
     const preferencesBlock = buildPreferencesPromptBlock(loadPreferences())
@@ -540,7 +550,7 @@ export default function Tutor() {
     const vocabBlock = isFreeConversation ? buildVocabBlock(loadVocab(tutor.id)) : ''
     const focusBlock = isFreeConversation ? buildFocusBlock(loadFocus(tutor.id)) : ''
     const instructions = [
-      tutor.buildSystemInstructions(),
+      tutor.buildSystemInstructions({ nativeLanguage }),
       addon,
       learnerContext,
       vocabBlock,

@@ -17,6 +17,13 @@ export type PromptContext = {
    * the canned script.
    */
   memory?: string[]
+  /**
+   * The learner's native language as the English name ("English",
+   * "Spanish", "French", …). Templated into prompts wherever they say
+   * "respond in ${native}", "switch to ${native}", etc. Defaults to
+   * "English" when the profile hasn't been hydrated yet.
+   */
+  nativeLanguage?: string
 }
 
 export type Scenario = {
@@ -47,6 +54,8 @@ export type ModeContext = {
   level?: Level
   /** Optional memory bullets from prior sessions; used by free-mode opener. */
   memory?: string[]
+  /** The learner's native language; same semantics as PromptContext.nativeLanguage. */
+  nativeLanguage?: string
 }
 
 export type ModeMeta = {

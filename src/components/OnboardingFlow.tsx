@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { TUTORS } from '../lib/tutors'
 import type { LanguageCode, TutorId } from '../lib/tutors/types'
-import { NATIVE_LANGUAGES, type NativeLanguage } from '../lib/profile'
+import {
+  NATIVE_LANGUAGES,
+  NATIVE_LANGUAGE_LABELS,
+  type NativeLanguage,
+} from '../lib/profile'
 import type { Level } from '../lib/scenarios'
 
 // Multi-step first-time onboarding (ISSEN/Speak-style). One question per
@@ -151,37 +155,20 @@ export function OnboardingFlow({
             </p>
             <h1 className="onboarding-step-title">What's your native language?</h1>
             <div className="onboarding-options">
-              {NATIVE_LANGUAGES.map((lang) => (
-                <button
-                  type="button"
-                  key={lang}
-                  className={`onboarding-option ${nativeLanguage === lang ? 'selected' : ''}`}
-                  onClick={() => setNativeLanguage(lang)}
-                >
-                  <span className="onboarding-option-flag" aria-hidden>🇺🇸</span>
-                  <span className="onboarding-option-label">{lang}</span>
-                </button>
-              ))}
-              {/* Coming-soon natives. Disabled but visible so future support is signaled. */}
-              {[
-                { flag: '🇪🇸', label: 'Español' },
-                { flag: '🇫🇷', label: 'Français' },
-                { flag: '🇩🇪', label: 'Deutsch' },
-                { flag: '🇮🇹', label: 'Italiano' },
-                { flag: '🇨🇳', label: '普通话' },
-              ].map((opt) => (
-                <button
-                  type="button"
-                  key={opt.label}
-                  className="onboarding-option onboarding-option-disabled"
-                  disabled
-                  aria-disabled
-                >
-                  <span className="onboarding-option-flag" aria-hidden>{opt.flag}</span>
-                  <span className="onboarding-option-label">{opt.label}</span>
-                  <span className="onboarding-option-soon">Soon</span>
-                </button>
-              ))}
+              {NATIVE_LANGUAGES.map((lang) => {
+                const meta = NATIVE_LANGUAGE_LABELS[lang]
+                return (
+                  <button
+                    type="button"
+                    key={lang}
+                    className={`onboarding-option ${nativeLanguage === lang ? 'selected' : ''}`}
+                    onClick={() => setNativeLanguage(lang)}
+                  >
+                    <span className="onboarding-option-flag" aria-hidden>{meta.flag}</span>
+                    <span className="onboarding-option-label">{meta.display}</span>
+                  </button>
+                )
+              })}
             </div>
             <div className="onboarding-flow-actions">
               <button
