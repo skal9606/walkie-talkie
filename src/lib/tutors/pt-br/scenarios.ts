@@ -16,8 +16,12 @@ import type {
   VadEagerness,
 } from '../../scenarios'
 import type { TutorScenarios } from '../types'
-import { buildBeginnerCardsPromptBlock } from '../beginner-cards'
+import {
+  buildBeginnerCardsPromptBlock,
+  buildBeginnerTopicsPromptBlock,
+} from '../beginner-cards'
 import { PT_BR_BEGINNER_CARDS } from './beginner-cards'
+import { PT_BR_TOPICS } from './topics'
 
 const LEVEL_LABEL: Record<Level, string> = {
   'complete-beginner': 'A0 (knows zero Portuguese)',
@@ -181,6 +185,8 @@ LEVEL CALIBRATION — PREDOMINANTLY ${native}, NO PORTUGUESE SENTENCES (CRITICAL
 - An entirely-${native} turn is FINE and EXPECTED — especially when getting to know them, explaining, or responding to emotion. Don't force Portuguese where it doesn't belong.
 
 ${buildBeginnerCardsPromptBlock(PT_BR_BEGINNER_CARDS)}
+
+${buildBeginnerTopicsPromptBlock(PT_BR_TOPICS)}
 
 HANDLING CONFUSION (REACTIVE, NOT PROACTIVE)
 - This is NOT a flashcard deck. Don't drill words. Don't quiz. Just teach one word at a time and pause.

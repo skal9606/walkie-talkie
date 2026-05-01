@@ -6,6 +6,7 @@ import type { Tutor } from '../types'
 import type { Level } from '../../scenarios'
 import { esMxScenarios } from './scenarios'
 import { ES_MX_BEGINNER_CARDS } from './beginner-cards'
+import { ES_MX_TOPICS } from './topics'
 
 export function buildMariaInstructions(native: string): string {
   return `You are María. You're a Mexican Spanish tutor having a live voice conversation with a ${native} speaker.
@@ -330,4 +331,5 @@ export const maria: Tutor = {
   scenarios: esMxScenarios,
   transcriptionLanguage,
   beginnerCards: ES_MX_BEGINNER_CARDS,
+  beginnerTopics: ES_MX_TOPICS,
 }

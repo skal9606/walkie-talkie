@@ -66,6 +66,14 @@ export type Tutor = {
    * against the tutor's transcript.
    */
   beginnerCards: BeginnerCard[]
+
+  /**
+   * Themed topics for the complete-beginner level — modeled on Duolingo's
+   * Section 1 unit structure. The tutor picks ONE topic per session based
+   * on the learner's stated reason for learning, then steers vocabulary
+   * toward that topic's `cardWords` subset of `beginnerCards`.
+   */
+  beginnerTopics: BeginnerTopic[]
 }
 
 /**
@@ -83,6 +91,34 @@ export type BeginnerCard = {
   emoji: string
   /** Alternate spellings the tutor might say (e.g. "obrigada" for "obrigado"). */
   aliases?: string[]
+}
+
+/**
+ * Themed topic for a complete-beginner session — Duolingo Section-1-style.
+ * Each topic groups a small subset (4–6) of priority words around a
+ * concrete scene (ordering at a cafe, identifying family, finding places
+ * in a city). The tutor picks one per session and stays focused on its
+ * vocabulary.
+ */
+export type BeginnerTopic = {
+  /** Stable identifier for logging / future "topics covered" tracking. */
+  id: string
+  /** Short title shown to the model (e.g. "Order at a cafe"). */
+  title: string
+  /** One-line topical description used in the prompt block. */
+  blurb: string
+  /**
+   * Card words this topic should surface. Must all exist in the tutor's
+   * `beginnerCards` list — these subset the priority vocabulary so the
+   * session feels themed instead of grab-bag.
+   */
+  cardWords: string[]
+  /**
+   * Free-form hint to help the tutor pick this topic from learner context
+   * ("learner mentions cafes, coffee, food service"). Not shown to the
+   * learner — purely to steer the model's selection.
+   */
+  matchHint: string
 }
 
 /**

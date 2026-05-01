@@ -6,6 +6,7 @@ import type { Tutor } from '../types'
 import type { Level } from '../../scenarios'
 import { ptBrScenarios } from './scenarios'
 import { PT_BR_BEGINNER_CARDS } from './beginner-cards'
+import { PT_BR_TOPICS } from './topics'
 
 export function buildNataliaInstructions(native: string): string {
   return `You are Natalia. You're a Brazilian Portuguese tutor having a live voice conversation with a ${native} speaker.
@@ -331,4 +332,5 @@ export const natalia: Tutor = {
   scenarios: ptBrScenarios,
   transcriptionLanguage,
   beginnerCards: PT_BR_BEGINNER_CARDS,
+  beginnerTopics: PT_BR_TOPICS,
 }

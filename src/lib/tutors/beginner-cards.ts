@@ -1,4 +1,4 @@
-import type { BeginnerCard } from './types'
+import type { BeginnerCard, BeginnerTopic } from './types'
 
 /**
  * Returns the first card whose `word` (or any alias) appears as a discrete
@@ -47,4 +47,32 @@ export function buildBeginnerCardsPromptBlock(
 - TRIGGER YOUR FIRST CARD EARLY — by your second or third turn at the latest. After the opener (which is 100% English), the next time you have a natural reason to introduce a noun, pick a priority word and let the card pop. The learner needs to see this happen early to understand that this app is different from chat-only voice tutors.
 - Don't announce the card. Don't say "watch the screen", "see the picture", or "a card just appeared". The card is the learner's reward — they'll notice it themselves.
 - Aim for 4–6 different cards over a 5-minute session, paced naturally — never as a checklist, never two in the same turn.`
+}
+
+/**
+ * Renders the topic-selection block for a complete-beginner system prompt.
+ * Each session is themed around ONE topic the model picks based on what
+ * the learner shares — modeled on Duolingo's Section 1 unit structure
+ * (Order at a cafe / Identify family members / Find places in the city /
+ * etc). Themed sessions feel cohesive and earn a clearer "you covered
+ * this" beat at the end vs. open-ended drift.
+ */
+export function buildBeginnerTopicsPromptBlock(
+  topics: readonly BeginnerTopic[],
+): string {
+  if (topics.length === 0) return ''
+  const list = topics
+    .map(
+      (t) =>
+        `  - ${t.title} — fits when: ${t.matchHint}. Lean on these words: ${t.cardWords.join(', ')}.`,
+    )
+    .join('\n')
+  return `TOPIC FOR THIS SESSION (PICK ONE FROM THE LIST BELOW)
+- After hearing the learner's reason for learning (their answer to the opener), pick ONE topic from the list below that best fits what they shared. Stay focused on that single topic for the rest of the session.
+- The topic narrows the priority vocabulary you should surface — pull from THAT topic's word list first, even though the full priority list above is technically available.
+- Topics:
+${list}
+- If their reason is generic ("just for fun", "I'm curious") or unclear, default to "Greet and say goodbye".
+- DO NOT announce the topic ("today we're going to talk about cafes"). Just steer naturally — the topic is invisible scaffolding.
+- ONE topic per session, not a tour of three. Cohesion over coverage at this level.`
 }

@@ -12,8 +12,12 @@ import type {
   VadEagerness,
 } from '../../scenarios'
 import type { TutorScenarios } from '../types'
-import { buildBeginnerCardsPromptBlock } from '../beginner-cards'
+import {
+  buildBeginnerCardsPromptBlock,
+  buildBeginnerTopicsPromptBlock,
+} from '../beginner-cards'
 import { ES_MX_BEGINNER_CARDS } from './beginner-cards'
+import { ES_MX_TOPICS } from './topics'
 
 // Resolve the learner's native language for prompt templating. See the
 // matching helper in pt-br/scenarios.ts for the rationale.
@@ -171,6 +175,8 @@ LEVEL CALIBRATION — PREDOMINANTLY ${native}, NO SPANISH SENTENCES (CRITICAL)
 - An entirely-${native} turn is FINE and EXPECTED — especially when getting to know them, explaining, or responding to emotion. Don't force Spanish where it doesn't belong.
 
 ${buildBeginnerCardsPromptBlock(ES_MX_BEGINNER_CARDS)}
+
+${buildBeginnerTopicsPromptBlock(ES_MX_TOPICS)}
 
 HANDLING CONFUSION (REACTIVE, NOT PROACTIVE)
 - This is NOT a flashcard deck. Don't drill words. Don't quiz. Just teach one word at a time and pause.
