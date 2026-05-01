@@ -37,7 +37,7 @@ export class RealtimeTutor {
        * during the level-discovery session, when we don't know yet
        * whether the learner will reply in English or the target language.
        */
-      transcriptionLanguage?: 'pt' | 'en' | 'es' | 'fr' | 'it'
+      transcriptionLanguage?: 'pt' | 'en' | 'es' | 'fr' | 'it' | 'de'
     } = {},
   ): Promise<{ subscribed: boolean; secondsRemaining: number }> {
     const tokenRes = await fetch('/api/session', {

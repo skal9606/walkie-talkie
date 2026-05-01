@@ -1,0 +1,38 @@
+import type { BeginnerCard } from '../types'
+
+// Curated complete-beginner vocabulary for French. Mirrors the other tutors
+// 1:1 where the concept translates cleanly.
+export const FR_FR_BEGINNER_CARDS: BeginnerCard[] = [
+  { word: 'eau', native: 'water', emoji: '💧' },
+  { word: 'café', native: 'coffee', emoji: '☕' },
+  { word: 'pomme', native: 'apple', emoji: '🍎' },
+  { word: 'pain', native: 'bread', emoji: '🍞' },
+  { word: 'lait', native: 'milk', emoji: '🥛' },
+  { word: 'bière', native: 'beer', emoji: '🍺' },
+  { word: 'vin', native: 'wine', emoji: '🍷' },
+  { word: 'plage', native: 'beach', emoji: '🏖️' },
+  { word: 'soleil', native: 'sun', emoji: '☀️' },
+  { word: 'maison', native: 'house', emoji: '🏠' },
+  { word: 'ville', native: 'city', emoji: '🏙️' },
+  { word: 'chat', native: 'cat', emoji: '🐱' },
+  { word: 'chien', native: 'dog', emoji: '🐕' },
+  { word: 'amour', native: 'love', emoji: '❤️' },
+  { word: 'ami', native: 'friend', emoji: '🤝', aliases: ['amie'] },
+  { word: 'famille', native: 'family', emoji: '👪' },
+  { word: 'nourriture', native: 'food', emoji: '🍽️' },
+  { word: 'riz', native: 'rice', emoji: '🍚' },
+  { word: 'fromage', native: 'cheese', emoji: '🧀' },
+  { word: 'voiture', native: 'car', emoji: '🚗' },
+  { word: 'avion', native: 'airplane', emoji: '✈️' },
+  { word: 'livre', native: 'book', emoji: '📖' },
+  { word: 'musique', native: 'music', emoji: '🎵' },
+  { word: 'foot', native: 'soccer', emoji: '⚽', aliases: ['football'] },
+  { word: 'travail', native: 'work', emoji: '💼' },
+  { word: 'école', native: 'school', emoji: '🏫' },
+  { word: 'salut', native: 'hi', emoji: '👋' },
+  { word: 'merci', native: 'thank you', emoji: '🙏' },
+  { word: 'oui', native: 'yes', emoji: '✅' },
+  { word: 'non', native: 'no', emoji: '🚫' },
+  { word: 'voyage', native: 'trip', emoji: '🧳' },
+  { word: 'nom', native: 'name', emoji: '🏷️' },
+]

@@ -44,6 +44,9 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
 const LANGUAGE_LABELS: Record<string, string> = {
   'pt-BR': 'Brazilian Portuguese',
   'es-MX': 'Mexican Spanish',
+  'it-IT': 'Italian',
+  'fr-FR': 'French',
+  'de-DE': 'German',
   // Future: 'es-ES': 'Castilian Spanish', 'es-AR': 'Rioplatense Spanish', etc.
 }
 

@@ -6,6 +6,9 @@ import type { BeginnerCard, LanguageCode } from '../lib/tutors/types'
 const SPEECH_LANG: Record<LanguageCode, string> = {
   'pt-BR': 'pt-BR',
   'es-MX': 'es-MX',
+  'it-IT': 'it-IT',
+  'fr-FR': 'fr-FR',
+  'de-DE': 'de-DE',
 }
 
 /**

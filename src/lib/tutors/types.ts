@@ -10,7 +10,7 @@ import type { Level, Scenario, ModeId, ModeContext, VadEagerness } from '../scen
  * exhaustively-switch and so the transcription model gets a clean pin. Add
  * new variants to this union as tutors come online.
  */
-export type LanguageCode = 'pt-BR' | 'es-MX' // | 'es-ES' | 'es-AR' | 'fr-FR' | 'it-IT'
+export type LanguageCode = 'pt-BR' | 'es-MX' | 'it-IT' | 'fr-FR' | 'de-DE'
 
 /** Stable identifier for a tutor — used as the registry key and in storage. */
 export type TutorId = string
@@ -57,7 +57,9 @@ export type Tutor = {
    * appropriate during the level-discovery first session when we don't yet
    * know whether the learner will reply in EN or in the target language.
    */
-  transcriptionLanguage: (level: Level | undefined) => 'pt' | 'en' | 'es' | 'fr' | 'it' | undefined
+  transcriptionLanguage: (
+    level: Level | undefined,
+  ) => 'pt' | 'en' | 'es' | 'fr' | 'it' | 'de' | undefined
 
   /**
    * Curated vocabulary cards that pop up mid-conversation when this tutor

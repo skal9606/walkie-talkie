@@ -1,0 +1,102 @@
+import type { BeginnerTopic } from '../types'
+
+// Themed beginner topics for Italian — mirrors PT_BR_TOPICS / ES_MX_TOPICS,
+// with Italian vocabulary. cardWords must exist in IT_IT_BEGINNER_CARDS.
+export const IT_IT_TOPICS: BeginnerTopic[] = [
+  {
+    id: 'cafe',
+    title: 'Order at a cafe',
+    blurb: 'Coffee, bread, drinks, basic ordering politeness.',
+    cardWords: ['caffè', 'pane', 'latte', 'acqua', 'grazie'],
+    matchHint:
+      'learner works in a cafe / restaurant / hospitality, mentions coffee, food, eating out',
+  },
+  {
+    id: 'greet',
+    title: 'Greet and say goodbye',
+    blurb: 'Hello, goodbye, thanks, yes/no — the social opener kit.',
+    cardWords: ['ciao', 'grazie', 'sì', 'no'],
+    matchHint:
+      'no specific context, just curious / wants the basics / total beginner with no story yet',
+  },
+  {
+    id: 'where-from',
+    title: 'Talk about where you\'re from',
+    blurb: 'Cities, home, names — placing yourself in the world.',
+    cardWords: ['casa', 'città', 'nome', 'sì', 'no'],
+    matchHint:
+      'learner mentions where they live, where they\'re visiting, travel destinations, their hometown',
+  },
+  {
+    id: 'family',
+    title: 'Identify family members',
+    blurb: 'Family, friends, love — the people closest to you.',
+    cardWords: ['famiglia', 'amore', 'amico', 'casa'],
+    matchHint:
+      'learner mentions a partner, parents, kids, in-laws, family in Italy, friends',
+  },
+  {
+    id: 'pets',
+    title: 'Pets and animals at home',
+    blurb: 'Cat, dog, the loved ones with fur.',
+    cardWords: ['gatto', 'cane', 'casa', 'amore'],
+    matchHint:
+      'learner mentions a pet, a cat, a dog, animals at home',
+  },
+  {
+    id: 'belongings',
+    title: 'Locate your belongings',
+    blurb: 'Books, cars, things around the house.',
+    cardWords: ['libro', 'macchina', 'casa'],
+    matchHint:
+      'learner mentions reading, driving, things they own, day-to-day stuff at home',
+  },
+  {
+    id: 'city',
+    title: 'Find places in the city',
+    blurb: 'Beaches, schools, cafes — getting around.',
+    cardWords: ['città', 'spiaggia', 'scuola', 'caffè', 'casa'],
+    matchHint:
+      'learner mentions traveling, sightseeing, exploring an Italian city, beaches, neighborhoods',
+  },
+  {
+    id: 'work-school',
+    title: 'Talk about work and school',
+    blurb: 'Job, classes, daily activities.',
+    cardWords: ['lavoro', 'scuola', 'casa', 'cibo'],
+    matchHint:
+      'learner mentions their job, studying, school, what they do day-to-day',
+  },
+  {
+    id: 'beach-weather',
+    title: 'Beach and weather',
+    blurb: 'Sun, beach, the outdoor scene.',
+    cardWords: ['sole', 'spiaggia', 'acqua'],
+    matchHint:
+      'learner mentions Italian coast, beaches, sun, the weather, outdoor plans',
+  },
+  {
+    id: 'groceries',
+    title: 'Shop for groceries',
+    blurb: 'Food shopping — bread, fruit, basics.',
+    cardWords: ['cibo', 'pane', 'mela', 'latte', 'riso', 'pasta'],
+    matchHint:
+      'learner mentions cooking, shopping, supermarkets, recipes, eating in',
+  },
+  {
+    id: 'home',
+    title: 'Describe your home',
+    blurb: 'Where you live — house, books, food, the daily setup.',
+    cardWords: ['casa', 'città', 'libro', 'cibo', 'gatto', 'cane'],
+    matchHint:
+      'learner describes their living situation, what their home is like, who they live with',
+  },
+  {
+    id: 'travel',
+    title: 'Plan a trip',
+    blurb: 'Travel, cars, planes — getting from A to B.',
+    cardWords: ['viaggio', 'macchina', 'aereo', 'spiaggia', 'città'],
+    matchHint:
+      'learner mentions an upcoming trip, planning travel, visiting Italy, flights',
+  },
+]

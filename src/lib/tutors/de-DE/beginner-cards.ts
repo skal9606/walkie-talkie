@@ -1,0 +1,40 @@
+import type { BeginnerCard } from '../types'
+
+// Curated complete-beginner vocabulary for German. German nouns are
+// capitalized; lowercase the matched forms here since the matcher is
+// case-insensitive and Realtime transcripts may not always capitalize.
+export const DE_DE_BEGINNER_CARDS: BeginnerCard[] = [
+  { word: 'wasser', native: 'water', emoji: '💧' },
+  { word: 'kaffee', native: 'coffee', emoji: '☕' },
+  { word: 'apfel', native: 'apple', emoji: '🍎' },
+  { word: 'brot', native: 'bread', emoji: '🍞' },
+  { word: 'milch', native: 'milk', emoji: '🥛' },
+  { word: 'bier', native: 'beer', emoji: '🍺' },
+  { word: 'wein', native: 'wine', emoji: '🍷' },
+  { word: 'strand', native: 'beach', emoji: '🏖️' },
+  { word: 'sonne', native: 'sun', emoji: '☀️' },
+  { word: 'haus', native: 'house', emoji: '🏠' },
+  { word: 'stadt', native: 'city', emoji: '🏙️' },
+  { word: 'katze', native: 'cat', emoji: '🐱' },
+  { word: 'hund', native: 'dog', emoji: '🐕' },
+  { word: 'liebe', native: 'love', emoji: '❤️' },
+  { word: 'freund', native: 'friend', emoji: '🤝', aliases: ['freundin'] },
+  { word: 'familie', native: 'family', emoji: '👪' },
+  { word: 'essen', native: 'food', emoji: '🍽️' },
+  { word: 'reis', native: 'rice', emoji: '🍚' },
+  { word: 'käse', native: 'cheese', emoji: '🧀' },
+  { word: 'auto', native: 'car', emoji: '🚗' },
+  { word: 'flugzeug', native: 'airplane', emoji: '✈️' },
+  { word: 'buch', native: 'book', emoji: '📖' },
+  { word: 'musik', native: 'music', emoji: '🎵' },
+  { word: 'fußball', native: 'soccer', emoji: '⚽' },
+  { word: 'arbeit', native: 'work', emoji: '💼' },
+  { word: 'schule', native: 'school', emoji: '🏫' },
+  { word: 'hallo', native: 'hello', emoji: '👋' },
+  { word: 'tschüss', native: 'bye', emoji: '👋' },
+  { word: 'danke', native: 'thank you', emoji: '🙏' },
+  { word: 'ja', native: 'yes', emoji: '✅' },
+  { word: 'nein', native: 'no', emoji: '🚫' },
+  { word: 'reise', native: 'trip', emoji: '🧳' },
+  { word: 'name', native: 'name', emoji: '🏷️' },
+]
