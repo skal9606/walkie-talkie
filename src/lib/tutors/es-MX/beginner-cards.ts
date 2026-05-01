@@ -35,4 +35,6 @@ export const ES_MX_BEGINNER_CARDS: BeginnerCard[] = [
   { word: 'adiós', native: 'bye', emoji: '👋' },
   { word: 'sí', native: 'yes', emoji: '✅' },
   { word: 'no', native: 'no', emoji: '🚫' },
+  { word: 'viaje', native: 'trip', emoji: '🧳' },
+  { word: 'nombre', native: 'name', emoji: '🏷️' },
 ]

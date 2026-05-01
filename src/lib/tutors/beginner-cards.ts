@@ -40,9 +40,11 @@ export function buildBeginnerCardsPromptBlock(
 ): string {
   if (cards.length === 0) return ''
   const list = cards.map((c) => c.word).join(', ')
-  return `PRIORITY VOCABULARY (a visual card appears for these)
-- The UI shows a small image card the moment you say one of these specific target-language words. Lean toward them when introducing a noun for the first time, but don't force any of them — they should fit what the learner is talking about:
-  ${list}.
-- Don't announce the card. Don't say "watch the screen" or "see the picture." The card is the learner's reward — they'll notice it themselves.
-- Aim for 3–5 of these over a 5-minute session, woven naturally into the conversation. Not all at once. Not as a checklist.`
+  return `PRIORITY VOCABULARY (THE CARDS)
+- A small visual flashcard (image + word + audio replay) pops up on the learner's screen the INSTANT you say one of the following target-language words. These cards are how the learner sees the written word, hears your pronunciation, and gets a clean image association — they're the primary learning loop at the complete-beginner level.
+- THE PRIORITY LIST: ${list}.
+- When you sprinkle a target-language word into a turn (per the rules above), it should ALMOST ALWAYS come from this list. Other target-language words are fine occasionally but produce no visual card — the learner gets less value from them.
+- TRIGGER YOUR FIRST CARD EARLY — by your second or third turn at the latest. After the opener (which is 100% English), the next time you have a natural reason to introduce a noun, pick a priority word and let the card pop. The learner needs to see this happen early to understand that this app is different from chat-only voice tutors.
+- Don't announce the card. Don't say "watch the screen", "see the picture", or "a card just appeared". The card is the learner's reward — they'll notice it themselves.
+- Aim for 4–6 different cards over a 5-minute session, paced naturally — never as a checklist, never two in the same turn.`
 }

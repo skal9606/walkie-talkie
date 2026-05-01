@@ -31,9 +31,12 @@ export const PT_BR_BEGINNER_CARDS: BeginnerCard[] = [
   { word: 'futebol', native: 'soccer', emoji: '⚽' },
   { word: 'trabalho', native: 'work', emoji: '💼' },
   { word: 'escola', native: 'school', emoji: '🏫' },
+  { word: 'oi', native: 'hi', emoji: '👋' },
   { word: 'olá', native: 'hello', emoji: '👋' },
   { word: 'obrigado', native: 'thank you', emoji: '🙏', aliases: ['obrigada'] },
   { word: 'tchau', native: 'bye', emoji: '👋' },
   { word: 'sim', native: 'yes', emoji: '✅' },
   { word: 'não', native: 'no', emoji: '🚫' },
+  { word: 'viagem', native: 'trip', emoji: '🧳' },
+  { word: 'nome', native: 'name', emoji: '🏷️' },
 ]
