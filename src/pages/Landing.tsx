@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
 import { useAuth } from '../lib/auth'
 import { TUTORS } from '../lib/tutors'
-import { hasLanguageSelection, loadProfile } from '../lib/profile'
 import {
   applyTheme,
   loadPreferences,
@@ -37,20 +36,15 @@ export default function Landing() {
     applyTheme(next)
   }
 
-  // Returning learners skip the marketing landing page:
-  //   - Signed-in (non-anonymous) users → /practice (subscriber portal).
-  //   - Anonymous users who already finished onboarding → /chat, which
-  //     auto-starts a free conversation that picks up prior memory.
-  // Brand-new visitors (no completed profile) stay here and see the pitch.
+  // Signed-in (non-anonymous / subscribed) learners skip the marketing
+  // landing and go straight to /practice. Anonymous users — even if they
+  // already finished onboarding — stay here so they can re-see the pitch,
+  // click pricing, and re-enter the trial via Chat Now (which auto-starts
+  // a free conversation that picks up prior memory at their saved level).
   useEffect(() => {
-    if (loading) return
-    if (user && !user.is_anonymous) {
-      navigate('/practice', { replace: true })
-      return
-    }
-    if (hasLanguageSelection(loadProfile())) {
-      navigate('/chat', { replace: true })
-    }
+    if (loading || !user) return
+    if (user.is_anonymous) return
+    navigate('/practice', { replace: true })
   }, [user, loading, navigate])
 
   // Pricing cards navigate to /chat with a ?checkout=<plan> param. Tutor.tsx
