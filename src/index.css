@@ -2698,3 +2698,113 @@ a {
   color: var(--muted);
   font-size: 13px;
 }
+
+/* --- Complete-beginner visual flashcard --- */
+/* Pinned above the controls while live. Shows up the moment the tutor says
+ * one of the curated priority words. Animation slides in from below + fades
+ * — fast enough to feel responsive, slow enough to draw the eye. */
+.beginner-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 16px 8px;
+  padding: 14px 16px 14px 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--accent-dim);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  animation: beginner-card-in 220ms ease-out;
+}
+
+@keyframes beginner-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.beginner-card-emoji {
+  font-size: 44px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.beginner-card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.beginner-card-word {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text, inherit);
+  line-height: 1.1;
+}
+
+.beginner-card-native {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.beginner-card-speak {
+  flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--accent-dim);
+  background: transparent;
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.beginner-card-speak:hover {
+  background: rgba(124, 196, 168, 0.1);
+}
+.beginner-card-speak:active {
+  transform: scale(0.97);
+}
+
+.beginner-card-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+.beginner-card-close:hover {
+  color: var(--text, inherit);
+}
+
+@media (max-width: 480px) {
+  .beginner-card {
+    margin: 10px 12px 6px;
+    padding: 12px 12px 12px 14px;
+    gap: 12px;
+  }
+  .beginner-card-emoji {
+    font-size: 38px;
+  }
+  .beginner-card-word {
+    font-size: 19px;
+  }
+  .beginner-card-speak {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}

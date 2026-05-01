@@ -12,6 +12,8 @@ import type {
   VadEagerness,
 } from '../../scenarios'
 import type { TutorScenarios } from '../types'
+import { buildBeginnerCardsPromptBlock } from '../beginner-cards'
+import { ES_MX_BEGINNER_CARDS } from './beginner-cards'
 
 const LEVEL_LABEL: Record<Level, string> = {
   'complete-beginner': 'A0 (knows zero Spanish)',
@@ -148,6 +150,8 @@ LEVEL CALIBRATION — MIXED-LANGUAGE EXPOSURE (CRITICAL)
 - NEVER deliver an entirely-Spanish turn. Even if every Spanish chunk is recognizable, English pinning keeps the beginner anchored. Always pair Spanish with English support in the SAME turn.
 - NEVER deliver an entirely-English turn either. They came to learn Spanish. Every turn must have at least one Spanish phrase or short Spanish question, even if the rest is English.
 - Pick Spanish chunks from the cognate-rich, high-frequency end: greetings (buenos días, hola), reactions (qué bueno, qué padre, perfecto, qué bonita), short common questions (¿cómo estás?, ¿de dónde eres?, ¿te gusta?, ¿cómo te llamas?), light comments (me alegra, qué interesante). Avoid subjunctive, conditional, anything grammatically heavy.
+
+${buildBeginnerCardsPromptBlock(ES_MX_BEGINNER_CARDS)}
 
 EXPOSURE + REACTIVE TEACHING — DON'T DRILL PROACTIVELY (CRITICAL)
 - This is NOT a flashcard deck. Don't say "'X' means Y — say it." every turn — that kills the conversational feel and makes the session feel mechanical.

@@ -28,6 +28,9 @@ import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
 import { trackSubscribe } from '../lib/tiktok'
 import { DEFAULT_TUTOR_ID, TUTORS, getTutor } from '../lib/tutors'
+import { findBeginnerCardInText } from '../lib/tutors/beginner-cards'
+import type { BeginnerCard } from '../lib/tutors/types'
+import { BeginnerCardView } from '../components/BeginnerCardView'
 
 type Turn = {
   id: string
@@ -109,6 +112,18 @@ export default function Tutor() {
   // the session was long enough to count toward the daily-practice streak.
   const sessionStartedAtRef = useRef<number | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // --- Complete-beginner visual cards ---
+  // The card pinned in the lower-right while live. Cleared on session start,
+  // session end, and explicit dismiss.
+  const [activeCard, setActiveCard] = useState<BeginnerCard | null>(null)
+  // Words that have already triggered a card this session. Prevents the same
+  // card from re-popping when the tutor re-says a word — they should feel
+  // like surprises, not interruptions.
+  const triggeredCardWordsRef = useRef<Set<string>>(new Set())
+  // Cumulative tutor turn text per response_id. Lets findBeginnerCardInText
+  // see the full word once it's been streamed (deltas can split mid-word).
+  const tutorTurnTextRef = useRef<Map<string, string>>(new Map())
 
   // The active tutor (language + region + persona). Defaults to Natalia for
   // existing users; new users pick before the first session via OnboardingFlow.
@@ -410,6 +425,8 @@ export default function Tutor() {
         recordPractice()
       }
 
+      setActiveCard(null)
+
       if (options.reason === 'exhausted') {
         setPaywallOpen('exhausted')
       }
@@ -505,6 +522,9 @@ export default function Tutor() {
     setTurns([])
     setTranslations({})
     setReview(null)
+    setActiveCard(null)
+    triggeredCardWordsRef.current = new Set()
+    tutorTurnTextRef.current = new Map()
 
     const activeScenario = overrideScenario ?? scenario
     const addon = activeScenario.buildPromptAddon({
@@ -587,6 +607,25 @@ export default function Tutor() {
             }
             return [...prev, { id, role: 'tutor', text: delta, done: false }]
           })
+          // Beginner-card detection. Track cumulative tutor text per turn so
+          // a word split across deltas ("ma" + "çã") is matched once whole.
+          if (
+            profile?.level === 'complete-beginner' &&
+            tutor.beginnerCards.length > 0
+          ) {
+            const prevText = tutorTurnTextRef.current.get(id) ?? ''
+            const newText = prevText + delta
+            tutorTurnTextRef.current.set(id, newText)
+            const card = findBeginnerCardInText(
+              newText,
+              tutor.beginnerCards,
+              triggeredCardWordsRef.current,
+            )
+            if (card) {
+              triggeredCardWordsRef.current.add(card.word)
+              setActiveCard(card)
+            }
+          }
           break
         }
         case 'response.audio_transcript.done': {
@@ -872,6 +911,16 @@ export default function Tutor() {
       )}
 
       {status === 'review' && <ReviewView review={review} error={error} />}
+
+      {status === 'live' &&
+        activeCard &&
+        profile?.level === 'complete-beginner' && (
+          <BeginnerCardView
+            card={activeCard}
+            language={tutor.language}
+            onDismiss={() => setActiveCard(null)}
+          />
+        )}
 
       <div className="controls">
         {status === 'live' && (

@@ -54,6 +54,31 @@ export type Tutor = {
    * know whether the learner will reply in EN or in the target language.
    */
   transcriptionLanguage: (level: Level | undefined) => 'pt' | 'en' | 'es' | 'fr' | 'it' | undefined
+
+  /**
+   * Curated vocabulary cards that pop up mid-conversation when this tutor
+   * says one of these specific words during a complete-beginner session.
+   * Image-only (emoji) for v1; the trigger is a token-boundary match
+   * against the tutor's transcript.
+   */
+  beginnerCards: BeginnerCard[]
+}
+
+/**
+ * Visual flashcard shown mid-conversation for complete-beginner learners
+ * the moment the tutor says the matching word. Image is an emoji for v1
+ * (no infra, ships today); the data model is forward-compatible to image
+ * URLs and pre-recorded audio.
+ */
+export type BeginnerCard = {
+  /** The target-language word, lowercase, exactly as the trigger looks for it. */
+  word: string
+  /** English gloss shown beneath the word on the card. */
+  native: string
+  /** Emoji used as the card image (e.g. "🍎"). */
+  emoji: string
+  /** Alternate spellings the tutor might say (e.g. "obrigada" for "obrigado"). */
+  aliases?: string[]
 }
 
 /**

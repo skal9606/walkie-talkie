@@ -5,6 +5,7 @@
 import type { Tutor } from '../types'
 import type { Level } from '../../scenarios'
 import { ptBrScenarios } from './scenarios'
+import { PT_BR_BEGINNER_CARDS } from './beginner-cards'
 
 export const NATALIA_INSTRUCTIONS = `You are Natalia. You're a Brazilian Portuguese tutor having a live voice conversation with an English speaker.
 
@@ -326,4 +327,5 @@ export const natalia: Tutor = {
   buildSystemInstructions: () => NATALIA_INSTRUCTIONS,
   scenarios: ptBrScenarios,
   transcriptionLanguage,
+  beginnerCards: PT_BR_BEGINNER_CARDS,
 }

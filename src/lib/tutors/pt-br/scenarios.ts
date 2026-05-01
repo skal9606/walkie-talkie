@@ -16,6 +16,8 @@ import type {
   VadEagerness,
 } from '../../scenarios'
 import type { TutorScenarios } from '../types'
+import { buildBeginnerCardsPromptBlock } from '../beginner-cards'
+import { PT_BR_BEGINNER_CARDS } from './beginner-cards'
 
 const LEVEL_LABEL: Record<Level, string> = {
   'complete-beginner': 'A0 (knows zero Portuguese)',
@@ -156,6 +158,8 @@ LEVEL CALIBRATION — MIXED-LANGUAGE EXPOSURE (CRITICAL)
 - NEVER deliver an entirely-Portuguese turn. Even if every PT chunk is recognizable, English pinning keeps the beginner anchored. Always pair PT with English support in the SAME turn.
 - NEVER deliver an entirely-English turn either. They came to learn Portuguese. Every turn must have at least one Portuguese phrase or short Portuguese question, even if the rest is English.
 - Pick PT chunks from the cognate-rich, high-frequency end: greetings (oi, bom dia), reactions (que legal, que bom, que delícia, perfeito, que bacana), short common questions (como está?, de onde você é?, você gosta?, qual é seu nome?), light comments (imagino, que interessante). Avoid subjunctive, conditional, anything grammatically heavy.
+
+${buildBeginnerCardsPromptBlock(PT_BR_BEGINNER_CARDS)}
 
 EXPOSURE + REACTIVE TEACHING — DON'T DRILL PROACTIVELY (CRITICAL)
 - This is NOT a flashcard deck. Don't say "'X' means Y — say it." every turn — that kills the conversational feel and makes the session feel mechanical.
