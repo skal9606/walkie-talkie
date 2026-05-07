@@ -122,7 +122,7 @@ export function Paywall({
             >
               {loading
                 ? 'Redirecting…'
-                : `Continue · ${selectedPlan === 'monthly' ? '$15/mo' : '$150/yr'}`}
+                : `Continue · ${selectedPlan === 'monthly' ? '$14.99/mo' : '$149.99/yr'}`}
             </button>
             <button
               type="button"
@@ -178,8 +178,8 @@ export function Paywall({
           >
             <div className="paywall-plan-tile-badge">Best value</div>
             <div className="paywall-plan-tile-period">12 months</div>
-            <div className="paywall-plan-tile-price">$150</div>
-            <div className="paywall-plan-tile-note">$12.50 / month</div>
+            <div className="paywall-plan-tile-price">$149.99</div>
+            <div className="paywall-plan-tile-note">$12.49 / month</div>
           </button>
 
           <button
@@ -189,8 +189,8 @@ export function Paywall({
             disabled={loading}
           >
             <div className="paywall-plan-tile-period">1 month</div>
-            <div className="paywall-plan-tile-price">$15</div>
-            <div className="paywall-plan-tile-note">$15 / month</div>
+            <div className="paywall-plan-tile-price">$14.99</div>
+            <div className="paywall-plan-tile-note">$14.99 / month</div>
           </button>
         </div>
 

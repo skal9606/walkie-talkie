@@ -33,7 +33,7 @@ export default function Terms() {
         </p>
         <h2>Subscriptions and billing</h2>
         <p>
-          Subscriptions are sold at $15/month or $150/year. Plans
+          Subscriptions are sold at $14.99/month or $149.99/year. Plans
           auto-renew at the end of each billing period until cancelled.
         </p>
         <p>
