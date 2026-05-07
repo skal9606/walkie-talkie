@@ -2,20 +2,52 @@ import Stripe from 'stripe'
 import { supabaseAdmin } from './supabase-admin.js'
 import type { HandlerResult } from './api-handlers.js'
 
+type ProductId = 'monthly' | 'yearly'
+type SubStatus =
+  | 'active'
+  | 'trialing'
+  | 'in_grace_period'
+  | 'on_hold'
+  | 'canceled'
+  | 'expired'
+  | 'past_due'
+
 type SubscriptionRow = {
   user_id: string
-  stripe_customer_id: string | null
-  stripe_subscription_id: string | null
-  status: string
-  plan: string | null
+  source: 'stripe'
+  external_id: string
+  product_id: ProductId
+  status: SubStatus
   current_period_end: string | null
+  cancel_at_period_end: boolean
 }
 
-function planFromSubscription(sub: Stripe.Subscription): 'monthly' | 'yearly' | null {
+function productFromSubscription(sub: Stripe.Subscription): ProductId | null {
   const interval = sub.items.data[0]?.price.recurring?.interval
   if (interval === 'year') return 'yearly'
   if (interval === 'month') return 'monthly'
   return null
+}
+
+function statusFromStripe(stripeStatus: Stripe.Subscription.Status): SubStatus {
+  switch (stripeStatus) {
+    case 'active':
+      return 'active'
+    case 'trialing':
+      return 'trialing'
+    case 'past_due':
+    case 'incomplete':
+    case 'unpaid':
+      return 'past_due'
+    case 'incomplete_expired':
+      return 'expired'
+    case 'paused':
+      return 'on_hold'
+    case 'canceled':
+      return 'canceled'
+    default:
+      return 'canceled'
+  }
 }
 
 function periodEndIso(sub: Stripe.Subscription): string | null {
@@ -31,11 +63,63 @@ function customerIdOf(
   return typeof c === 'string' ? c : c.id
 }
 
+async function ensureProfile(opts: {
+  userId: string
+  stripeCustomerId: string | null
+  email: string | null
+}): Promise<void> {
+  const payload: Record<string, unknown> = { user_id: opts.userId }
+  if (opts.stripeCustomerId) payload.stripe_customer_id = opts.stripeCustomerId
+  if (opts.email) payload.email = opts.email
+  const { error } = await supabaseAdmin()
+    .from('profiles')
+    .upsert(payload, { onConflict: 'user_id' })
+  if (error) throw error
+}
+
 async function upsertSubscription(row: SubscriptionRow): Promise<void> {
   const { error } = await supabaseAdmin()
     .from('subscriptions')
-    .upsert(row, { onConflict: 'user_id' })
+    .upsert(row, { onConflict: 'source,external_id' })
   if (error) throw error
+}
+
+async function syncFromSubscription(
+  stripe: Stripe,
+  sub: Stripe.Subscription,
+  fallbackUserId?: string,
+): Promise<void> {
+  const userId =
+    (sub.metadata?.user_id as string | undefined) ?? fallbackUserId
+  if (!userId) return
+  const productId = productFromSubscription(sub)
+  if (!productId) return
+  const customerId = customerIdOf(sub.customer)
+  let email: string | null = null
+  if (customerId) {
+    try {
+      const customer = await stripe.customers.retrieve(customerId)
+      if (!customer.deleted) {
+        email = (customer.email as string | null) ?? null
+      }
+    } catch {
+      // Best-effort — webhook still ack'd if email fetch fails.
+    }
+  }
+  await ensureProfile({
+    userId,
+    stripeCustomerId: customerId,
+    email,
+  })
+  await upsertSubscription({
+    user_id: userId,
+    source: 'stripe',
+    external_id: sub.id,
+    product_id: productId,
+    status: statusFromStripe(sub.status),
+    current_period_end: periodEndIso(sub),
+    cancel_at_period_end: sub.cancel_at_period_end ?? false,
+  })
 }
 
 async function processEvent(stripe: Stripe, event: Stripe.Event): Promise<void> {
@@ -53,30 +137,14 @@ async function processEvent(stripe: Stripe, event: Stripe.Event): Promise<void> 
           : session.subscription?.id
       if (!subId) return
       const sub = await stripe.subscriptions.retrieve(subId)
-      await upsertSubscription({
-        user_id: userId,
-        stripe_customer_id: customerIdOf(sub.customer),
-        stripe_subscription_id: sub.id,
-        status: sub.status,
-        plan: planFromSubscription(sub),
-        current_period_end: periodEndIso(sub),
-      })
+      await syncFromSubscription(stripe, sub, userId)
       break
     }
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted':
     case 'customer.subscription.created': {
       const sub = event.data.object as Stripe.Subscription
-      const userId = sub.metadata?.user_id
-      if (!userId) return
-      await upsertSubscription({
-        user_id: userId,
-        stripe_customer_id: customerIdOf(sub.customer),
-        stripe_subscription_id: sub.id,
-        status: sub.status,
-        plan: planFromSubscription(sub),
-        current_period_end: periodEndIso(sub),
-      })
+      await syncFromSubscription(stripe, sub)
       break
     }
     case 'invoice.payment_failed': {
@@ -89,19 +157,10 @@ async function processEvent(stripe: Stripe, event: Stripe.Event): Promise<void> 
           : invoice.subscription?.id
       if (!subId) return
       const sub = await stripe.subscriptions.retrieve(subId)
-      const userId = sub.metadata?.user_id
-      if (!userId) return
-      await upsertSubscription({
-        user_id: userId,
-        stripe_customer_id: customerIdOf(sub.customer),
-        stripe_subscription_id: sub.id,
-        status: 'past_due',
-        plan: planFromSubscription(sub),
-        current_period_end: periodEndIso(sub),
-      })
+      await syncFromSubscription(stripe, sub)
       break
     }
-    // Any other event types we don't care about — just ack with 200.
+    // Other event types — ack with 200, no-op.
   }
 }
 

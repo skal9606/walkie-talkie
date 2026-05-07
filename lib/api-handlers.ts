@@ -292,15 +292,20 @@ import { supabaseAdmin } from './supabase-admin.js'
 
 export async function getSubscriptionDetail(
   userId: string,
-  stripeSecretKey: string | undefined,
+  _stripeSecretKey: string | undefined,
 ): Promise<HandlerResult> {
+  // Pick the most recently-updated subscription row for this user. If they
+  // have both a Stripe and an Apple sub (rare edge case), this returns
+  // whichever was most recently activity-modified — usually the one they
+  // care about.
   const { data: row } = await supabaseAdmin()
     .from('subscriptions')
-    .select('status, plan, current_period_end, stripe_subscription_id')
+    .select('source, product_id, status, current_period_end, cancel_at_period_end')
     .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
-  // No row at all = user is on free trial. Return a stable shape.
-  if (!row || !row.stripe_subscription_id) {
+  if (!row) {
     return {
       status: 200,
       body: {
@@ -311,29 +316,14 @@ export async function getSubscriptionDetail(
       },
     }
   }
-  // Fetch cancel_at_period_end from Stripe — we don't store it in our DB.
-  let cancelAtPeriodEnd = false
-  if (stripeSecretKey) {
-    try {
-      const r = await fetch(
-        `https://api.stripe.com/v1/subscriptions/${row.stripe_subscription_id}`,
-        { headers: { Authorization: `Bearer ${stripeSecretKey}` } },
-      )
-      if (r.ok) {
-        const sub = (await r.json()) as { cancel_at_period_end?: boolean }
-        cancelAtPeriodEnd = sub.cancel_at_period_end ?? false
-      }
-    } catch {
-      // Surface the row anyway; cancelAtPeriodEnd just defaults to false.
-    }
-  }
   return {
     status: 200,
     body: {
-      plan: row.plan,
+      plan: row.product_id,
       status: row.status,
+      source: row.source,
       currentPeriodEnd: row.current_period_end,
-      cancelAtPeriodEnd,
+      cancelAtPeriodEnd: row.cancel_at_period_end ?? false,
     },
   }
 }
@@ -347,22 +337,21 @@ export async function cancelSubscription(
   if (!stripeSecretKey) {
     return { status: 500, body: { error: 'Stripe not configured.' } }
   }
+  // Only Stripe subs are cancelable via this path. Apple subscribers are told
+  // by the iOS app to manage their subscription in iOS Settings (Apple's rule).
   const { data: row } = await supabaseAdmin()
     .from('subscriptions')
-    .select('stripe_subscription_id, current_period_end')
+    .select('external_id, current_period_end')
     .eq('user_id', userId)
+    .eq('source', 'stripe')
     .maybeSingle()
-  if (!row?.stripe_subscription_id) {
-    return { status: 400, body: { error: 'No active subscription to cancel.' } }
+  if (!row?.external_id) {
+    return { status: 400, body: { error: 'No active Stripe subscription to cancel.' } }
   }
-  // Sets cancel_at_period_end=true. Subscription stays active (and the user
-  // keeps full access) until the period naturally ends, at which point Stripe
-  // sends customer.subscription.deleted and our webhook flips status to
-  // 'canceled'.
   const form = new URLSearchParams()
   form.set('cancel_at_period_end', 'true')
   const r = await fetch(
-    `https://api.stripe.com/v1/subscriptions/${row.stripe_subscription_id}`,
+    `https://api.stripe.com/v1/subscriptions/${row.external_id}`,
     {
       method: 'POST',
       headers: {
@@ -398,11 +387,12 @@ export async function reactivateSubscription(
   }
   const { data: row } = await supabaseAdmin()
     .from('subscriptions')
-    .select('stripe_subscription_id, status')
+    .select('external_id, status')
     .eq('user_id', userId)
+    .eq('source', 'stripe')
     .maybeSingle()
-  if (!row?.stripe_subscription_id) {
-    return { status: 400, body: { error: 'No subscription to reactivate.' } }
+  if (!row?.external_id) {
+    return { status: 400, body: { error: 'No Stripe subscription to reactivate.' } }
   }
   // Only valid while the subscription is still active in Stripe (i.e. they
   // haven't yet hit currentPeriodEnd). After that the subscription is gone
@@ -419,7 +409,7 @@ export async function reactivateSubscription(
   const form = new URLSearchParams()
   form.set('cancel_at_period_end', 'false')
   const r = await fetch(
-    `https://api.stripe.com/v1/subscriptions/${row.stripe_subscription_id}`,
+    `https://api.stripe.com/v1/subscriptions/${row.external_id}`,
     {
       method: 'POST',
       headers: {
@@ -454,13 +444,14 @@ export async function deleteAccount(
   if (stripeSecretKey) {
     const { data: row } = await supabaseAdmin()
       .from('subscriptions')
-      .select('stripe_subscription_id')
+      .select('external_id')
       .eq('user_id', userId)
+      .eq('source', 'stripe')
       .maybeSingle()
-    if (row?.stripe_subscription_id) {
+    if (row?.external_id) {
       try {
         await fetch(
-          `https://api.stripe.com/v1/subscriptions/${row.stripe_subscription_id}`,
+          `https://api.stripe.com/v1/subscriptions/${row.external_id}`,
           {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${stripeSecretKey}` },
@@ -472,8 +463,12 @@ export async function deleteAccount(
     }
   }
   // Wipe their rows from our tables. Order matters — children first.
+  // (Apple IAPs that survive the local row are intentional: Apple controls
+  // those subscriptions and we can only mark our copy gone; the user must
+  // cancel via iOS Settings.)
   const admin = supabaseAdmin()
   await admin.from('subscriptions').delete().eq('user_id', userId)
+  await admin.from('profiles').delete().eq('user_id', userId)
   await admin.from('usage').delete().eq('user_id', userId)
   // Finally delete the Supabase auth user. Once this returns, their JWT
   // becomes invalid and refresh-tokens won't issue new ones.

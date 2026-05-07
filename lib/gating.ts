@@ -10,9 +10,10 @@ export type GateResult = {
   reason?: string
 }
 
-function isActiveStatus(status: string | undefined | null): boolean {
-  return status === 'active' || status === 'trialing'
-}
+// Subscription is "live" (entitles full access) when in any of these states.
+// Covers Stripe (active/trialing/past_due) and Apple (in_grace_period during
+// renewal retry windows). Excludes 'canceled', 'expired', 'on_hold'.
+const ACTIVE_STATUSES = ['active', 'trialing', 'in_grace_period'] as const
 
 /**
  * Looks up the user's subscription + usage and decides whether they can start
@@ -28,12 +29,21 @@ export async function checkSessionAccess(userId: string): Promise<GateResult> {
   }
   const db = supabaseAdmin()
 
+  // A user can have multiple subscription rows (one Stripe + one Apple at
+  // most). They're entitled to access if ANY of those rows is in an active
+  // state. `.limit(1)` short-circuits — we don't need the full set.
   const [subResult, usageResult] = await Promise.all([
-    db.from('subscriptions').select('status').eq('user_id', userId).maybeSingle(),
+    db
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .in('status', ACTIVE_STATUSES as unknown as string[])
+      .limit(1)
+      .maybeSingle(),
     db.from('usage').select('seconds_used').eq('user_id', userId).maybeSingle(),
   ])
 
-  if (isActiveStatus(subResult.data?.status)) {
+  if (subResult.data) {
     return { allowed: true, subscribed: true, secondsRemaining: Number.MAX_SAFE_INTEGER }
   }
 
