@@ -1,24 +1,19 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { mintGatedSession } from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 
-// Run on Vercel's Edge runtime — ~50ms cold start vs ~500-1000ms for the
-// Node.js serverless target. /api/session was the largest chunk (~1.6s) of
-// the iOS Start-Conversation latency budget; Edge gets it under ~500ms cold,
-// closer to ~200ms warm. Dependencies (`@supabase/supabase-js`, plain
-// fetch to OpenAI) are all Web-standard / Edge-compatible.
-export const config = { runtime: 'edge' }
+// Note: tried Edge runtime to cut cold-start time, but Vercel routed
+// requests to a Singapore POP (x-vercel-id: sin1) while Supabase + the
+// OpenAI Realtime endpoint are US-hot. Net effect was 4s vs 1.6s on
+// Node — Edge's geo-distribution hurt because the backend hops can't
+// follow. Staying on Node serverless until we have data on actual
+// regional Supabase routing.
 
-const json = (body: unknown, status: number): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  })
-
-export default async function handler(req: Request): Promise<Response> {
-  const userId = await getUserIdFromAuthHeader(req.headers.get('authorization'))
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const userId = await getUserIdFromAuthHeader(req.headers.authorization)
   if (!userId) {
-    return json({ error: 'Not signed in.' }, 401)
+    return res.status(401).json({ error: 'Not signed in.' })
   }
   const result = await mintGatedSession(userId, process.env.OPENAI_API_KEY)
-  return json(result.body, result.status)
+  res.status(result.status).json(result.body)
 }
