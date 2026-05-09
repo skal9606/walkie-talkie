@@ -256,20 +256,11 @@ export class RealtimeTutor {
           this.send({ type: 'response.create' })
         }
 
-        // Server VAD detected the user started speaking. Two cases:
-        //   - Opener (isFirstResponse): interrupt_response is FALSE, so
-        //     the server doesn't cancel the opener. Audio keeps playing.
-        //     Don't mute — let the user hear the opener through.
-        //   - Post-opener: interrupt_response is TRUE, server is
-        //     cancelling the in-flight response, but her tail audio is
-        //     still in the jitter buffer. Mute it so the learner
-        //     doesn't hear her while they're talking.
-        if (event.type === 'input_audio_buffer.speech_started') {
-          if (nataliaIsSpeaking && !isFirstResponse) {
-            audioEl.muted = true
-            audioEl.pause()
-          }
-        }
+        // No-op on speech_started. Previous version muted Natalia's
+        // tail audio because interrupt_response:true was cancelling her
+        // in flight; with interrupt_response now false, there's no
+        // cancellation to compensate for and muting would just silence
+        // her real ongoing reply.
 
         // VAD just committed the user's audio buffer. Arm the recovery
         // watchdog — if response.created doesn't follow within
@@ -322,20 +313,23 @@ export class RealtimeTutor {
               session: {
                 turn_detection: {
                   type: 'server_vad',
-                  // High threshold + 1200ms silence window. The longer
-                  // silence is deliberate: when learners do pronunciation
-                  // practice ("babagua… babagwa… babagwa"), back-to-back
-                  // attempts under 700ms apart used to fragment into
-                  // separate VAD turns. With interrupt_response:true,
-                  // each commit cancelled the previous in-flight
-                  // response, so Natalia took 2-3 utterances to actually
-                  // produce audio. 1200ms keeps rapid attempts in a
-                  // single turn while still feeling responsive.
+                  // interrupt_response:false because barge-in caused a
+                  // cancel-cycle: when a learner did pronunciation
+                  // practice (back-to-back attempts at one word), each
+                  // new VAD turn cancelled the previous in-flight
+                  // response, so Natalia had to wait 2-3 utterances
+                  // before any reply actually rendered. With it off,
+                  // Natalia always finishes her turn — which is also
+                  // the right pedagogical default for a language
+                  // tutor (learner needs to hear the correction
+                  // through). 1200ms silence_duration is kept as
+                  // belt-and-suspenders against fragmentation of
+                  // rapid attempts within a single thought.
                   threshold: 0.82,
                   prefix_padding_ms: 300,
                   silence_duration_ms: 1200,
                   create_response: true,
-                  interrupt_response: true,
+                  interrupt_response: false,
                 },
               },
             })
