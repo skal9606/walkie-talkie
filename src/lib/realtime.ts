@@ -322,13 +322,18 @@ export class RealtimeTutor {
               session: {
                 turn_detection: {
                   type: 'server_vad',
-                  // High threshold + 700ms silence window so background
-                  // noise / brief blips don't get committed as a user
-                  // turn. If this starts dropping quiet speech, dial
-                  // threshold back toward 0.75.
+                  // High threshold + 1200ms silence window. The longer
+                  // silence is deliberate: when learners do pronunciation
+                  // practice ("babagua… babagwa… babagwa"), back-to-back
+                  // attempts under 700ms apart used to fragment into
+                  // separate VAD turns. With interrupt_response:true,
+                  // each commit cancelled the previous in-flight
+                  // response, so Natalia took 2-3 utterances to actually
+                  // produce audio. 1200ms keeps rapid attempts in a
+                  // single turn while still feeling responsive.
                   threshold: 0.82,
                   prefix_padding_ms: 300,
-                  silence_duration_ms: 700,
+                  silence_duration_ms: 1200,
                   create_response: true,
                   interrupt_response: true,
                 },
