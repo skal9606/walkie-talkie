@@ -24,7 +24,7 @@ export function supabaseAdmin(): SupabaseClient {
  * owns it. Returns the authenticated user id or null if unauthenticated.
  */
 export async function getUserIdFromAuthHeader(
-  authHeader: string | string[] | undefined,
+  authHeader: string | string[] | null | undefined,
 ): Promise<string | null> {
   const header = Array.isArray(authHeader) ? authHeader[0] : authHeader
   if (!header) return null
