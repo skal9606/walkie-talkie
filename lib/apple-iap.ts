@@ -65,14 +65,40 @@ function getVerifiers() {
   return _verifiers
 }
 
+/// `@apple/app-store-server-library` throws a `VerificationException` whose
+/// `toString()` is just "Error" — useless in production. Pull message,
+/// status code, and any nested cause so the API surface returns something
+/// we can actually act on.
+function formatVerificationError(e: unknown): string {
+  if (e === null || e === undefined) return 'unknown'
+  if (typeof e !== 'object') return String(e)
+  const anyE = e as { message?: string; status?: number; cause?: unknown; name?: string }
+  const parts: string[] = []
+  if (anyE.name) parts.push(anyE.name)
+  if (typeof anyE.status === 'number') parts.push(`status=${anyE.status}`)
+  if (anyE.message) parts.push(anyE.message)
+  if (anyE.cause) parts.push(`cause=${formatVerificationError(anyE.cause)}`)
+  return parts.length > 0 ? parts.join(' ') : (e instanceof Error ? e.stack ?? 'Error' : 'unknown')
+}
+
 async function tryVerifyTransaction(
   signed: string,
 ): Promise<JWSTransactionDecodedPayload> {
   const v = getVerifiers()
+  let sandboxErr: unknown
   try {
     return await v.sandbox.verifyAndDecodeTransaction(signed)
-  } catch {
+  } catch (e) {
+    sandboxErr = e
+  }
+  try {
     return await v.production.verifyAndDecodeTransaction(signed)
+  } catch (prodErr) {
+    const sb = formatVerificationError(sandboxErr)
+    const pr = formatVerificationError(prodErr)
+    console.error('[apple-iap] verifyTransaction failed sandbox=', sb)
+    console.error('[apple-iap] verifyTransaction failed production=', pr)
+    throw new Error(`sandbox=[${sb}] production=[${pr}]`)
   }
 }
 
@@ -80,10 +106,18 @@ export async function tryVerifyNotification(
   signed: string,
 ): Promise<ResponseBodyV2DecodedPayload> {
   const v = getVerifiers()
+  let sandboxErr: unknown
   try {
     return await v.sandbox.verifyAndDecodeNotification(signed)
-  } catch {
+  } catch (e) {
+    sandboxErr = e
+  }
+  try {
     return await v.production.verifyAndDecodeNotification(signed)
+  } catch (prodErr) {
+    throw new Error(
+      `sandbox=[${formatVerificationError(sandboxErr)}] production=[${formatVerificationError(prodErr)}]`,
+    )
   }
 }
 
@@ -91,10 +125,18 @@ async function tryVerifyRenewalInfo(
   signed: string,
 ): Promise<JWSRenewalInfoDecodedPayload> {
   const v = getVerifiers()
+  let sandboxErr: unknown
   try {
     return await v.sandbox.verifyAndDecodeRenewalInfo(signed)
-  } catch {
+  } catch (e) {
+    sandboxErr = e
+  }
+  try {
     return await v.production.verifyAndDecodeRenewalInfo(signed)
+  } catch (prodErr) {
+    throw new Error(
+      `sandbox=[${formatVerificationError(sandboxErr)}] production=[${formatVerificationError(prodErr)}]`,
+    )
   }
 }
 
