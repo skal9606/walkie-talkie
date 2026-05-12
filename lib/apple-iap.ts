@@ -38,12 +38,28 @@ function getVerifiers() {
   const appAppleIdRaw = process.env.APPLE_APP_ID
   const appAppleId = appAppleIdRaw ? Number(appAppleIdRaw) : undefined
 
+  // Vercel only bundles files referenced statically. Cert paths are
+  // computed at runtime so we declare them in vercel.json's
+  // functions.includeFiles. If a cert is missing in production the
+  // verifier returns INVALID_CERTIFICATE with no useful message, so we
+  // catch the read failure here and rethrow with the actual path that
+  // didn't resolve.
   const certDir = join(process.cwd(), 'certs/apple')
-  const certs = [
-    readFileSync(join(certDir, 'AppleIncRootCertificate.cer')),
-    readFileSync(join(certDir, 'AppleRootCA-G2.cer')),
-    readFileSync(join(certDir, 'AppleRootCA-G3.cer')),
+  const certFiles = [
+    'AppleIncRootCertificate.cer',
+    'AppleRootCA-G2.cer',
+    'AppleRootCA-G3.cer',
   ]
+  const certs = certFiles.map((name) => {
+    const full = join(certDir, name)
+    try {
+      return readFileSync(full)
+    } catch (err) {
+      throw new Error(
+        `Apple Root CA missing at ${full} (cwd=${process.cwd()}): ${String(err)}`,
+      )
+    }
+  })
   // enableOnlineChecks is set to false. With it true, the library does an
   // OCSP round-trip to Apple to confirm the leaf cert isn't revoked — that
   // call has been flaky from Vercel's serverless runtime (network egress
