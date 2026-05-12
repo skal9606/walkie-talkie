@@ -50,10 +50,24 @@ function statusFromStripe(stripeStatus: Stripe.Subscription.Status): SubStatus {
   }
 }
 
+/// In Stripe API v2025-09-30 and later, `current_period_end` moved from the
+/// subscription object onto each subscription item — single-item plans
+/// (which is our entire product surface today) carry the same value, but the
+/// field is gone from the parent. We read the item first, fall back to the
+/// deprecated top-level for older API versions and replayed legacy events.
 function periodEndIso(sub: Stripe.Subscription): string | null {
-  const end = (sub as Stripe.Subscription & { current_period_end?: number })
+  const item = sub.items?.data?.[0] as
+    | (Stripe.SubscriptionItem & { current_period_end?: number })
+    | undefined
+  const itemEnd = item?.current_period_end
+  if (typeof itemEnd === 'number') {
+    return new Date(itemEnd * 1000).toISOString()
+  }
+  const legacyEnd = (sub as Stripe.Subscription & { current_period_end?: number })
     .current_period_end
-  return typeof end === 'number' ? new Date(end * 1000).toISOString() : null
+  return typeof legacyEnd === 'number'
+    ? new Date(legacyEnd * 1000).toISOString()
+    : null
 }
 
 function customerIdOf(
