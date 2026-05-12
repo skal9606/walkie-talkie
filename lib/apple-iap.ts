@@ -90,6 +90,22 @@ function getVerifiers() {
   return _verifiers
 }
 
+/// `@apple/app-store-server-library` v3.x VerificationStatus enum — kept
+/// here so error messages name the failure instead of leaving a bare
+/// integer. We hit hours of debugging on a status=3 thinking it was
+/// INVALID_CERTIFICATE (the value in earlier library versions) when it
+/// was actually INVALID_APP_IDENTIFIER. Never again.
+const STATUS_NAMES: Record<number, string> = {
+  0: 'OK',
+  1: 'VERIFICATION_FAILURE',
+  2: 'RETRYABLE_VERIFICATION_FAILURE',
+  3: 'INVALID_APP_IDENTIFIER',
+  4: 'INVALID_ENVIRONMENT',
+  5: 'INVALID_CHAIN_LENGTH',
+  6: 'INVALID_CERTIFICATE',
+  7: 'FAILURE',
+}
+
 /// `@apple/app-store-server-library` throws a `VerificationException` whose
 /// `toString()` is just "Error" — useless in production. Pull message,
 /// status code, and any nested cause so the API surface returns something
@@ -100,7 +116,10 @@ function formatVerificationError(e: unknown): string {
   const anyE = e as { message?: string; status?: number; cause?: unknown; name?: string }
   const parts: string[] = []
   if (anyE.name) parts.push(anyE.name)
-  if (typeof anyE.status === 'number') parts.push(`status=${anyE.status}`)
+  if (typeof anyE.status === 'number') {
+    const named = STATUS_NAMES[anyE.status] ?? 'UNKNOWN'
+    parts.push(`status=${anyE.status}(${named})`)
+  }
   if (anyE.message) parts.push(anyE.message)
   if (anyE.cause) parts.push(`cause=${formatVerificationError(anyE.cause)}`)
   return parts.length > 0 ? parts.join(' ') : (e instanceof Error ? e.stack ?? 'Error' : 'unknown')
