@@ -194,7 +194,7 @@ export function Paywall({
           <div className="paywall-pitch-title">Walkie Talkie</div>
           <h2>
             {reason === 'exhausted'
-              ? "You've used your free 5 minutes."
+              ? "You've used your free 10 minutes."
               : "You've reached your free conversation limit."}
             <br />
             <span className="paywall-pitch-sub">
