@@ -450,9 +450,21 @@ export async function handleAppleWebhook(
     }
   }
 
+  // `@apple/app-store-server-library` v3 retyped notificationType +
+  // subtype as plain strings (was the NotificationTypeV2 / Subtype enums
+  // in earlier versions). The switch in statusFromNotification still
+  // matches against the enum values — string comparison works because
+  // NotificationTypeV2 is a string enum — but TypeScript demands the
+  // cast. Guard against the now-optional notificationType too.
+  if (!notification.notificationType) {
+    return {
+      status: 200,
+      body: { ok: true, type: 'UNKNOWN', skipped: true },
+    }
+  }
   const status = statusFromNotification(
-    notification.notificationType,
-    notification.subtype,
+    notification.notificationType as NotificationTypeV2,
+    notification.subtype as Subtype | undefined,
     txn,
   )
 
