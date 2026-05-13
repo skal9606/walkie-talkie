@@ -98,7 +98,7 @@ export default function Landing() {
             <Link to="/chat" className="landing-cta landing-cta-large">
               Chat Now
             </Link>
-            <div className="hero-footnote">First 5 minutes free · $14.99/month after</div>
+            <div className="hero-footnote">First 10 minutes free · $14.99/month after</div>
           </div>
         </div>
 
@@ -170,7 +170,7 @@ export default function Landing() {
       <section id="pricing" className="pricing">
         <h2 className="section-title">Simple pricing</h2>
         <p className="section-subtitle">
-          Try 5 minutes free — or subscribe now to practice without limits.
+          Try 10 minutes free — or subscribe now to practice without limits.
         </p>
         <div className="price-cards">
           <PriceCard
