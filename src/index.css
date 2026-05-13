@@ -513,6 +513,55 @@ a {
   font-size: 12px;
 }
 
+.auth-oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 0.15s;
+}
+
+.auth-oauth-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.auth-oauth-apple {
+  background: #000;
+  color: #fff;
+}
+
+.auth-oauth-apple:hover:not(:disabled) {
+  background: #1a1a1a;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .live-warning {
   color: var(--danger);
   margin-left: 6px;
