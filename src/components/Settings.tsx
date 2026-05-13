@@ -181,7 +181,13 @@ export function Settings({
           <ProfileTab profile={profile} onSave={handleProfileSave} />
         )}
 
-        {tab === 'tutor' && <TutorTab prefs={prefs} onSave={handlePrefsSave} />}
+        {tab === 'tutor' && (
+          <TutorTab
+            prefs={prefs}
+            tutorName={getTutor(profile.tutorId).name}
+            onSave={handlePrefsSave}
+          />
+        )}
 
         {tab === 'account' && (
           <AccountTab
@@ -236,6 +242,11 @@ function ProfileTab({
     window.setTimeout(() => setJustSaved(false), 2000)
   }
 
+  // Reflect the picker selection live — if the user is switching from
+  // Natalia to María, the placeholder and SaveBar hint switch with them
+  // before they hit Save.
+  const draftTutor = getTutor(draft.tutorId)
+
   return (
     <div className="settings-tab-body">
       <Field label="Your name">
@@ -244,7 +255,7 @@ function ProfileTab({
           className="settings-input"
           value={draft.name ?? ''}
           onChange={(e) => update('name', e.target.value)}
-          placeholder="What should Natalia call you?"
+          placeholder={`What should ${draftTutor.name} call you?`}
         />
       </Field>
 
@@ -316,7 +327,7 @@ function ProfileTab({
           className="settings-input settings-textarea"
           value={draft.goals ?? ''}
           onChange={(e) => update('goals', e.target.value)}
-          placeholder="To talk to my Brazilian in-laws, traveling to Rio next year, etc."
+          placeholder="Traveling next year, talking with family, work, etc."
           rows={3}
         />
       </Field>
@@ -324,7 +335,7 @@ function ProfileTab({
       <SaveBar
         justSaved={justSaved}
         onSave={handleSave}
-        hint="Changes apply to your next conversation with Natalia."
+        hint={`Changes apply to your next conversation with ${draftTutor.name}.`}
       />
     </div>
   )
@@ -332,9 +343,11 @@ function ProfileTab({
 
 function TutorTab({
   prefs,
+  tutorName,
   onSave,
 }: {
   prefs: Preferences
+  tutorName: string
   onSave: (p: Preferences) => void
 }) {
   const [draft, setDraft] = useState<Preferences>(prefs)
@@ -360,7 +373,7 @@ function TutorTab({
     <div className="settings-tab-body">
       <Field
         label="Formality"
-        hint="How casual should Natalia sound?"
+        hint={`How casual should ${tutorName} sound?`}
       >
         <div className="settings-radio-group settings-radio-group-row">
           {(['casual', 'neutral', 'formal'] as Formality[]).map((f) => (
@@ -383,7 +396,7 @@ function TutorTab({
 
       <Field
         label="Grammar strictness"
-        hint="Strict mode tells Natalia to correct meaningful errors every time."
+        hint={`Strict mode tells ${tutorName} to correct meaningful errors every time.`}
       >
         <div className="settings-radio-group settings-radio-group-row">
           {(['lax', 'strict'] as Strictness[]).map((s) => (
@@ -407,7 +420,7 @@ function TutorTab({
       <SaveBar
         justSaved={justSaved}
         onSave={handleSave}
-        hint="Changes apply to your next conversation with Natalia."
+        hint={`Changes apply to your next conversation with ${tutorName}.`}
       />
     </div>
   )

@@ -1,31 +1,43 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { startCheckout } from '../lib/checkout'
 import { type Plan } from '../lib/subscription'
 import { supabase } from '../lib/supabase'
 import { getFreshAccessToken } from '../lib/auth'
+import { loadProfile } from '../lib/profile'
+import { getTutor, type Tutor } from '../lib/tutors'
 
-const BENEFITS = [
-  {
-    icon: '💬',
-    title: 'Unlimited conversations',
-    body: 'Practice with Natalia for as long as you want, anytime.',
-  },
-  {
-    icon: '🇧🇷',
-    title: 'Real Brazilian immersion',
-    body: 'Voice-first practice with a native-sounding tutor — the fastest path to fluency.',
-  },
-  {
-    icon: '🎯',
-    title: 'Multiple ways to practice',
-    body: 'Free conversation, roleplays, grammar lessons, translation drills, and pronunciation.',
-  },
-  {
-    icon: '📈',
-    title: 'Daily progress you can feel',
-    body: 'Build a streak, see a review after every session, and watch your fluency compound.',
-  },
-]
+/// Builds the paywall benefits list against the active tutor — so the
+/// learner sees their actual tutor's name + dialect, not the original
+/// Natalia/Brazilian copy that shipped before the multi-tutor rollout.
+/// `dialect` strips the language qualifier from `languageLabel` so the
+/// headline reads "Real Mexican immersion" not "Real Mexican Spanish
+/// immersion" (which scans awkwardly). For label-only languages like
+/// "Italian" / "French" / "German" the split is a no-op.
+function buildBenefits(tutor: Tutor) {
+  const dialect = tutor.languageLabel.split(' ')[0]
+  return [
+    {
+      icon: '💬',
+      title: 'Unlimited conversations',
+      body: `Practice with ${tutor.name} for as long as you want, anytime.`,
+    },
+    {
+      icon: tutor.flag,
+      title: `Real ${dialect} immersion`,
+      body: 'Voice-first practice with a native-sounding tutor — the fastest path to fluency.',
+    },
+    {
+      icon: '🎯',
+      title: 'Multiple ways to practice',
+      body: 'Free conversation, roleplays, grammar lessons, translation drills, and pronunciation.',
+    },
+    {
+      icon: '📈',
+      title: 'Daily progress you can feel',
+      body: 'Build a streak, see a review after every session, and watch your fluency compound.',
+    },
+  ]
+}
 
 export function Paywall({
   accessToken,
@@ -46,6 +58,15 @@ export function Paywall({
   // we redirect to Stripe. Tracked separately so we can show the email
   // form WITHOUT losing the selectedPlan.
   const [collectingEmail, setCollectingEmail] = useState(false)
+
+  // Resolve the active tutor once on mount so benefits + name references
+  // reflect what this learner actually picked (Natalia for Portuguese,
+  // María for Spanish, etc.). loadProfile() returns null for fresh users
+  // — getTutor() falls back to the default.
+  const benefits = useMemo(() => {
+    const profile = loadProfile()
+    return buildBenefits(getTutor(profile?.tutorId))
+  }, [])
 
   async function subscribe(plan: Plan) {
     setError(null)
@@ -156,7 +177,7 @@ export function Paywall({
         </div>
 
         <ul className="paywall-benefits">
-          {BENEFITS.map((b) => (
+          {benefits.map((b) => (
             <li key={b.title} className="paywall-benefit">
               <span className="paywall-benefit-icon" aria-hidden>
                 {b.icon}
