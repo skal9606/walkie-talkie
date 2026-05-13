@@ -461,40 +461,6 @@ export default function Tutor() {
         return
       }
 
-      // Trial just ran out — fire-and-forget a CEFR assessment so the
-      // paywall can show the learner their current level. We don't await:
-      // the paywall opens immediately, and `cefr` lands in state ~3-5s
-      // later, triggering a re-render. Skipped for non-exhausted stops
-      // (mid-session disconnects, user-ended sessions) where the paywall
-      // isn't being shown anyway.
-      if (options.reason === 'exhausted') {
-        const transcriptForCefr = finalTurns.map((t) => ({
-          role: t.role,
-          text: t.text,
-        }))
-        ;(async () => {
-          try {
-            const fresh = (await getFreshAccessToken()) ?? accessToken
-            const r = await fetch('/api/assess-cefr', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(fresh ? { Authorization: `Bearer ${fresh}` } : {}),
-              },
-              body: JSON.stringify({
-                transcript: transcriptForCefr,
-                language: tutor.language,
-              }),
-            })
-            if (!r.ok) return
-            const data = (await r.json()) as CefrAssessment
-            setCefr(data)
-          } catch {
-            // Best-effort — no UI fallback on failure.
-          }
-        })()
-      }
-
       setStatus('reviewing')
       try {
         const fresh = await getFreshAccessToken()
@@ -508,11 +474,22 @@ export default function Tutor() {
             scenario: scenario.title,
             language: tutor.language,
             transcript: finalTurns.map((t) => ({ role: t.role, text: t.text })),
+            // Trial-exhaust sessions also get a CEFR assessment in the
+            // same round-trip so the paywall can render the level
+            // alongside the subscribe CTA. Skipped on user-ended
+            // sessions where the paywall isn't shown.
+            assessCefr: options.reason === 'exhausted',
           }),
         })
-        const data = (await res.json()) as ReviewData & { error?: string }
+        const data = (await res.json()) as ReviewData & {
+          error?: string
+          cefr?: CefrAssessment | null
+        }
         if (!res.ok || data.error) {
           throw new Error(data.error ?? `Review failed (${res.status})`)
+        }
+        if (data.cefr) {
+          setCefr(data.cefr)
         }
         setReview(data)
         // Persist memory bullets so the next Free Conversation can reference them.

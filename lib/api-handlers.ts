@@ -268,9 +268,28 @@ export async function persistCefrAssessment(
 
 export type TranscriptEntry = { role: 'user' | 'tutor'; text: string }
 
+/// Bundles the optional CEFR result into the review response. Lets the
+/// review endpoint do both LLM calls in one round-trip and stay inside
+/// Vercel Hobby's 12-serverless-function limit.
+export type ReviewWithOptionalCefr = {
+  cefr?: CefrAssessment | null
+  [key: string]: unknown
+}
+
 export async function reviewTranscript(
   apiKey: string | undefined,
-  params: { transcript?: TranscriptEntry[]; scenario?: string; language?: string },
+  params: {
+    transcript?: TranscriptEntry[]
+    scenario?: string
+    language?: string
+    /**
+     * Run a CEFR assessment in parallel with the review and include it in
+     * the response under `cefr`. Used on trial-exhaust sessions so the
+     * paywall can show "You're at B1". Skipped by default to keep the
+     * non-trial review path cheap.
+     */
+    assessCefr?: boolean
+  },
 ): Promise<HandlerResult> {
   if (!apiKey) {
     return { status: 500, body: { error: 'OPENAI_API_KEY not set.' } }
@@ -324,11 +343,26 @@ All eight keys must be present. Use empty arrays / null if there is genuinely no
       return { status: 500, body: { error: data.error.message } }
     }
     const content = data.choices?.[0]?.message?.content ?? '{}'
+    let reviewParsed: Record<string, unknown>
     try {
-      return { status: 200, body: JSON.parse(content) }
+      reviewParsed = JSON.parse(content) as Record<string, unknown>
     } catch {
       return { status: 500, body: { error: 'Invalid JSON from review model.' } }
     }
+    // Optional CEFR — runs after the review JSON parses, so a CEFR
+    // failure doesn't block the review payload.
+    let cefr: CefrAssessment | null = null
+    if (params.assessCefr) {
+      const cefrResult = await assessCefr(apiKey, {
+        transcript,
+        language: params.language,
+      })
+      if (cefrResult.status === 200) {
+        cefr = cefrResult.body as CefrAssessment
+      }
+    }
+    const body: ReviewWithOptionalCefr = { ...reviewParsed, cefr }
+    return { status: 200, body }
   } catch (err) {
     return { status: 500, body: { error: String(err) } }
   }
