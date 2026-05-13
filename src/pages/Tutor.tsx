@@ -450,17 +450,25 @@ export default function Tutor() {
 
       setActiveCard(null)
 
-      if (options.reason === 'exhausted') {
-        setPaywallOpen('exhausted')
-      }
-
       const finalTurns = turns.filter((t) => t.text.trim())
+
+      // Short/empty exhaust — no meaningful conversation, so no review or
+      // CEFR to run. Drop straight to the paywall.
       if (finalTurns.length < 2) {
+        if (options.reason === 'exhausted') {
+          setPaywallOpen('exhausted')
+        }
         setStatus('idle')
         refreshStatus()
         return
       }
 
+      // Trial exhaust path waits for /api/review (which also runs CEFR)
+      // before opening the paywall — otherwise the user sees the paywall
+      // pop open empty, then the CEFR card fades in 5s later. The
+      // 'reviewing' status shows "Generating session review…" while we
+      // wait, so the user has feedback the whole time and the paywall
+      // appears fully populated on one screen.
       setStatus('reviewing')
       try {
         const fresh = await getFreshAccessToken()
@@ -532,6 +540,14 @@ export default function Tutor() {
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
         setStatus('review')
+      } finally {
+        // Open the paywall whether the review succeeded or not — a
+        // network/grader failure shouldn't lock the user out of
+        // subscribing. CEFR is best-effort; if it didn't land, paywall
+        // just renders without that block.
+        if (options.reason === 'exhausted') {
+          setPaywallOpen('exhausted')
+        }
       }
       refreshStatus()
     },

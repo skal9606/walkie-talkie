@@ -305,7 +305,13 @@ export async function reviewTranscript(
       .map((t) => `${t.role === 'user' ? 'Learner' : 'Tutor'}: ${t.text}`)
       .join('\n')
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Kick off the review and CEFR HTTP calls in parallel. Previously
+    // CEFR waited for review to complete before starting, doubling the
+    // wall-clock latency the learner sees as a blank space above the
+    // paywall benefits. Both calls hit OpenAI independently — no shared
+    // state, no reason to serialize. Cuts paywall-to-CEFR from ~10s to
+    // ~5s in practice.
+    const reviewFetch = fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -335,6 +341,18 @@ All eight keys must be present. Use empty arrays / null if there is genuinely no
         ],
       }),
     })
+
+    // CEFR runs concurrently when requested; resolves to null otherwise
+    // so the destructure below is uniform.
+    const cefrPromise: Promise<HandlerResult | null> = params.assessCefr
+      ? assessCefr(apiKey, { transcript, language: params.language })
+      : Promise.resolve(null)
+
+    const [response, cefrHandlerResult] = await Promise.all([
+      reviewFetch,
+      cefrPromise,
+    ])
+
     const data = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>
       error?: { message?: string }
@@ -349,17 +367,13 @@ All eight keys must be present. Use empty arrays / null if there is genuinely no
     } catch {
       return { status: 500, body: { error: 'Invalid JSON from review model.' } }
     }
-    // Optional CEFR — runs after the review JSON parses, so a CEFR
-    // failure doesn't block the review payload.
+
+    // CEFR is best-effort: a failed grader doesn't block the review
+    // payload. Status 200 from assessCefr → use it; anything else →
+    // null and the paywall just doesn't show the block.
     let cefr: CefrAssessment | null = null
-    if (params.assessCefr) {
-      const cefrResult = await assessCefr(apiKey, {
-        transcript,
-        language: params.language,
-      })
-      if (cefrResult.status === 200) {
-        cefr = cefrResult.body as CefrAssessment
-      }
+    if (cefrHandlerResult && cefrHandlerResult.status === 200) {
+      cefr = cefrHandlerResult.body as CefrAssessment
     }
     const body: ReviewWithOptionalCefr = { ...reviewParsed, cefr }
     return { status: 200, body }
