@@ -698,6 +698,49 @@ a {
   gap: 16px;
 }
 
+/* CEFR assessment block — appears above the benefits when the learner
+   exhausted their trial and the grader returned a level. */
+.paywall-cefr {
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'label level'
+    'note  level';
+  column-gap: 16px;
+  align-items: center;
+}
+
+.paywall-cefr-label {
+  grid-area: label;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.paywall-cefr-level {
+  grid-area: level;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.paywall-cefr-note {
+  grid-area: note;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 .paywall-benefit {
   display: flex;
   align-items: flex-start;

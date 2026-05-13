@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
+
+/// Mirrors the backend shape in lib/api-handlers.ts. Inlined here rather
+/// than imported from the backend module to keep the frontend bundle
+/// independent of the api/ folder. If the backend shape grows, update
+/// both places — keeps the cross-runtime boundary explicit.
+type CefrAssessment = {
+  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | 'INSUFFICIENT_DATA'
+  note: string
+  language: string
+  assessedAt: string
+}
 import {
   PRACTICE_MODES,
   type ModeId,
@@ -105,6 +116,10 @@ export default function Tutor() {
   )
   const [statusLoaded, setStatusLoaded] = useState(devBypass)
   const [paywallOpen, setPaywallOpen] = useState<null | 'exhausted' | 'blocked'>(null)
+  // CEFR assessment from the trial-exhaust conversation. Null until it
+  // resolves (~3-5s after stop), then passed into Paywall so the learner
+  // sees their level prominently alongside the subscribe CTA.
+  const [cefr, setCefr] = useState<CefrAssessment | null>(null)
 
   const tutorRef = useRef<RealtimeTutor | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -444,6 +459,40 @@ export default function Tutor() {
         setStatus('idle')
         refreshStatus()
         return
+      }
+
+      // Trial just ran out — fire-and-forget a CEFR assessment so the
+      // paywall can show the learner their current level. We don't await:
+      // the paywall opens immediately, and `cefr` lands in state ~3-5s
+      // later, triggering a re-render. Skipped for non-exhausted stops
+      // (mid-session disconnects, user-ended sessions) where the paywall
+      // isn't being shown anyway.
+      if (options.reason === 'exhausted') {
+        const transcriptForCefr = finalTurns.map((t) => ({
+          role: t.role,
+          text: t.text,
+        }))
+        ;(async () => {
+          try {
+            const fresh = (await getFreshAccessToken()) ?? accessToken
+            const r = await fetch('/api/assess-cefr', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(fresh ? { Authorization: `Bearer ${fresh}` } : {}),
+              },
+              body: JSON.stringify({
+                transcript: transcriptForCefr,
+                language: tutor.language,
+              }),
+            })
+            if (!r.ok) return
+            const data = (await r.json()) as CefrAssessment
+            setCefr(data)
+          } catch {
+            // Best-effort — no UI fallback on failure.
+          }
+        })()
       }
 
       setStatus('reviewing')
@@ -996,6 +1045,7 @@ export default function Tutor() {
           reason={paywallOpen}
           accessToken={accessToken}
           isAnonymous={user?.is_anonymous ?? false}
+          cefr={cefr}
         />
       )}
     </div>

@@ -6,6 +6,16 @@ import { getFreshAccessToken } from '../lib/auth'
 import { loadProfile } from '../lib/profile'
 import { getTutor, type Tutor } from '../lib/tutors'
 
+/// Backend-shaped result from /api/assess-cefr. Kept inline (not imported
+/// from the api-handlers lib) so the frontend bundle doesn't depend on
+/// the serverless module graph.
+type CefrAssessment = {
+  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | 'INSUFFICIENT_DATA'
+  note: string
+  language: string
+  assessedAt: string
+}
+
 /// Builds the paywall benefits list against the active tutor — so the
 /// learner sees their actual tutor's name + dialect, not the original
 /// Natalia/Brazilian copy that shipped before the multi-tutor rollout.
@@ -43,12 +53,17 @@ export function Paywall({
   accessToken,
   reason,
   isAnonymous,
+  cefr,
 }: {
   accessToken: string
   reason: 'exhausted' | 'blocked'
   /** True when the user signed in anonymously. We collect an email before
    *  checkout so their subscription can be restored on another device. */
   isAnonymous: boolean
+  /** CEFR assessment from the trial conversation. Null when this paywall
+   *  open isn't trial-driven, when the call is still in flight, or when
+   *  it failed. Displayed as a personalized hook above the benefits. */
+  cefr: CefrAssessment | null
 }) {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>('yearly')
   const [email, setEmail] = useState('')
@@ -63,10 +78,22 @@ export function Paywall({
   // reflect what this learner actually picked (Natalia for Portuguese,
   // María for Spanish, etc.). loadProfile() returns null for fresh users
   // — getTutor() falls back to the default.
-  const benefits = useMemo(() => {
-    const profile = loadProfile()
-    return buildBenefits(getTutor(profile?.tutorId))
-  }, [])
+  const tutor = useMemo(() => getTutor(loadProfile()?.tutorId), [])
+  const benefits = useMemo(() => buildBenefits(tutor), [tutor])
+
+  // Plain language name for the CEFR headline ("Your Portuguese level"
+  // rather than "Your Brazilian Portuguese level"). Last word of
+  // languageLabel: "Brazilian Portuguese" → "Portuguese", "Italian" →
+  // "Italian", "Mexican Spanish" → "Spanish".
+  const plainLanguage = tutor.languageLabel.split(' ').slice(-1)[0]
+
+  // Only render CEFR if it lined up with the active tutor's language —
+  // a stale Portuguese assessment shouldn't show on a Spanish paywall
+  // session.
+  const showCefr =
+    cefr !== null &&
+    cefr.language === tutor.language &&
+    cefr.level !== 'INSUFFICIENT_DATA'
 
   async function subscribe(plan: Plan) {
     setError(null)
@@ -175,6 +202,16 @@ export function Paywall({
             </span>
           </h2>
         </div>
+
+        {showCefr && cefr && (
+          <div className="paywall-cefr">
+            <div className="paywall-cefr-label">
+              Your {plainLanguage} level
+            </div>
+            <div className="paywall-cefr-level">{cefr.level}</div>
+            <div className="paywall-cefr-note">{cefr.note}</div>
+          </div>
+        )}
 
         <ul className="paywall-benefits">
           {benefits.map((b) => (

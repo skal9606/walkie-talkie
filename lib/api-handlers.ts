@@ -102,6 +102,168 @@ export async function translate(
   }
 }
 
+// -- CEFR assessment --------------------------------------------------------
+
+export type CefrLevel =
+  | 'A1'
+  | 'A2'
+  | 'B1'
+  | 'B2'
+  | 'C1'
+  | 'C2'
+  | 'INSUFFICIENT_DATA'
+
+export type CefrAssessment = {
+  level: CefrLevel
+  /** 1-2 sentence encouraging summary, in English. Shown on the paywall. */
+  note: string
+  /** Language code that was assessed (e.g. "pt-BR"). */
+  language: string
+  /** ISO timestamp. */
+  assessedAt: string
+}
+
+/// Grade a trial conversation against the CEFR rubric. Called from the web
+/// client right after the trial timer expires — the result lands on the
+/// paywall ("You're at B1 in Spanish") as a personalized hook that
+/// outperforms generic conversion copy. INSUFFICIENT_DATA when the learner
+/// produced too little target-language speech to assess (e.g. the
+/// conversation was entirely in English).
+export async function assessCefr(
+  apiKey: string | undefined,
+  params: {
+    transcript?: TranscriptEntry[]
+    language?: string
+  },
+): Promise<HandlerResult> {
+  if (!apiKey) {
+    return { status: 500, body: { error: 'OPENAI_API_KEY not set.' } }
+  }
+  const transcript = params.transcript ?? []
+  if (transcript.length === 0) {
+    return { status: 400, body: { error: 'Empty transcript.' } }
+  }
+  const languageCode = params.language ?? 'pt-BR'
+  const languageName = languageLabel(languageCode)
+
+  const transcriptText = transcript
+    .map((t) => `${t.role === 'user' ? 'Learner' : 'Tutor'}: ${t.text}`)
+    .join('\n')
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a CEFR-trained ${languageName} language assessor. Read the transcript and score the LEARNER's spoken ${languageName} against the CEFR rubric. Only judge what the LEARNER said — the Tutor's lines are context.
+
+Evaluate:
+- Vocabulary range and accuracy
+- Grammar complexity and correctness
+- Fluency (turn length, hesitations, connectives)
+- Comprehension (responsiveness to the tutor's questions in ${languageName})
+- Pragmatic competence (register, idioms, social moves)
+
+CEFR rubric (apply strictly):
+- A1: Stock phrases, single words. Only present tense, very limited vocabulary. Greetings, names, numbers.
+- A2: Simple sentences about familiar topics. Past/present, basic vocabulary, often mistakes.
+- B1: Connected discourse on familiar topics. Opinions, descriptions, past experiences. Errors don't impede comprehension.
+- B2: Fluent on most topics. Argues, explains causes, handles abstract subjects, some idiomatic phrasing.
+- C1: Effortless, idiomatic. Complex sentences with cohesion devices. Subtle distinctions.
+- C2: Near-native. Nuance, irony, register-switching at will.
+
+If the learner produced fewer than 5 turns OR fewer than ~50 words in ${languageName} OR spoke almost entirely in English, return "INSUFFICIENT_DATA".
+
+Return JSON with exactly these keys:
+- "level": one of "A1", "A2", "B1", "B2", "C1", "C2", "INSUFFICIENT_DATA"
+- "note": 1-2 sentences in ENGLISH. Frame ENCOURAGINGLY — mention one specific strength AND a concrete thing to push toward the next level. Never use words like "poor", "weak", "lacking". For INSUFFICIENT_DATA: invite them to come back for a longer chat.
+
+Examples:
+- "level": "A2", "note": "You handled greetings and past tense — push toward longer sentences and 'porque' to start hitting B1."
+- "level": "B2", "note": "Strong fluency and you used 'embora' naturally — work on subjunctive in hypotheticals to reach C1."
+- "level": "INSUFFICIENT_DATA", "note": "Stick around for a longer chat next time so we can place your level — even 5 minutes of speaking will do it."`,
+          },
+          { role: 'user', content: transcriptText },
+        ],
+      }),
+    })
+
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>
+      error?: { message?: string }
+    }
+    if (data.error) {
+      return { status: 500, body: { error: data.error.message } }
+    }
+    const content = data.choices?.[0]?.message?.content ?? '{}'
+    let parsed: { level?: string; note?: string }
+    try {
+      parsed = JSON.parse(content)
+    } catch {
+      return { status: 500, body: { error: 'Invalid JSON from CEFR model.' } }
+    }
+    const validLevels = new Set<CefrLevel>([
+      'A1',
+      'A2',
+      'B1',
+      'B2',
+      'C1',
+      'C2',
+      'INSUFFICIENT_DATA',
+    ])
+    const level = (parsed.level ?? '') as CefrLevel
+    if (!validLevels.has(level)) {
+      return {
+        status: 500,
+        body: { error: `Model returned unknown level: ${parsed.level}` },
+      }
+    }
+    const assessment: CefrAssessment = {
+      level,
+      note: (parsed.note ?? '').trim(),
+      language: languageCode,
+      assessedAt: new Date().toISOString(),
+    }
+    return { status: 200, body: assessment }
+  } catch (err) {
+    return { status: 500, body: { error: String(err) } }
+  }
+}
+
+/// Persist a fresh assessment to the user's profile. Best-effort — if the
+/// upsert fails we still return the assessment to the caller so the
+/// paywall can render it, but the result won't survive a page reload.
+export async function persistCefrAssessment(
+  userId: string,
+  assessment: CefrAssessment,
+): Promise<void> {
+  const { supabaseAdmin } = await import('./supabase-admin.js')
+  const { error } = await supabaseAdmin()
+    .from('profiles')
+    .upsert(
+      {
+        user_id: userId,
+        cefr_level: assessment.level,
+        cefr_language: assessment.language,
+        cefr_note: assessment.note,
+        cefr_assessed_at: assessment.assessedAt,
+      },
+      { onConflict: 'user_id' },
+    )
+  if (error) {
+    console.error('[assess-cefr] persist failed:', error.message)
+  }
+}
+
 // -- Post-session review ----------------------------------------------------
 
 export type TranscriptEntry = { role: 'user' | 'tutor'; text: string }
