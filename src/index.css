@@ -604,10 +604,22 @@ a {
 .auth-oauth-apple {
   background: #000;
   color: #fff;
+  margin-bottom: 10px;
 }
 
 .auth-oauth-apple:hover:not(:disabled) {
   background: #1a1a1a;
+}
+
+.auth-oauth-google {
+  background: #fff;
+  color: #1a1a1a;
+  border: 1px solid #dadce0;
+}
+
+.auth-oauth-google:hover:not(:disabled) {
+  background: #f7f8fa;
+  border-color: #c4c7c9;
 }
 
 .auth-divider {
