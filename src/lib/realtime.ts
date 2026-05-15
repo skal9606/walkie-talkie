@@ -465,7 +465,10 @@ export class RealtimeTutor {
 /// Hint prompt — mirrors the iOS hintInstructions exactly so the two
 /// platforms produce comparable output. Output rules are spelled out
 /// multiple ways because models sometimes obey only one phrasing.
-function buildHintInstructions(
+///
+/// Exported for unit testing — the prompt content materially affects
+/// what users see in the hint panel, so we verify it directly.
+export function buildHintInstructions(
   proficiency: string,
   languageLabel: string,
   nativeLanguage: string,
