@@ -409,6 +409,33 @@ export class RealtimeTutor {
     }
   }
 
+  /// Fires an out-of-band text response asking the model for 2-3 phrases
+  /// the learner could say next. `conversation: "none"` keeps the request
+  /// out of conversation state — the tutor's next audio turn behaves as
+  /// if the hint never happened. The response arrives over the data
+  /// channel as `response.text.delta` / `response.text.done` events,
+  /// which the caller listens for via `onEvent`.
+  ///
+  /// `proficiency` shapes the output: "first_timer" gets target-language
+  /// phrases with native-language translations in parens; "intermediate"
+  /// or "advanced" get sentence starters without translations.
+  requestHint(opts: {
+    proficiency: string
+    languageLabel: string
+    nativeLanguage: string
+  }) {
+    const { proficiency, languageLabel, nativeLanguage } = opts
+    const instructions = buildHintInstructions(proficiency, languageLabel, nativeLanguage)
+    this.send({
+      type: 'response.create',
+      response: {
+        conversation: 'none',
+        modalities: ['text'],
+        instructions,
+      },
+    })
+  }
+
   disconnect() {
     if (this.vadTimer) {
       clearInterval(this.vadTimer)
@@ -432,5 +459,56 @@ export class RealtimeTutor {
     this.audioEl = null
     this.silentAudioCtx = null
     this.handlers.clear()
+  }
+}
+
+/// Hint prompt — mirrors the iOS hintInstructions exactly so the two
+/// platforms produce comparable output. Output rules are spelled out
+/// multiple ways because models sometimes obey only one phrasing.
+function buildHintInstructions(
+  proficiency: string,
+  languageLabel: string,
+  nativeLanguage: string,
+): string {
+  const outputRules = `OUTPUT RULES (STRICT — the UI already shows a "Try saying…" header above your output):
+- Output ONLY the phrases. Nothing else.
+- NO preamble line ("Here are some ideas", "Algumas ideias para continuar", "Voici quelques idées", etc.). Skip directly to the phrases.
+- NO numbering, bullets, asterisks, or markdown.
+- NO closing remark.
+- One phrase per line. That is the entire response.`
+
+  switch (proficiency) {
+    case 'first_timer':
+    case 'complete-beginner':
+      return `The learner is paused, looking for something to say. They are a TRUE BEGINNER in ${languageLabel} and know virtually no ${languageLabel}.
+Give them 2-3 short, useful ${languageLabel} phrases they could say RIGHT NOW based on the current conversation context.
+Each phrase MUST include a ${nativeLanguage} translation in parentheses.
+
+${outputRules}
+
+Example output (exact format, nothing else):
+Oi! (Hi)
+Tudo bem? (How are you?)
+Obrigado (Thank you)`
+    case 'basic':
+    case 'novice':
+      return `The learner is paused. They are a BASIC ${languageLabel} learner who knows greetings and a few short phrases.
+Give them 2-3 short ${languageLabel} phrases or sentence starters they could use right now, with brief ${nativeLanguage} hints in parens.
+
+${outputRules}`
+    case 'intermediate':
+    case 'advanced':
+      return `The learner is paused — not because they lack vocabulary but because they're stuck for ideas.
+Give them 2-3 conversational nudges or sentence starters in ${languageLabel} they could use right now. They do NOT need translations.
+
+${outputRules}
+
+Examples of the right shape (these are the phrases themselves — no preamble before them):
+"Você poderia perguntar sobre o trabalho dela"
+"Try 'Eu acho que…' to share your opinion"`
+    default:
+      return `The learner is paused. Give them 2-3 short ${languageLabel} phrases they could say right now, with brief ${nativeLanguage} hints in parens.
+
+${outputRules}`
   }
 }

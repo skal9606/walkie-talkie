@@ -5,17 +5,24 @@ const STORAGE_KEY = 'walkie_preferences_v1'
 
 export type Formality = 'casual' | 'neutral' | 'formal'
 export type Strictness = 'lax' | 'strict'
+/// Pronunciation feedback mode — distinct from grammar strictness above.
+/// Forgiving (default): celebrate any recognizable attempt, never flag
+/// pronunciation. Honest: quickly model the right form when they slip,
+/// then continue. Strict: stop and ask them to retry the slipped word.
+export type Pronunciation = 'forgiving' | 'honest' | 'strict'
 export type Theme = 'dark' | 'light'
 
 export type Preferences = {
   formality: Formality
   strictness: Strictness
+  pronunciation: Pronunciation
   theme: Theme
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   formality: 'casual',
   strictness: 'lax',
+  pronunciation: 'forgiving',
   theme: 'dark',
 }
 
@@ -24,6 +31,9 @@ function isFormality(v: unknown): v is Formality {
 }
 function isStrictness(v: unknown): v is Strictness {
   return v === 'lax' || v === 'strict'
+}
+function isPronunciation(v: unknown): v is Pronunciation {
+  return v === 'forgiving' || v === 'honest' || v === 'strict'
 }
 function isTheme(v: unknown): v is Theme {
   return v === 'dark' || v === 'light'
@@ -41,6 +51,9 @@ export function loadPreferences(): Preferences {
       strictness: isStrictness(parsed.strictness)
         ? parsed.strictness
         : DEFAULT_PREFERENCES.strictness,
+      pronunciation: isPronunciation(parsed.pronunciation)
+        ? parsed.pronunciation
+        : DEFAULT_PREFERENCES.pronunciation,
       theme: isTheme(parsed.theme) ? parsed.theme : DEFAULT_PREFERENCES.theme,
     }
   } catch {
@@ -83,6 +96,23 @@ export function buildPreferencesPromptBlock(p: Preferences): string {
   } else {
     lines.push(
       '- Grammar strictness: LAX. Default behavior — let minor slips slide if the meaning came through. Recast only when a Brazilian listener would actually be confused.',
+    )
+  }
+  // Pronunciation block — a SEPARATE concern from grammar strictness above.
+  // Same three-mode taxonomy as iOS. CRITICAL caveat: the transcription
+  // model auto-corrects mispronounced words to the right spelling, so the
+  // tutor must rely on AUDIO understanding, not the transcript.
+  if (p.pronunciation === 'honest') {
+    lines.push(
+      '- Pronunciation feedback: HONEST. You are a realtime VOICE model — listen to the AUDIO, not just the transcript (which auto-corrects). When the learner clearly mispronounces a word (wrong stress, anglicized vowels, missing nasal/silent letters, hard English "r"), model the correct pronunciation in your reply as a quick aside and continue. Max one per turn. Tone stays warm. If unsure, skip — false positives feel worse than misses.',
+    )
+  } else if (p.pronunciation === 'strict') {
+    lines.push(
+      '- Pronunciation feedback: STRICT. You are a realtime VOICE model — listen to the AUDIO, not just the transcript (which auto-corrects). When the learner clearly mispronounces a word, gently stop and ask them to retry: "Quick one — try \'café\' again with the stress on the second syllable. [pause]". Accept their second attempt warmly regardless and move on. Max one per turn. Tone stays warm; you\'re a patient coach. If unsure, skip.',
+    )
+  } else {
+    lines.push(
+      '- Pronunciation feedback: FORGIVING. Celebrate any recognizable attempt. Do not call out pronunciation slips. Do not model the correct form unless the learner asks. Momentum and confidence over accuracy.',
     )
   }
   return `TUTOR PREFERENCES (set by the learner)

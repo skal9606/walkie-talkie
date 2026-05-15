@@ -16,6 +16,7 @@ import {
   type Formality,
   type Preferences,
   type Strictness,
+  type Pronunciation,
   type Theme,
 } from '../lib/preferences'
 import { TUTORS, getTutor } from '../lib/tutors'
@@ -412,6 +413,29 @@ function TutorTab({
                 onChange={() => update('strictness', s)}
               />
               <span>{s === 'lax' ? 'Let things flow' : 'Correct me'}</span>
+            </label>
+          ))}
+        </div>
+      </Field>
+
+      <Field
+        label="Pronunciation feedback"
+        hint={`Honest = ${tutorName} quickly models the right pronunciation when you slip. Strict = ${tutorName} pauses and asks you to retry. Forgiving = momentum over accuracy.`}
+      >
+        <div className="settings-radio-group settings-radio-group-row">
+          {(['forgiving', 'honest', 'strict'] as Pronunciation[]).map((p) => (
+            <label
+              key={p}
+              className={`settings-radio ${draft.pronunciation === p ? 'selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="pronunciation"
+                value={p}
+                checked={draft.pronunciation === p}
+                onChange={() => update('pronunciation', p)}
+              />
+              <span>{p === 'forgiving' ? 'Forgiving' : p === 'honest' ? 'Honest' : 'Strict'}</span>
             </label>
           ))}
         </div>

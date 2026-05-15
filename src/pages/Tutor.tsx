@@ -103,6 +103,13 @@ export default function Tutor() {
   const [translations, setTranslations] = useState<TranslationState>({})
   const [review, setReview] = useState<ReviewData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /// Hint button state. `null` = no hint panel showing. Non-null array =
+  /// the 2-3 phrases returned by the most recent requestHint call.
+  const [hintLines, setHintLines] = useState<string[] | null>(null)
+  const [hintLoading, setHintLoading] = useState(false)
+  // Accumulator for response.text.delta chunks belonging to the active
+  // out-of-band hint response. Cleared on response.text.done.
+  const hintBufferRef = useRef<string>('')
 
   // Local dev bypass — when VITE_DEV_BYPASS_GATING=true, skip all trial /
   // subscription checks and act as if the user is fully subscribed. Never
@@ -561,6 +568,26 @@ export default function Tutor() {
     stopRef.current = stop
   }, [stop])
 
+  /// Triggered by the hint button. Fires an out-of-band text response on
+  /// the active realtime connection — the model returns 2-3 contextual
+  /// phrases the learner could say next. Tailored by proficiency level.
+  const requestHint = useCallback(() => {
+    if (!tutorRef.current || !profile?.level) return
+    setHintLoading(true)
+    setHintLines(null)
+    hintBufferRef.current = ''
+    tutorRef.current.requestHint({
+      proficiency: profile.level,
+      languageLabel: tutor.languageLabel,
+      nativeLanguage: profile.nativeLanguage ?? 'English',
+    })
+  }, [profile?.level, profile?.nativeLanguage, tutor.languageLabel])
+
+  const dismissHint = useCallback(() => {
+    setHintLines(null)
+    setHintLoading(false)
+  }, [])
+
   async function start(overrideScenario?: Scenario) {
     if (!accessToken) return
     if (!subscribed && secondsRemaining <= 0) {
@@ -687,6 +714,41 @@ export default function Tutor() {
               t.id === id && t.role === 'tutor' ? { ...t, done: true } : t,
             ),
           )
+          break
+        }
+        // Hint button output channel. Out-of-band text responses
+        // (modalities: ["text"]) fire these events; audio responses use
+        // response.audio_transcript.delta handled above.
+        case 'response.text.delta': {
+          const delta = (event.delta as string) ?? ''
+          hintBufferRef.current += delta
+          break
+        }
+        case 'response.text.done': {
+          const final = (event.text as string) ?? hintBufferRef.current
+          hintBufferRef.current = ''
+          // Clean up: strip bullets/numbering, drop preamble headers,
+          // cap at 3 lines so the panel never balloons.
+          const cleaned = final
+            .split('\n')
+            .map((line) => {
+              let s = line.trim()
+              while (s.startsWith('-') || s.startsWith('•') || s.startsWith('*')) {
+                s = s.slice(1).trim()
+              }
+              const numbered = s.match(/^(\d{1,2})\.\s*(.*)$/)
+              if (numbered) s = numbered[2]
+              return s
+            })
+            .filter((line) => {
+              if (line.length === 0) return false
+              // Header-like preamble: short line ending with a colon
+              if (line.length < 80 && line.endsWith(':')) return false
+              return true
+            })
+            .slice(0, 3)
+          setHintLines(cleaned)
+          setHintLoading(false)
           break
         }
         case 'error': {
@@ -974,6 +1036,28 @@ export default function Tutor() {
           />
         )}
 
+      {hintLines && hintLines.length > 0 && (
+        <div className="hint-panel" role="region" aria-label="Suggested phrases">
+          <div className="hint-panel-header">
+            <span className="hint-panel-title">Try saying…</span>
+            <button
+              className="hint-panel-close"
+              onClick={dismissHint}
+              aria-label="Dismiss hints"
+            >
+              ✕
+            </button>
+          </div>
+          <ul className="hint-panel-list">
+            {hintLines.map((line, i) => (
+              <li key={i} className="hint-panel-item">
+                💬 {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="controls">
         {status === 'live' && (
           <div className="live-indicator">
@@ -1009,9 +1093,19 @@ export default function Tutor() {
           </button>
         )}
         {status === 'live' && (
-          <button className="mic-btn stop" onClick={() => stop()}>
-            End session
-          </button>
+          <>
+            <button
+              className="mic-btn hint"
+              onClick={requestHint}
+              disabled={hintLoading}
+              title="What can I say?"
+            >
+              💡 {hintLoading ? 'Loading…' : 'Hint'}
+            </button>
+            <button className="mic-btn stop" onClick={() => stop()}>
+              End session
+            </button>
+          </>
         )}
         {status === 'reviewing' && (
           <button className="mic-btn" disabled>

@@ -272,6 +272,73 @@ a {
   color: #fff;
 }
 
+.mic-btn.hint {
+  background: #ffd766;
+  color: #1a1a1a;
+}
+
+/* Hint panel — popover-ish card above the controls when the learner asks
+   for suggested phrases. Distinct yellow-bordered styling so it reads as
+   a coach aside, not a tutor message. */
+.hint-panel {
+  background: rgba(255, 215, 102, 0.08);
+  border: 1px solid rgba(255, 215, 102, 0.35);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin: 0 auto 12px;
+  max-width: 640px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hint-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.hint-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 102, 0.85);
+}
+
+.hint-panel-close {
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.hint-panel-close:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hint-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hint-panel-item {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text);
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+}
+
 .error {
   color: var(--danger);
   font-size: 14px;
