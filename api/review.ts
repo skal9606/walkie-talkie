@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   reviewTranscript,
   persistCefrAssessment,
+  persistLearnerState,
   type TranscriptEntry,
   type CefrAssessment,
   type ReviewWithOptionalCefr,
@@ -28,13 +29,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     language: body.language,
     assessCefr: body.assessCefr === true,
   })
-  // Persist CEFR if the review returned one — best-effort so a failed
-  // upsert doesn't block the review payload reaching the client.
+  // Persist CEFR + learner state if the review returned one. Both are
+  // best-effort so a failed upsert doesn't block the review payload
+  // reaching the client. Persisting learner state is what makes the
+  // tutor able to weave previous mistakes / personal facts / focus area
+  // into the NEXT session — see loadLearnerState in /api/session.
   if (result.status === 200) {
-    const reviewBody = result.body as ReviewWithOptionalCefr
+    const reviewBody = result.body as ReviewWithOptionalCefr & {
+      corrections?: Array<{ original?: string; corrected?: string; explanation?: string }>
+      memory?: string[]
+      nextFocus?: string | null
+    }
     if (reviewBody.cefr) {
       await persistCefrAssessment(userId, reviewBody.cefr as CefrAssessment)
     }
+    const language = body.language ?? 'pt-BR'
+    await persistLearnerState(userId, language, {
+      corrections: reviewBody.corrections,
+      memory: reviewBody.memory,
+      nextFocus: reviewBody.nextFocus,
+    })
   }
   res.status(result.status).json(result.body)
 }

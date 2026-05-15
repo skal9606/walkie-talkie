@@ -14,6 +14,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) {
     return res.status(401).json({ error: 'Not signed in.' })
   }
-  const result = await mintGatedSession(userId, process.env.OPENAI_API_KEY)
+  // Language is passed as a query param so the server can return per-
+  // language learner state (mistakes, memory, focus) without leaking
+  // facts from one tutor into another's session. Legacy callers that
+  // don't pass it just get empty state — no error.
+  const langParam = req.query?.language
+  const language = typeof langParam === 'string' ? langParam : undefined
+  const result = await mintGatedSession(userId, process.env.OPENAI_API_KEY, language)
   res.status(result.status).json(result.body)
 }

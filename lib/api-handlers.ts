@@ -264,6 +264,150 @@ export async function persistCefrAssessment(
   }
 }
 
+// -- Learner state (mistakes, memory, focus) -------------------------------
+
+/// One persisted mistake the tutor should circle back to in future sessions.
+/// `recordedAt` is an ISO timestamp; the array is application-capped at
+/// MAX_LEARNER_STATE_ITEMS, newest first, so old mistakes age out naturally
+/// without a separate "stale" sweep.
+export type PersistedMistake = {
+  original: string
+  corrected: string
+  explanation: string
+  recordedAt: string
+}
+
+const MAX_LEARNER_STATE_ITEMS = 10
+
+/// Pulls per-language learner state from the profile. Returns empty
+/// containers (not nulls) so callers can spread them safely. Filtered by
+/// `language` so PT facts don't bleed into an ES session.
+export async function loadLearnerState(
+  userId: string,
+  language: string,
+): Promise<{
+  mistakes: PersistedMistake[]
+  memory: string[]
+  nextFocus: string | null
+}> {
+  const { supabaseAdmin } = await import('./supabase-admin.js')
+  const { data, error } = await supabaseAdmin()
+    .from('profiles')
+    .select('recent_mistakes, recent_memory, next_focus')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error || !data) {
+    return { mistakes: [], memory: [], nextFocus: null }
+  }
+  const mistakesByLang = (data.recent_mistakes ?? {}) as Record<string, PersistedMistake[]>
+  const memoryByLang = (data.recent_memory ?? {}) as Record<string, string[]>
+  const focusByLang = (data.next_focus ?? {}) as Record<string, string>
+  return {
+    mistakes: Array.isArray(mistakesByLang[language]) ? mistakesByLang[language] : [],
+    memory: Array.isArray(memoryByLang[language]) ? memoryByLang[language] : [],
+    nextFocus: typeof focusByLang[language] === 'string' ? focusByLang[language] : null,
+  }
+}
+
+/// Merges fresh review output into the user's stored learner state for the
+/// language they just practiced. Caps each array at MAX_LEARNER_STATE_ITEMS
+/// with most-recent first; dedupes mistakes by the learner's `original`
+/// utterance and memory items case-insensitively.
+///
+/// Best-effort — a failed write doesn't block the review response. The
+/// learner can still see their CEFR card and transcript.
+export async function persistLearnerState(
+  userId: string,
+  language: string,
+  fresh: {
+    corrections?: Array<{ original?: string; corrected?: string; explanation?: string }>
+    memory?: string[]
+    nextFocus?: string | null
+  },
+): Promise<void> {
+  const { supabaseAdmin } = await import('./supabase-admin.js')
+  const client = supabaseAdmin()
+  const { data: row } = await client
+    .from('profiles')
+    .select('recent_mistakes, recent_memory, next_focus')
+    .eq('user_id', userId)
+    .maybeSingle()
+  const prevMistakes = ((row?.recent_mistakes ?? {}) as Record<string, PersistedMistake[]>)
+  const prevMemory = ((row?.recent_memory ?? {}) as Record<string, string[]>)
+  const prevFocus = ((row?.next_focus ?? {}) as Record<string, string>)
+
+  const now = new Date().toISOString()
+  const incomingMistakes: PersistedMistake[] = (fresh.corrections ?? [])
+    .map((c) => ({
+      original: (c.original ?? '').trim(),
+      corrected: (c.corrected ?? '').trim(),
+      explanation: (c.explanation ?? '').trim(),
+      recordedAt: now,
+    }))
+    .filter((m) => m.original.length > 0 && m.corrected.length > 0)
+
+  const mergedMistakes = capByOriginal(
+    [...incomingMistakes, ...(prevMistakes[language] ?? [])],
+    MAX_LEARNER_STATE_ITEMS,
+  )
+
+  const incomingMemory = (fresh.memory ?? [])
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+  const mergedMemory = capCaseInsensitive(
+    [...incomingMemory, ...(prevMemory[language] ?? [])],
+    MAX_LEARNER_STATE_ITEMS,
+  )
+
+  const nextMistakes = { ...prevMistakes, [language]: mergedMistakes }
+  const nextMemory = { ...prevMemory, [language]: mergedMemory }
+  const nextFocusByLang = { ...prevFocus }
+  if (typeof fresh.nextFocus === 'string' && fresh.nextFocus.trim().length > 0) {
+    nextFocusByLang[language] = fresh.nextFocus.trim()
+  }
+
+  const { error } = await client
+    .from('profiles')
+    .upsert(
+      {
+        user_id: userId,
+        recent_mistakes: nextMistakes,
+        recent_memory: nextMemory,
+        next_focus: nextFocusByLang,
+      },
+      { onConflict: 'user_id' },
+    )
+  if (error) {
+    console.error('[learner-state] persist failed:', error.message)
+  }
+}
+
+function capByOriginal(items: PersistedMistake[], max: number): PersistedMistake[] {
+  const seen = new Set<string>()
+  const out: PersistedMistake[] = []
+  for (const m of items) {
+    const key = m.original.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(m)
+    if (out.length >= max) break
+  }
+  return out
+}
+
+function capCaseInsensitive(items: string[], max: number): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const s of items) {
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+    if (out.length >= max) break
+  }
+  return out
+}
+
 // -- Post-session review ----------------------------------------------------
 
 export type TranscriptEntry = { role: 'user' | 'tutor'; text: string }

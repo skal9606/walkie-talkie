@@ -87,11 +87,14 @@ export async function addUsageSeconds(userId: string, seconds: number): Promise<
 /**
  * Gated version of session-token minting. Returns 402 if the user is out of
  * free seconds and not subscribed; otherwise mints a token and includes
- * subscription status + remaining seconds in the body.
+ * subscription status + remaining seconds + learner state (mistakes,
+ * memory, focus) in the body. The learner state is what makes the tutor
+ * able to weave previous-session continuity — see TutorPrompt on iOS.
  */
 export async function mintGatedSession(
   userId: string,
   openAiKey: string | undefined,
+  language?: string,
 ): Promise<HandlerResult> {
   const access = await checkSessionAccess(userId)
   if (!access.allowed) {
@@ -107,12 +110,34 @@ export async function mintGatedSession(
   const mint = await mintSessionToken(openAiKey)
   if (mint.status !== 200) return mint
   const body = mint.body && typeof mint.body === 'object' ? (mint.body as object) : {}
+
+  // Load learner state for the requested language. Skipped when no language
+  // is passed (legacy callers) — they just don't get continuity, no error.
+  // Best-effort: any DB hiccup falls back to empty state, never blocks the
+  // session mint.
+  let learnerState: {
+    mistakes: unknown[]
+    memory: string[]
+    nextFocus: string | null
+  } = { mistakes: [], memory: [], nextFocus: null }
+  if (language) {
+    try {
+      const { loadLearnerState } = await import('./api-handlers.js')
+      learnerState = await loadLearnerState(userId, language)
+    } catch (err) {
+      console.error('[session] loadLearnerState failed:', err)
+    }
+  }
+
   return {
     status: 200,
     body: {
       ...body,
       subscribed: access.subscribed,
       secondsRemaining: access.secondsRemaining,
+      recentMistakes: learnerState.mistakes,
+      recentMemory: learnerState.memory,
+      nextFocus: learnerState.nextFocus,
     },
   }
 }
