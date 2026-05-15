@@ -317,7 +317,7 @@ export class RealtimeTutor {
                   // cancel-cycle: when a learner did pronunciation
                   // practice (back-to-back attempts at one word), each
                   // new VAD turn cancelled the previous in-flight
-                  // response, so Natalia had to wait 2-3 utterances
+                  // response, so Natalia had to wait 2 utterances
                   // before any reply actually rendered. With it off,
                   // Natalia always finishes her turn — which is also
                   // the right pedagogical default for a language
@@ -409,7 +409,7 @@ export class RealtimeTutor {
     }
   }
 
-  /// Fires an out-of-band text response asking the model for 2-3 phrases
+  /// Fires an out-of-band text response asking the model for 2 phrases
   /// the learner could say next. `conversation: "none"` keeps the request
   /// out of conversation state — the tutor's next audio turn behaves as
   /// if the hint never happened. The response arrives over the data
@@ -481,25 +481,24 @@ function buildHintInstructions(
     case 'first_timer':
     case 'complete-beginner':
       return `The learner is paused, looking for something to say. They are a TRUE BEGINNER in ${languageLabel} and know virtually no ${languageLabel}.
-Give them 2-3 short, useful ${languageLabel} phrases they could say RIGHT NOW based on the current conversation context.
+Give them 2 short, useful ${languageLabel} phrases they could say RIGHT NOW based on the current conversation context.
 Each phrase MUST include a ${nativeLanguage} translation in parentheses.
 
 ${outputRules}
 
 Example output (exact format, nothing else):
 Oi! (Hi)
-Tudo bem? (How are you?)
-Obrigado (Thank you)`
+Tudo bem? (How are you?)`
     case 'basic':
     case 'novice':
       return `The learner is paused. They are a BASIC ${languageLabel} learner who knows greetings and a few short phrases.
-Give them 2-3 short ${languageLabel} phrases or sentence starters they could use right now, with brief ${nativeLanguage} hints in parens.
+Give them 2 short ${languageLabel} phrases or sentence starters they could use right now, with brief ${nativeLanguage} hints in parens.
 
 ${outputRules}`
     case 'intermediate':
     case 'advanced':
       return `The learner is paused — not because they lack vocabulary but because they're stuck for ideas.
-Give them 2-3 conversational nudges or sentence starters in ${languageLabel} they could use right now. They do NOT need translations.
+Give them 2 conversational nudges or sentence starters in ${languageLabel} they could use right now. They do NOT need translations.
 
 ${outputRules}
 
@@ -507,7 +506,7 @@ Examples of the right shape (these are the phrases themselves — no preamble be
 "Você poderia perguntar sobre o trabalho dela"
 "Try 'Eu acho que…' to share your opinion"`
     default:
-      return `The learner is paused. Give them 2-3 short ${languageLabel} phrases they could say right now, with brief ${nativeLanguage} hints in parens.
+      return `The learner is paused. Give them 2 short ${languageLabel} phrases they could say right now, with brief ${nativeLanguage} hints in parens.
 
 ${outputRules}`
   }

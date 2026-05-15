@@ -746,7 +746,7 @@ export default function Tutor() {
               if (line.length < 80 && line.endsWith(':')) return false
               return true
             })
-            .slice(0, 3)
+            .slice(0, 2)
           setHintLines(cleaned)
           setHintLoading(false)
           break
