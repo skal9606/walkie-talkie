@@ -43,6 +43,13 @@ export function useAuth(): {
 
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut()
+  // Hard navigate to the landing page rather than letting individual
+  // auth-gated pages bounce the user to /login. Full reload also
+  // clears any in-memory React state from the signed-in session so
+  // the next user lands on a clean slate.
+  if (typeof window !== 'undefined') {
+    window.location.href = '/'
+  }
 }
 
 /**
