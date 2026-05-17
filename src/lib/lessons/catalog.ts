@@ -9,10 +9,13 @@ import { italianPhrases } from './content/it'
 import { frenchPhrases } from './content/fr-FR'
 import { germanPhrases } from './content/de-DE'
 
-/** Map of iOS-style raw language code → phrase content. */
+/** Map of web LanguageCode → phrase content. Uses the web codes
+ *  (es-MX, pt-BR, …) since callers pass tutor.language. iOS uses raw
+ *  codes that mostly match — 'es' on iOS = 'es-MX' on web — bridged
+ *  if/when we sync progress server-side. */
 const CONTENT_BY_LANG: Record<string, Record<string, LessonPhrase[]>> = {
   'pt-BR': portuguesePhrases,
-  'es': spanishPhrases,
+  'es-MX': spanishPhrases,
   'it-IT': italianPhrases,
   'fr-FR': frenchPhrases,
   'de-DE': germanPhrases,

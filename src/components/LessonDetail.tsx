@@ -11,10 +11,12 @@ export function LessonDetail(props: {
   lesson: Lesson
   languageCode: string
   tutorName: string
+  tutorLanguageLabel: string
+  tutorFlag: string
   onStart: () => void
   onClose: () => void
 }) {
-  const { lesson, languageCode, tutorName, onStart, onClose } = props
+  const { lesson, languageCode, tutorName, tutorLanguageLabel, tutorFlag, onStart, onClose } = props
   const phrases = lessonPhrases(lesson, languageCode)
   const accent = unitAccentCSS(lesson, 0.65)
   const accentSoft = unitAccentCSS(lesson, 0.25)
@@ -47,7 +49,7 @@ export function LessonDetail(props: {
 
         {contentMissing && (
           <div className="lesson-detail-placeholder">
-            {languageLabel(languageCode)} content for this lesson is on the way — try it in Portuguese in the meantime.
+            {tutorLanguageLabel} content for this lesson is on the way — try it in Portuguese in the meantime.
           </div>
         )}
 
@@ -60,7 +62,7 @@ export function LessonDetail(props: {
               {tutorName} will lead this scene
             </div>
             <div className="lesson-detail-tutor-meta">
-              {languageLabel(languageCode)} · voice only
+              {tutorFlag} {tutorLanguageLabel} · voice only
             </div>
           </div>
         </div>
@@ -112,20 +114,3 @@ function estimatedMinutes(lesson: Lesson): number {
   return m ? parseInt(m[1], 10) : 8
 }
 
-function languageLabel(code: string): string {
-  const flag = {
-    'pt-BR': '🇧🇷',
-    es: '🇲🇽',
-    'it-IT': '🇮🇹',
-    'fr-FR': '🇫🇷',
-    'de-DE': '🇩🇪',
-  }[code] ?? '🌐'
-  const name = {
-    'pt-BR': 'Portuguese',
-    es: 'Spanish',
-    'it-IT': 'Italian',
-    'fr-FR': 'French',
-    'de-DE': 'German',
-  }[code] ?? code
-  return `${flag} ${name}`
-}

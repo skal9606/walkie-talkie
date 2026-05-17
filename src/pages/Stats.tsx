@@ -25,7 +25,9 @@ export default function Stats() {
   useEffect(() => {
     const fresh: Record<string, number> = {}
     for (const t of TUTORS) {
-      fresh[t.id] = lessonsCompleted(t.id)
+      // Key by tutor.id so per-row lookups still work, but count by
+      // tutor.language since that's how LessonProgress is scoped.
+      fresh[t.id] = lessonsCompleted(t.language)
     }
     setTotals(fresh)
   }, [])

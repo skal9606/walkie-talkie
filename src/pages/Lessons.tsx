@@ -54,7 +54,12 @@ export default function Lessons() {
   const [progressTick, setProgressTick] = useState(0)
 
   const tutor = getTutor(profile?.tutorId ?? DEFAULT_TUTOR_ID)
-  const languageCode = tutor.id
+  // Use tutor.language (LanguageCode like 'pt-BR') for content + progress
+  // lookups — tutor.id is the persona identifier ('pt-br-natalia') and
+  // doesn't match LessonCatalog's content keys.
+  const languageCode = tutor.language
+  const tutorLanguageLabel = tutor.languageLabel
+  const tutorFlag = tutor.flag
 
   const refreshStatus = useCallback(async () => {
     if (!user) return
@@ -138,6 +143,8 @@ export default function Lessons() {
       profile={fullProfile}
       languageCode={languageCode}
       tutorName={tutor.name}
+      tutorLanguageLabel={tutorLanguageLabel}
+      tutorFlag={tutorFlag}
       streak={streak}
       subscribed={subscribed}
       progressTick={progressTick}
@@ -163,6 +170,8 @@ type LessonsHomeProps = {
   profile: LearnerProfile
   languageCode: string
   tutorName: string
+  tutorLanguageLabel: string
+  tutorFlag: string
   streak: number
   subscribed: boolean | null
   progressTick: number
@@ -188,6 +197,8 @@ function LessonsHome(props: LessonsHomeProps) {
     profile,
     languageCode,
     tutorName,
+    tutorLanguageLabel,
+    tutorFlag,
     streak,
     subscribed,
     progressTick,
@@ -251,7 +262,7 @@ function LessonsHome(props: LessonsHomeProps) {
           <div>
             <h1>Hi, {profile.name || 'there'} 👋</h1>
             <p className="lessons-subtitle">
-              Keep going with {tutorName}. {languageLabel(languageCode)}
+              Keep going with {tutorName}. {tutorFlag} {tutorLanguageLabel}
             </p>
           </div>
         </header>
@@ -350,6 +361,8 @@ function LessonsHome(props: LessonsHomeProps) {
           lesson={lessonForDetail}
           languageCode={languageCode}
           tutorName={tutorName}
+          tutorLanguageLabel={tutorLanguageLabel}
+          tutorFlag={tutorFlag}
           onStart={() => {
             onCloseDetail()
             navigate(`/chat?lesson=${lessonForDetail.id}`)
@@ -467,23 +480,6 @@ function displayState(
   return (lookup[lessonId] ?? 'not_started') as 'completed' | 'in_progress' | 'not_started'
 }
 
-function languageLabel(code: string): string {
-  const flag = {
-    'pt-BR': '🇧🇷',
-    es: '🇲🇽',
-    'it-IT': '🇮🇹',
-    'fr-FR': '🇫🇷',
-    'de-DE': '🇩🇪',
-  }[code] ?? '🌐'
-  const name = {
-    'pt-BR': 'Portuguese',
-    es: 'Spanish',
-    'it-IT': 'Italian',
-    'fr-FR': 'French',
-    'de-DE': 'German',
-  }[code] ?? code
-  return `${flag} ${name}`
-}
 
 // Suppress unused-import for lessonLevelOrder until the All Levels view
 // uses it (it's imported here for re-export convenience).

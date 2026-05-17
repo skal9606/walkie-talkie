@@ -382,7 +382,7 @@ export default function Tutor() {
       setSearchParams(next, { replace: true })
 
       activeLessonIdRef.current = lesson.id
-      const languageCode = tutor.id
+      const languageCode = tutor.language
       const synthetic: Scenario = {
         id: `lesson-${lesson.id}`,
         title: lesson.title,
@@ -523,7 +523,7 @@ export default function Tutor() {
       if (lessonId) {
         const elapsedSeconds = startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0
         const userTurnCount = finalTurns.filter((t) => t.role === 'user').length
-        const outcome = markLessonAttempt(tutor.id, lessonId, { elapsedSeconds, userTurnCount })
+        const outcome = markLessonAttempt(tutor.language, lessonId, { elapsedSeconds, userTurnCount })
         if (outcome === 'completed' || outcome === 'in_progress') {
           setLastLessonOutcome({ lessonId, state: outcome })
         }
