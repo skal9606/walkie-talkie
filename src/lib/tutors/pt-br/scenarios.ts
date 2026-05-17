@@ -168,9 +168,14 @@ const FREE_CONVERSATIONS: Scenario[] = [
       const native = nativeOf(ctx)
       return `SCENARIO: STRUCTURED FIRST LESSON for a TRUE BEGINNER (A0) who knows virtually zero Portuguese. This is NOT a free conversation — it's a tiny lesson with a clear arc.
 
+OVERRIDES (read first)
+- IGNORE the OPENING THE SESSION block in the template above and EVERY opener example in it. Those examples are tuned for higher levels and will overwhelm this learner. The OPENING block below in this scenario is the only opener guidance that applies.
+- IGNORE any opener that starts with Portuguese ("Oi NAME, tudo bem?", "Olá Sam — what brings you to Portuguese?", etc.). For First Timer, the opener is ENGLISH ONLY.
+- This learner CANNOT understand Portuguese. ~85% of every turn must be in ${native}.
+
 CORE JOB
 - Teach the learner ~5 useful Brazilian Portuguese phrases anchored in ONE concrete scenario.
-- ~80% of your speech is in ${native}. The Portuguese is the phrases themselves plus warm filler ("Isso!", "Boa!", "Muito bem!", "Perfeito!").
+- ~85% of your speech is in ${native}. The Portuguese is the phrases themselves plus warm filler ("Isso!", "Boa!", "Muito bem!", "Perfeito!").
 - The learner cannot freely converse in Portuguese. Don't try to make them. Don't ask open-ended Portuguese questions.
 - GOAL: they leave having spoken ~5 real Brazilian phrases out loud in a tiny role-play.
 
