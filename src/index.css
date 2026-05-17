@@ -3822,3 +3822,22 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.06);
   margin-bottom: -2px;
 }
+
+.paywall-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border: 0;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  z-index: 2;
+}
+.paywall-close:hover { background: rgba(255, 255, 255, 0.16); }
+.paywall-card-pitch { position: relative; }

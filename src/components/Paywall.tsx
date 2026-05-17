@@ -54,6 +54,7 @@ export function Paywall({
   reason,
   isAnonymous,
   cefr,
+  onClose,
 }: {
   accessToken: string
   reason: 'exhausted' | 'blocked'
@@ -64,6 +65,11 @@ export function Paywall({
    *  open isn't trial-driven, when the call is still in flight, or when
    *  it failed. Displayed as a personalized hook above the benefits. */
   cefr: CefrAssessment | null
+  /** Optional dismiss. Renders a close (×) button in the top-right when
+   *  provided. Used for non-blocking paywall presentations (e.g. a trial
+   *  user tapped a lesson — they can back out and keep using free chat).
+   *  Omit for the exhausted-trial case where we want to force a decision. */
+  onClose?: () => void
 }) {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>('yearly')
   const [email, setEmail] = useState('')
@@ -190,6 +196,16 @@ export function Paywall({
   return (
     <div className="paywall">
       <div className="paywall-card paywall-card-pitch">
+        {onClose && (
+          <button
+            type="button"
+            className="paywall-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        )}
         <div className="paywall-pitch-header">
           <div className="paywall-pitch-title">Walkie Talkie</div>
           <h2>

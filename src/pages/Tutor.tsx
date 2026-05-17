@@ -393,18 +393,26 @@ export default function Tutor() {
       const lesson = lessonById(lessonId)
       if (!lesson) return
 
-      const next = new URLSearchParams(searchParams)
-      next.delete('lesson')
-      setSearchParams(next, { replace: true })
-
       // Lessons are a subscriber feature. Free-trial users get free
       // conversation only — tapping a lesson on the home shouldn't
       // burn their trial minutes on a session they're not meant to
       // access. Open the paywall and bail; don't start the session.
+      //
+      // Critically: also kill autoStartAfterAuth + LEAVE the ?lesson
+      // param in the URL. If we strip it first, the autoStartAfterAuth
+      // effect (which guards `if (searchParams.get('lesson')) return`)
+      // no longer sees the lesson and races ahead with a free-talk
+      // session — the user saw the paywall AND heard Natalia start
+      // chatting in the background.
       if (!subscribed) {
+        setAutoStartAfterAuth(false)
         setPaywallOpen('blocked')
         return
       }
+
+      const next = new URLSearchParams(searchParams)
+      next.delete('lesson')
+      setSearchParams(next, { replace: true })
 
       activeLessonIdRef.current = lesson.id
       const languageCode = tutor.language
@@ -1230,6 +1238,16 @@ export default function Tutor() {
           accessToken={accessToken}
           isAnonymous={user?.is_anonymous ?? false}
           cefr={cefr}
+          // Only the 'blocked' variant is dismissible — that's the
+          // "trial user tapped a lesson" path, where they can back out
+          // and keep using free chat. The 'exhausted' variant (trial
+          // burned through) stays modal: they have to subscribe to
+          // continue.
+          onClose={
+            paywallOpen === 'blocked'
+              ? () => setPaywallOpen(null)
+              : undefined
+          }
         />
       )}
     </div>

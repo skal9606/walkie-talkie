@@ -110,10 +110,13 @@ export default function Lessons() {
     setProfile(mergeProfileBlanks(p))
   }
 
-  /// Brand-new sign-in: the user has authed but has no profile yet
-  /// (no name, no level, no language). Save what OnboardingFlow gives
-  /// us (language + tutor + name + level) into localStorage so the
-  /// downstream questionnaire (Onboarding) has the right baseline.
+  /// Brand-new sign-in: the user has authed but has no profile yet.
+  /// OnboardingFlow gives us name + native language + tutor + level —
+  /// everything we actually need to start. We mark questionnaireCompleted
+  /// here so we don't drag the user through a second screen asking for
+  /// the same fields. Goals (the optional "why are you learning?" field)
+  /// can be set later in Settings — the tutor infers it from conversation
+  /// otherwise.
   function handleInitialOnboarding(result: OnboardingResult) {
     const merged = mergeProfileBlanks({
       name: result.name,
@@ -121,6 +124,7 @@ export default function Lessons() {
       targetLanguage: result.targetLanguage,
       tutorId: result.tutorId,
       level: result.level,
+      questionnaireCompleted: true,
     })
     saveProfile(merged)
     setProfile(merged)
