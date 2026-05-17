@@ -17,7 +17,7 @@ export default function Login() {
     // most likely to click Login (to convert to a real account). Only bounce
     // genuinely-authenticated users away from this form.
     if (user && !user.is_anonymous && accessToken) {
-      navigate('/practice', { replace: true })
+      navigate('/lessons', { replace: true })
     }
   }, [user, accessToken, loading, navigate])
 

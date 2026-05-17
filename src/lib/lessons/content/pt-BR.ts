@@ -1,0 +1,270 @@
+// Auto-converted from iOS WalkieTalkie/Models/LessonContent_Portuguese.swift.
+// Update the iOS source first, then re-run the conversion script. See
+// LessonCatalog for the lookup pipeline.
+
+import type { LessonPhrase } from '../types'
+
+export const portuguesePhrases: Record<string, LessonPhrase[]> = {
+
+
+        // First Timer
+
+        "ft-1-1": [
+            { target: "Oi!", native: "Hi!" },
+            { target: "Olá, tudo bem?", native: "Hello, how are you?" },
+            { target: "Tudo bem, e você?", native: "I'm good, and you?" },
+            { target: "Bom dia", native: "Good morning" },
+            { target: "Boa noite", native: "Good evening / Goodnight" },
+        ],
+        "ft-1-2": [
+            { target: "Meu nome é …", native: "My name is …" },
+            { target: "Prazer em conhecer você", native: "Nice to meet you" },
+            { target: "Como você se chama?", native: "What's your name?" },
+            { target: "Eu sou dos Estados Unidos", native: "I'm from the United States" },
+            { target: "Você é daqui?", native: "Are you from here?" },
+        ],
+        "ft-1-3": [
+            { target: "Eu moro em …", native: "I live in …" },
+            { target: "Eu sou de …", native: "I'm from …" },
+            { target: "É uma cidade grande", native: "It's a big city" },
+            { target: "Fica perto de …", native: "It's near …" },
+            { target: "Você já foi lá?", native: "Have you been there?" },
+        ],
+        "ft-2-1": [
+            { target: "Um café, por favor", native: "A coffee, please" },
+            { target: "Com leite", native: "With milk" },
+            { target: "Para viagem", native: "To go" },
+            { target: "Quanto custa?", native: "How much is it?" },
+            { target: "Obrigado", native: "Thank you" },
+        ],
+        "ft-2-2": [
+            { target: "Quanto custa isso?", native: "How much is this?" },
+            { target: "É muito caro", native: "It's too expensive" },
+            { target: "Aceita cartão?", native: "Do you take card?" },
+            { target: "Em dinheiro", native: "In cash" },
+            { target: "Pode me dar o recibo?", native: "Can I get the receipt?" },
+        ],
+        "ft-2-3": [
+            { target: "Muito obrigado", native: "Thanks a lot" },
+            { target: "De nada", native: "You're welcome" },
+            { target: "Até logo", native: "See you soon" },
+            { target: "Tchau", native: "Bye" },
+            { target: "Foi um prazer", native: "It was a pleasure" },
+        ],
+        "ft-3-1": [
+            { target: "Para o aeroporto, por favor", native: "To the airport, please" },
+            { target: "Quanto tempo leva?", native: "How long does it take?" },
+            { target: "Pode ir mais devagar?", native: "Can you slow down?" },
+            { target: "Aqui está bom", native: "Here is fine" },
+            { target: "Quanto eu te devo?", native: "How much do I owe you?" },
+        ],
+        "ft-3-2": [
+            { target: "Como chego ao …?", native: "How do I get to the …?" },
+            { target: "É longe daqui?", native: "Is it far from here?" },
+            { target: "Vire à esquerda", native: "Turn left" },
+            { target: "Siga em frente", native: "Go straight" },
+            { target: "Obrigado pela ajuda", native: "Thanks for your help" },
+        ],
+        "ft-3-3": [
+            { target: "Não entendi", native: "I didn't understand" },
+            { target: "Pode repetir?", native: "Can you repeat?" },
+            { target: "Mais devagar, por favor", native: "Slower, please" },
+            { target: "Como se diz … em português?", native: "How do you say …?" },
+            { target: "Você fala inglês?", native: "Do you speak English?" },
+        ],
+        "ft-4-1": [
+            { target: "Muito prazer", native: "Very nice to meet you" },
+            { target: "Que casa linda", native: "What a beautiful home" },
+            { target: "Obrigado pelo convite", native: "Thanks for the invitation" },
+            { target: "Posso ajudar?", native: "Can I help?" },
+            { target: "Estava delicioso", native: "It was delicious" },
+        ],
+        "ft-4-2": [
+            { target: "Que tempo lindo hoje", native: "What lovely weather today" },
+            { target: "Você é daqui?", native: "Are you from here?" },
+            { target: "Está gostando do Brasil?", native: "Are you enjoying it here?" },
+            { target: "O que você faz?", native: "What do you do?" },
+            { target: "A gente se vê", native: "See you around" },
+        ],
+        "ft-4-3": [
+            { target: "Eu trabalho com …", native: "I work in/with …" },
+            { target: "Sou … de profissão", native: "I'm a … by profession" },
+            { target: "Trabalho de casa", native: "I work from home" },
+            { target: "Adoro o que faço", native: "I love what I do" },
+            { target: "E você, com o que trabalha?", native: "And you, what do you do?" },
+        ],
+
+        // Basic
+
+        "b-1-1": [
+            { target: "Estou procurando um presente", native: "I'm looking for a gift" },
+            { target: "É para um amigo", native: "It's for a friend" },
+            { target: "Tem alguma coisa típica?", native: "Do you have something typical?" },
+            { target: "Quanto custa esse?", native: "How much is that one?" },
+            { target: "Vou levar", native: "I'll take it" },
+        ],
+        "b-1-2": [
+            { target: "Posso experimentar?", native: "Can I try it on?" },
+            { target: "Tem outro tamanho?", native: "Do you have another size?" },
+            { target: "Ficou um pouco apertado", native: "It's a bit tight" },
+            { target: "Adorei essa cor", native: "I love this color" },
+            { target: "Fica bem em mim?", native: "Does it look good on me?" },
+        ],
+        "b-1-3": [
+            { target: "Um quilo de tomate, por favor", native: "A kilo of tomatoes, please" },
+            { target: "Estão maduros?", native: "Are they ripe?" },
+            { target: "Pode escolher os melhores?", native: "Can you pick the best ones?" },
+            { target: "É da estação?", native: "Is it in season?" },
+            { target: "Mais alguma coisa? Não, só isso", native: "Anything else? No, that's it" },
+        ],
+        "b-2-1": [
+            { target: "Eu adoro …", native: "I love …" },
+            { target: "Não como carne", native: "I don't eat meat" },
+            { target: "Sou alérgico a …", native: "I'm allergic to …" },
+            { target: "Qual é seu prato favorito?", native: "What's your favorite dish?" },
+            { target: "Você cozinha?", native: "Do you cook?" },
+        ],
+        "b-2-2": [
+            { target: "Meu filme favorito é …", native: "My favorite movie is …" },
+            { target: "É sobre …", native: "It's about …" },
+            { target: "Você já viu?", native: "Have you seen it?" },
+            { target: "Foi muito emocionante", native: "It was really moving" },
+            { target: "Eu recomendo", native: "I recommend it" },
+        ],
+        "b-2-3": [
+            { target: "No meu tempo livre eu …", native: "In my free time I …" },
+            { target: "Faço isso há … anos", native: "I've been doing it for … years" },
+            { target: "É muito relaxante", native: "It's very relaxing" },
+            { target: "Você tem algum hobby?", native: "Do you have any hobbies?" },
+            { target: "Posso te ensinar", native: "I can teach you" },
+        ],
+        "b-3-1": [
+            { target: "Minha família mora em …", native: "My family lives in …" },
+            { target: "Meus pais são de …", native: "My parents are from …" },
+            { target: "Tenho um irmão mais novo", native: "I have a younger brother" },
+            { target: "Eu os vejo nos feriados", native: "I see them on holidays" },
+            { target: "Sinto saudade deles", native: "I miss them" },
+        ],
+        "b-3-2": [
+            { target: "Somos quatro na família", native: "There are four of us" },
+            { target: "Meu irmão é mais velho", native: "My brother is older" },
+            { target: "Minha mãe é professora", native: "My mom is a teacher" },
+            { target: "Somos muito unidos", native: "We're very close" },
+            { target: "Tem fotos? Posso ver?", native: "Got photos? Can I see?" },
+        ],
+        "b-3-3": [
+            { target: "Nos fins de semana costumamos …", native: "On weekends we usually …" },
+            { target: "Sempre jantamos juntos", native: "We always eat dinner together" },
+            { target: "Comemoramos no Natal", native: "We celebrate at Christmas" },
+            { target: "Minha avó faz a comida", native: "My grandma cooks the food" },
+            { target: "É uma tradição da família", native: "It's a family tradition" },
+        ],
+        "b-4-1": [
+            { target: "Eu chego na terça", native: "I arrive on Tuesday" },
+            { target: "Vou ficar uma semana", native: "I'm staying a week" },
+            { target: "Quero conhecer …", native: "I want to see …" },
+            { target: "O que você recomenda?", native: "What do you recommend?" },
+            { target: "Vou alugar um carro", native: "I'm renting a car" },
+        ],
+        "b-4-2": [
+            { target: "Acordo às sete", native: "I wake up at seven" },
+            { target: "Trabalho até as seis", native: "I work until six" },
+            { target: "À tarde tenho academia", native: "In the afternoon I have gym" },
+            { target: "Janto em casa", native: "I have dinner at home" },
+            { target: "Durmo cedo", native: "I sleep early" },
+        ],
+        "b-4-3": [
+            { target: "Você quer sair sexta?", native: "Do you want to go out Friday?" },
+            { target: "Tem algum lugar legal?", native: "Is there somewhere cool?" },
+            { target: "A que horas a gente se encontra?", native: "What time do we meet?" },
+            { target: "Combinado!", native: "Deal!" },
+            { target: "Vou te chamar no zap", native: "I'll text you on WhatsApp" },
+        ],
+
+        // Intermediate
+
+        "i-1-1": [
+            { target: "Hoje aconteceu uma coisa engraçada", native: "Something funny happened today" },
+            { target: "Estava no meio de uma reunião quando …", native: "I was in the middle of a meeting when …" },
+            { target: "No final deu tudo certo", native: "In the end everything worked out" },
+            { target: "Foi estressante mas valeu a pena", native: "It was stressful but it was worth it" },
+            { target: "Você acredita nisso?", native: "Can you believe that?" },
+        ],
+        "i-1-2": [
+            { target: "Pra mim, …", native: "For me, …" },
+            { target: "Sinceramente, acho que …", native: "Honestly, I think that …" },
+            { target: "Não tenho certeza, mas …", native: "I'm not sure, but …" },
+            { target: "O principal motivo é …", native: "The main reason is …" },
+            { target: "Vamos concordar em discordar", native: "Let's agree to disagree" },
+        ],
+        "i-1-3": [
+            { target: "Entendo seu ponto, mas …", native: "I see your point, but …" },
+            { target: "Concordo até certo ponto", native: "I agree up to a point" },
+            { target: "Da minha perspectiva, …", native: "From my perspective, …" },
+            { target: "Será que não seria melhor …?", native: "Wouldn't it be better to …?" },
+            { target: "Faz sentido o que você diz", native: "What you're saying makes sense" },
+        ],
+        "i-2-1": [
+            { target: "Com licença, posso falar com você?", native: "Excuse me, can I speak with you?" },
+            { target: "Tem um problema com …", native: "There's a problem with …" },
+            { target: "Será que dá pra resolver?", native: "Is there any way to fix it?" },
+            { target: "Não estou satisfeito", native: "I'm not satisfied" },
+            { target: "Obrigado pela atenção", native: "Thanks for the attention" },
+        ],
+        "i-2-2": [
+            { target: "Desculpa o atraso", native: "Sorry I'm late" },
+            { target: "Aconteceu um imprevisto", native: "Something unexpected came up" },
+            { target: "O trânsito estava horrível", native: "The traffic was terrible" },
+            { target: "Não vai acontecer de novo", native: "It won't happen again" },
+            { target: "Posso compensar de alguma forma?", native: "Can I make it up to you?" },
+        ],
+        "i-2-3": [
+            { target: "Tá um pouco caro pra mim", native: "It's a bit expensive for me" },
+            { target: "Faz por menos?", native: "Could you do it for less?" },
+            { target: "Se eu levar dois, dá desconto?", native: "If I take two, can I get a discount?" },
+            { target: "Qual é o melhor preço?", native: "What's the best price?" },
+            { target: "Fechado, vou levar", native: "Deal, I'll take it" },
+        ],
+        "i-3-1": [
+            { target: "Daqui a cinco anos, espero …", native: "In five years, I hope to …" },
+            { target: "Meu plano é …", native: "My plan is …" },
+            { target: "Estou trabalhando para …", native: "I'm working toward …" },
+            { target: "Se tudo der certo, …", native: "If all goes well, …" },
+            { target: "Ainda não sei ao certo", native: "I'm not entirely sure yet" },
+        ],
+        "i-3-2": [
+            { target: "Estou trabalhando em um projeto que …", native: "I'm working on a project that …" },
+            { target: "Meu papel é …", native: "My role is …" },
+            { target: "A parte mais difícil é …", native: "The hardest part is …" },
+            { target: "Aprendi muito com isso", native: "I've learned a lot from it" },
+            { target: "O prazo é apertado", native: "The deadline is tight" },
+        ],
+        "i-3-3": [
+            { target: "Posso te dar uma sugestão?", native: "Can I give you a suggestion?" },
+            { target: "Se eu fosse você, …", native: "If I were you, …" },
+            { target: "Já pensou em …?", native: "Have you thought about …?" },
+            { target: "Tenta não se cobrar tanto", native: "Try not to be so hard on yourself" },
+            { target: "Tudo vai dar certo", native: "Everything will work out" },
+        ],
+        "i-4-1": [
+            { target: "Lá no meu país, a gente costuma …", native: "Back in my country, we usually …" },
+            { target: "Aqui é bem diferente porque …", native: "Here it's quite different because …" },
+            { target: "Uma coisa que me chamou atenção foi …", native: "One thing that struck me was …" },
+            { target: "Eu prefiro o jeito daqui", native: "I prefer the way it's done here" },
+            { target: "Cada lugar tem seu charme", native: "Every place has its charm" },
+        ],
+        "i-4-2": [
+            { target: "Foi uma viagem inesquecível", native: "It was an unforgettable trip" },
+            { target: "O que mais me marcou foi …", native: "What struck me most was …" },
+            { target: "Conheci pessoas incríveis", native: "I met amazing people" },
+            { target: "Voltei outra pessoa", native: "I came back a different person" },
+            { target: "Recomendo demais", native: "I highly recommend it" },
+        ],
+        "i-4-3": [
+            { target: "Você tem que ir em …", native: "You have to go to …" },
+            { target: "É um lugar que tem uma história especial pra mim", native: "It's a place with a special story for me" },
+            { target: "Vai gostar com certeza", native: "You'll definitely like it" },
+            { target: "Evita ir nos fins de semana", native: "Avoid going on weekends" },
+            { target: "Me conta depois o que achou", native: "Tell me later what you thought" },
+        ],
+}
