@@ -282,6 +282,18 @@ export class RealtimeTutor {
             responseWatchdog = null
           }
           nataliaIsSpeaking = true
+          // Mute the mic track for the duration of Natalia's response.
+          // Without this, laptop-speaker users get the tutor's own voice
+          // echoed into the mic, transcribed as user input, and committed
+          // by server VAD — so "boa" the tutor said appears as if the
+          // learner said it. Browser AEC can't fully suppress loud
+          // speaker output. Since interrupt_response:false (barge-in
+          // disabled), muting here costs nothing — the user couldn't
+          // interrupt even if their mic were hot. We unmute on
+          // response.done + a short drain delay.
+          if (this.localStream) {
+            for (const t of this.localStream.getAudioTracks()) t.enabled = false
+          }
           // If the previous turn was an interrupt, we muted audioEl to
           // kill her tail audio. New response means new audio coming
           // — un-mute so the learner can actually hear her.
@@ -301,6 +313,14 @@ export class RealtimeTutor {
 
         if (event.type === 'response.done') {
           nataliaIsSpeaking = false
+          // Wait briefly for the speaker buffer to drain, then re-enable
+          // the mic. 600ms balances "no tail echo gets through" against
+          // "user can immediately reply when Natalia stops talking".
+          setTimeout(() => {
+            if (!nataliaIsSpeaking && this.localStream) {
+              for (const t of this.localStream.getAudioTracks()) t.enabled = true
+            }
+          }, 600)
           if (isFirstResponse) {
             // Opener is complete. Two things to do:
             //   1. Enable server VAD with interrupt_response: true so
