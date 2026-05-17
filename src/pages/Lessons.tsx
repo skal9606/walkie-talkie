@@ -324,14 +324,19 @@ function LessonsHome(props: LessonsHomeProps) {
                   </button>
                   {expanded && (
                     <div className="lessons-unit-accordion-body">
-                      {unit.lessons.map((lesson) => (
-                        <LessonRow
-                          key={lesson.id}
-                          lesson={lesson}
-                          state={displayState(lesson.id, stateLookup, isSubscribed)}
-                          onClick={() => onPickLesson(lesson)}
-                        />
-                      ))}
+                      {unit.lessons
+                        // Skip the recommended lesson — already shown
+                        // prominently in the Today's Lesson card above.
+                        // Showing it twice on the same screen is noisy.
+                        .filter((lesson) => lesson.id !== recommendedLesson?.id)
+                        .map((lesson) => (
+                          <LessonRow
+                            key={lesson.id}
+                            lesson={lesson}
+                            state={displayState(lesson.id, stateLookup, isSubscribed)}
+                            onClick={() => onPickLesson(lesson)}
+                          />
+                        ))}
                     </div>
                   )}
                 </div>
