@@ -3743,3 +3743,70 @@ a {
   padding: 32px 0;
 }
 .stats-empty a { color: var(--accent); }
+
+/* --- Unit accordion (replaces old All Units summary list) --- */
+
+.lessons-unit-accordion {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.lessons-unit-accordion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: 0;
+  color: var(--fg);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.lessons-unit-accordion-head:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.lessons-unit-accordion-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.lessons-unit-accordion-tag {
+  background: var(--accent);
+  color: #0f1115;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+}
+
+.lessons-unit-accordion-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lessons-unit-accordion-chevron {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  width: 12px;
+  text-align: center;
+}
+
+.lessons-unit-accordion-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px 12px;
+}

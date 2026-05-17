@@ -210,6 +210,11 @@ function LessonsHome(props: LessonsHomeProps) {
   const navigate = useNavigate()
   const currentLevel = useMemo<LessonLevel>(() => proficiencyToLevel(profile.level), [profile.level])
   const units = useMemo(() => unitsForLevel(currentLevel), [currentLevel])
+
+  /// Which unit accordions are expanded. Default = the unit containing
+  /// the recommended lesson (so the user sees their current focus on
+  /// first paint). Tapping any unit toggles its row open/closed.
+  const [expandedUnits, setExpandedUnits] = useState<Set<string>>(new Set())
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stateLookup = useMemo(() => readStateLookup(languageCode), [languageCode, progressTick])
 
@@ -224,6 +229,21 @@ function LessonsHome(props: LessonsHomeProps) {
     if (!recommendedLesson) return units[0]
     return units.find((u) => u.lessons.some((l) => l.id === recommendedLesson.id)) ?? units[0]
   }, [recommendedLesson, units])
+
+  // Seed the accordion: open the current unit on mount so the user
+  // lands with their next lesson visible without an extra tap.
+  useEffect(() => {
+    if (currentUnit) setExpandedUnits(new Set([currentUnit.id]))
+  }, [currentUnit])
+
+  const toggleUnit = useCallback((unitId: string) => {
+    setExpandedUnits((prev) => {
+      const next = new Set(prev)
+      if (next.has(unitId)) next.delete(unitId)
+      else next.add(unitId)
+      return next
+    })
+  }, [])
 
   // Trial users see lock badges everywhere; tapping cycles to paywall.
   const isSubscribed = subscribed === true
@@ -266,39 +286,57 @@ function LessonsHome(props: LessonsHomeProps) {
           </section>
         )}
 
-        {currentUnit && (
-          <section className="lessons-section">
-            <div className="lessons-section-label">
-              CONTINUE: {currentUnit.title.toUpperCase()}
-            </div>
-            <div className="lessons-rows">
-              {currentUnit.lessons.map((lesson) => (
-                <LessonRow
-                  key={lesson.id}
-                  lesson={lesson}
-                  state={displayState(lesson.id, stateLookup, isSubscribed)}
-                  onClick={() => onPickLesson(lesson)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
         <section className="lessons-section">
           <div className="lessons-rows">
-            {units.map((unit) => (
-              <div key={unit.id} className="lessons-unit-summary">
-                <div className="lessons-unit-summary-title">{unit.title}</div>
-                <div className="lessons-unit-summary-pips">
-                  {unit.lessons.map((l) => (
-                    <span
-                      key={l.id}
-                      className={`lessons-pip pip-${stateLookup[l.id] ?? 'not_started'}`}
-                    />
-                  ))}
+            {units.map((unit) => {
+              const expanded = expandedUnits.has(unit.id)
+              const isCurrent = currentUnit?.id === unit.id
+              return (
+                <div key={unit.id} className="lessons-unit-accordion">
+                  <button
+                    type="button"
+                    className="lessons-unit-accordion-head"
+                    aria-expanded={expanded}
+                    onClick={() => toggleUnit(unit.id)}
+                  >
+                    <div className="lessons-unit-accordion-title">
+                      {unit.title}
+                      {isCurrent && (
+                        <span className="lessons-unit-accordion-tag">your unit</span>
+                      )}
+                    </div>
+                    <div className="lessons-unit-accordion-right">
+                      <div className="lessons-unit-summary-pips">
+                        {unit.lessons.map((l) => (
+                          <span
+                            key={l.id}
+                            className={`lessons-pip pip-${stateLookup[l.id] ?? 'not_started'}`}
+                          />
+                        ))}
+                      </div>
+                      <span
+                        className="lessons-unit-accordion-chevron"
+                        aria-hidden
+                      >
+                        {expanded ? '▾' : '▸'}
+                      </span>
+                    </div>
+                  </button>
+                  {expanded && (
+                    <div className="lessons-unit-accordion-body">
+                      {unit.lessons.map((lesson) => (
+                        <LessonRow
+                          key={lesson.id}
+                          lesson={lesson}
+                          state={displayState(lesson.id, stateLookup, isSubscribed)}
+                          onClick={() => onPickLesson(lesson)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </section>
 
