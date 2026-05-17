@@ -317,8 +317,12 @@ export default function Tutor() {
     if (!user || !accessToken) return
     if (!statusLoaded) return
     if (status !== 'idle') return
-    // ?mode=... and ?checkout=... have their own effects; let those run first.
+    // ?mode=..., ?lesson=..., and ?checkout=... have their own effects;
+    // let those run first. (Without the ?lesson guard, the lesson route
+    // races with auto-start free-conversation and the learner hears
+    // Natalia open twice — once in lesson scene, once as small-talk.)
     if (searchParams.get('mode')) return
+    if (searchParams.get('lesson')) return
     if (searchParams.get('checkout')) return
     // Don't request mic / start a session until the user has actually
     // chosen a tutor. The render path shows OnboardingFlow in this state;
