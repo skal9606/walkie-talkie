@@ -42,14 +42,17 @@ export function useAuth(): {
 }
 
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut()
-  // Hard navigate to the landing page rather than letting individual
-  // auth-gated pages bounce the user to /login. Full reload also
-  // clears any in-memory React state from the signed-in session so
-  // the next user lands on a clean slate.
+  // Kick the hard navigation FIRST. If we await supabase.auth.signOut()
+  // before navigating, the auth-state-change event fires during the
+  // await, and the bouncer useEffects in Lessons.tsx / Tutor.tsx race
+  // ahead with navigate('/login', ...) — so the user lands on /login
+  // instead of /. Setting href synchronously starts the navigation
+  // immediately; the supabase call runs as fire-and-forget on the
+  // already-unmounting page.
   if (typeof window !== 'undefined') {
     window.location.href = '/'
   }
+  void supabase.auth.signOut()
 }
 
 /**

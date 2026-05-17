@@ -4,13 +4,16 @@ import { signOut, useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import {
   hasFullProfile,
+  hasLanguageSelection,
   loadProfile,
   mergeProfileBlanks,
+  saveProfile,
   type LearnerProfile,
 } from '../lib/profile'
 import { currentStreak } from '../lib/streak'
 import { trackSubscribe } from '../lib/tiktok'
 import { Onboarding } from '../components/Onboarding'
+import { OnboardingFlow, type OnboardingResult } from '../components/OnboardingFlow'
 import { Settings } from '../components/Settings'
 import { LessonDetail } from '../components/LessonDetail'
 import { LessonRow, TodaysLessonCard } from '../components/LessonCards'
@@ -107,6 +110,22 @@ export default function Lessons() {
     setProfile(mergeProfileBlanks(p))
   }
 
+  /// Brand-new sign-in: the user has authed but has no profile yet
+  /// (no name, no level, no language). Save what OnboardingFlow gives
+  /// us (language + tutor + name + level) into localStorage so the
+  /// downstream questionnaire (Onboarding) has the right baseline.
+  function handleInitialOnboarding(result: OnboardingResult) {
+    const merged = mergeProfileBlanks({
+      name: result.name,
+      nativeLanguage: result.nativeLanguage,
+      targetLanguage: result.targetLanguage,
+      tutorId: result.tutorId,
+      level: result.level,
+    })
+    saveProfile(merged)
+    setProfile(merged)
+  }
+
   if (authLoading || !user) {
     return (
       <div className="app">
@@ -115,6 +134,23 @@ export default function Lessons() {
     )
   }
 
+  // First gate: brand-new sign-in with no language/tutor picked yet.
+  // Show the full OnboardingFlow (name → native language → tutor →
+  // proficiency level). Mirrors the Tutor.tsx flow so any landing
+  // surface a new user hits gets them through the same first-run
+  // questionnaire before showing the app.
+  if (!hasLanguageSelection(profile)) {
+    return (
+      <div className="app">
+        <OnboardingFlow onComplete={handleInitialOnboarding} />
+      </div>
+    )
+  }
+
+  // Second gate: language is picked but the post-sign-up questionnaire
+  // (goals etc.) hasn't been filled in yet. Show the lighter Onboarding
+  // component on top of the lessons nav so they can pick up where they
+  // left off.
   if (!hasFullProfile(profile)) {
     return (
       <div className="app">
