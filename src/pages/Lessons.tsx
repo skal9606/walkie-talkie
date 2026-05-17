@@ -260,7 +260,7 @@ function LessonsHome(props: LessonsHomeProps) {
             <div className="lessons-section-label">TODAY'S LESSON</div>
             <TodaysLessonCard
               lesson={recommendedLesson}
-              locked={!isSubscribed}
+              locked={false}
               onClick={() => onPickLesson(recommendedLesson)}
             />
           </section>
@@ -285,7 +285,6 @@ function LessonsHome(props: LessonsHomeProps) {
         )}
 
         <section className="lessons-section">
-          <div className="lessons-section-label">ALL UNITS</div>
           <div className="lessons-rows">
             {units.map((unit) => (
               <div key={unit.id} className="lessons-unit-summary">
@@ -404,9 +403,12 @@ function proficiencyToLevel(level: string | undefined): LessonLevel {
 function displayState(
   lessonId: string,
   lookup: Record<string, LessonProgressState>,
-  isSubscribed: boolean,
+  _isSubscribed: boolean,
 ) {
-  if (!isSubscribed) return 'locked' as const
+  // We don't lock rows on the home anymore — the paywall hits at
+  // session start (/chat?lesson=<id> → checkout). Visible locks were
+  // noisy, especially during the brief moment between page load and
+  // the subscriptions fetch.
   return (lookup[lessonId] ?? 'not_started') as 'completed' | 'in_progress' | 'not_started'
 }
 
