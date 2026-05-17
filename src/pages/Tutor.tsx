@@ -172,18 +172,30 @@ export default function Tutor() {
     [profile?.tutorId],
   )
 
+  /// Active scenario for the live session. Set in start() when an
+  /// override is passed (lesson sessions, mode launches) so the header
+  /// can show the scene title. Cleared in stop().
+  const [liveScenario, setLiveScenario] = useState<Scenario | null>(null)
+
   const scenario = useMemo(
-    () => tutor.scenarios.all.find((s) => s.id === scenarioId) ?? tutor.scenarios.all[0],
-    [scenarioId, tutor],
+    () =>
+      liveScenario ??
+      tutor.scenarios.all.find((s) => s.id === scenarioId) ??
+      tutor.scenarios.all[0],
+    [liveScenario, scenarioId, tutor],
   )
   // Only show the scenario name in the header for character-driven
-  // roleplays (Café, in-laws, etc.). For Free Conversation, Discover, and
-  // the other practice modes, the level/mode label is uninformative
-  // mid-session — we keep the generic "Walkie Talkie" header instead.
+  // roleplays (Café, in-laws, etc.) and for lesson sessions (the title
+  // becomes "Order a coffee" / "Buy a souvenir" etc., so the learner
+  // sees the scene name at a glance). For Free Conversation, Discover,
+  // and the other practice modes, the level/mode label is uninformative
+  // mid-session — we keep the generic "Walkie Talkie" header.
   const isRoleplayScenario = tutor.scenarios.roleplays.some(
     (s) => s.id === scenario.id,
   )
-  const showScenarioHeader = status !== 'idle' && isRoleplayScenario
+  const isLessonScenario = scenario.id.startsWith('lesson-')
+  const showScenarioHeader =
+    status !== 'idle' && (isRoleplayScenario || isLessonScenario)
 
   // --- Load subscription + usage from Supabase whenever the user changes ---
 
@@ -517,6 +529,7 @@ export default function Tutor() {
       }
 
       setActiveCard(null)
+      setLiveScenario(null)
 
       const finalTurns = turns.filter((t) => t.text.trim())
 
@@ -678,6 +691,7 @@ export default function Tutor() {
     tutorTurnTextRef.current = new Map()
 
     const activeScenario = overrideScenario ?? scenario
+    setLiveScenario(activeScenario)
     const nativeLanguage = profile?.nativeLanguage ?? 'English'
     const addon = activeScenario.buildPromptAddon({
       name: profile?.name,
