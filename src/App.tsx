@@ -4,6 +4,8 @@ import Landing from './pages/Landing'
 import Tutor from './pages/Tutor'
 import Login from './pages/Login'
 import Practice from './pages/Practice'
+import Lessons from './pages/Lessons'
+import Stats from './pages/Stats'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import AdNeymarDM from './pages/Ad'
@@ -17,6 +19,8 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/practice" element={<Practice />} />
+        <Route path="/lessons" element={<Lessons />} />
+        <Route path="/stats" element={<Stats />} />
         <Route path="/chat" element={<Tutor />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />

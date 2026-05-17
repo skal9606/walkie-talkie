@@ -4,7 +4,7 @@ export default function Terms() {
   return (
     <div className="app legal">
       <nav className="tutor-nav">
-        <Link to="/practice" className="tutor-nav-back">
+        <Link to="/lessons" className="tutor-nav-back">
           ← Back
         </Link>
       </nav>

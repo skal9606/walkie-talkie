@@ -44,7 +44,7 @@ export default function Landing() {
   useEffect(() => {
     if (loading || !user) return
     if (user.is_anonymous) return
-    navigate('/practice', { replace: true })
+    navigate('/lessons', { replace: true })
   }, [user, loading, navigate])
 
   // Pricing cards navigate to /chat with a ?checkout=<plan> param. Tutor.tsx

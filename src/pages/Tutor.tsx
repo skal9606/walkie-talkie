@@ -42,6 +42,12 @@ import { DEFAULT_TUTOR_ID, TUTORS, getTutor } from '../lib/tutors'
 import { findBeginnerCardInText } from '../lib/tutors/beginner-cards'
 import type { BeginnerCard } from '../lib/tutors/types'
 import { BeginnerCardView } from '../components/BeginnerCardView'
+import { lessonById } from '../lib/lessons/catalog'
+import {
+  buildLessonInstructions,
+  LESSON_SCENARIO_OVERRIDE,
+} from '../lib/lessons/instructions'
+import { markLessonAttempt } from '../lib/lessons/progress'
 
 type Turn = {
   id: string
@@ -133,6 +139,18 @@ export default function Tutor() {
   // Timestamp of when the current session went live; used to decide whether
   // the session was long enough to count toward the daily-practice streak.
   const sessionStartedAtRef = useRef<number | null>(null)
+  /// Lesson ID for the currently active session, if any. Lets stop() mark
+  /// completion without re-reading the query param (which may have been
+  /// stripped by the routing useEffect by then).
+  const activeLessonIdRef = useRef<string | null>(null)
+  /// Most recent lesson-state transition. Used by the post-session UI
+  /// to decide whether to show the LessonCompleteView celebration.
+  /// (Consumer wired in a follow-up commit alongside the celebration
+  /// component — recorded now so the data isn't lost between commits.)
+  const [, setLastLessonOutcome] = useState<{
+    lessonId: string
+    state: 'completed' | 'in_progress'
+  } | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // --- Complete-beginner visual cards ---
@@ -345,6 +363,45 @@ export default function Tutor() {
   // we just land the user on the picker.
   useEffect(() => {
     const mode = searchParams.get('mode') as ModeId | null
+    const lessonId = searchParams.get('lesson')
+
+    // Lesson route takes precedence over generic mode — they're orthogonal
+    // routing surfaces (mode came from PRACTICE_MODES, lesson comes from
+    // the Lessons home).
+    if (lessonId) {
+      if (!user || !accessToken) return
+      if (!profile) return
+      if (!statusLoaded) return
+      if (status !== 'idle') return
+      if (!hasLanguageSelection(profile)) return
+      const lesson = lessonById(lessonId)
+      if (!lesson) return
+
+      const next = new URLSearchParams(searchParams)
+      next.delete('lesson')
+      setSearchParams(next, { replace: true })
+
+      activeLessonIdRef.current = lesson.id
+      const languageCode = tutor.id
+      const synthetic: Scenario = {
+        id: `lesson-${lesson.id}`,
+        title: lesson.title,
+        description: lesson.scene,
+        buildPromptAddon: () => {
+          const sceneBlock = buildLessonInstructions(lesson, languageCode, profile.level)
+          // SCENARIO override on top, full LESSON SCENE block at bottom —
+          // model attention favors both ends.
+          return [LESSON_SCENARIO_OVERRIDE, sceneBlock].filter(Boolean).join('\n\n')
+        },
+        // Lessons need responsive turn-taking — the learner is producing
+        // single short phrases, not free monologues. Medium eagerness
+        // matches the in-character role-play rhythm.
+        vadEagerness: 'medium',
+      }
+      start(synthetic)
+      return
+    }
+
     if (!mode) return
     if (!user || !accessToken) return
     if (!profile) return
@@ -458,6 +515,19 @@ export default function Tutor() {
       setActiveCard(null)
 
       const finalTurns = turns.filter((t) => t.text.trim())
+
+      // Lesson completion gate. Mirrors iOS exactly: >= 60s + >= 3 user
+      // turns marks .completed; >= 15s OR >= 1 user turn marks .in_progress.
+      const lessonId = activeLessonIdRef.current
+      activeLessonIdRef.current = null
+      if (lessonId) {
+        const elapsedSeconds = startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0
+        const userTurnCount = finalTurns.filter((t) => t.role === 'user').length
+        const outcome = markLessonAttempt(tutor.id, lessonId, { elapsedSeconds, userTurnCount })
+        if (outcome === 'completed' || outcome === 'in_progress') {
+          setLastLessonOutcome({ lessonId, state: outcome })
+        }
+      }
 
       // Short/empty exhaust — no meaningful conversation, so no review or
       // CEFR to run. Drop straight to the paywall.
@@ -945,7 +1015,7 @@ export default function Tutor() {
     <div className="app">
       <nav className="tutor-nav">
         <Link
-          to={subscribed ? '/practice' : '/'}
+          to={subscribed ? '/lessons' : '/'}
           className="tutor-nav-back"
         >
           {subscribed ? '← Back to practice' : '← Back'}
