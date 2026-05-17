@@ -13,10 +13,22 @@ export function LessonDetail(props: {
   tutorName: string
   tutorLanguageLabel: string
   tutorFlag: string
+  /// When false (free trial user), the Start button is replaced with
+  /// a "Subscribe to unlock" CTA that routes to the paywall.
+  isSubscribed: boolean
   onStart: () => void
   onClose: () => void
 }) {
-  const { lesson, languageCode, tutorName, tutorLanguageLabel, tutorFlag, onStart, onClose } = props
+  const {
+    lesson,
+    languageCode,
+    tutorName,
+    tutorLanguageLabel,
+    tutorFlag,
+    isSubscribed,
+    onStart,
+    onClose,
+  } = props
   const phrases = lessonPhrases(lesson, languageCode)
   const accent = unitAccentCSS(lesson, 0.65)
   const accentSoft = unitAccentCSS(lesson, 0.25)
@@ -88,14 +100,31 @@ export function LessonDetail(props: {
         </div>
 
         <div className="lesson-detail-actions">
-          <button
-            type="button"
-            className="lesson-detail-start"
-            onClick={onStart}
-            disabled={contentMissing}
-          >
-            📞 Start lesson
-          </button>
+          {isSubscribed ? (
+            <button
+              type="button"
+              className="lesson-detail-start"
+              onClick={onStart}
+              disabled={contentMissing}
+            >
+              📞 Start lesson
+            </button>
+          ) : (
+            <>
+              <div className="lesson-detail-subscriber-note">
+                Lessons are a subscriber feature. Free conversation
+                with {tutorName} is still included in your trial.
+              </div>
+              <button
+                type="button"
+                className="lesson-detail-start"
+                onClick={onStart}
+                disabled={contentMissing}
+              >
+                🔒 Subscribe to unlock
+              </button>
+            </>
+          )}
           <button
             type="button"
             className="lesson-detail-maybe-later"

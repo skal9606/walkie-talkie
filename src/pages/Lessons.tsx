@@ -362,8 +362,14 @@ function LessonsHome(props: LessonsHomeProps) {
           tutorName={tutorName}
           tutorLanguageLabel={tutorLanguageLabel}
           tutorFlag={tutorFlag}
+          isSubscribed={isSubscribed}
           onStart={() => {
             onCloseDetail()
+            // For trial users we still route to /chat so they hit the
+            // unified Paywall component — keeps the subscribe flow in
+            // one place. The lesson-route guard in Tutor.tsx detects
+            // the non-subscribed state and opens the paywall instead
+            // of starting a session.
             navigate(`/chat?lesson=${lessonForDetail.id}`)
           }}
           onClose={onCloseDetail}

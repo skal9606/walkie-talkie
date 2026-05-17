@@ -3810,3 +3810,15 @@ a {
   gap: 8px;
   padding: 0 12px 12px;
 }
+
+.lesson-detail-subscriber-note {
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: -2px;
+}

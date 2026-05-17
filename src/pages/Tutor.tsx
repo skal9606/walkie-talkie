@@ -397,6 +397,15 @@ export default function Tutor() {
       next.delete('lesson')
       setSearchParams(next, { replace: true })
 
+      // Lessons are a subscriber feature. Free-trial users get free
+      // conversation only — tapping a lesson on the home shouldn't
+      // burn their trial minutes on a session they're not meant to
+      // access. Open the paywall and bail; don't start the session.
+      if (!subscribed) {
+        setPaywallOpen('blocked')
+        return
+      }
+
       activeLessonIdRef.current = lesson.id
       const languageCode = tutor.language
       const synthetic: Scenario = {
