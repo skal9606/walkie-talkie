@@ -13,7 +13,6 @@ import { trackSubscribe } from '../lib/tiktok'
 import { Onboarding } from '../components/Onboarding'
 import { Settings } from '../components/Settings'
 import { LessonDetail } from '../components/LessonDetail'
-import { AllLevels } from '../components/AllLevels'
 import { LessonRow, TodaysLessonCard } from '../components/LessonCards'
 import {
   lessonLevelOrder,
@@ -54,7 +53,6 @@ export default function Lessons() {
   const [streak] = useState(() => currentStreak())
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [lessonForDetail, setLessonForDetail] = useState<Lesson | null>(null)
-  const [showAllLevels, setShowAllLevels] = useState(false)
   /// Progress lookup is re-derived from localStorage on focus. localStorage
   /// is synchronous so we don't need to memoize across renders — but we
   /// want to refresh when the user comes back from a lesson session.
@@ -156,13 +154,10 @@ export default function Lessons() {
       subscribed={asSubscribedOverride ? true : subscribed}
       progressTick={progressTick}
       onPickLesson={setLessonForDetail}
-      onBrowseAll={() => setShowAllLevels(true)}
       onSettings={() => setSettingsOpen(true)}
       onFreeTalk={() => navigate('/chat?mode=free')}
       lessonForDetail={lessonForDetail}
       onCloseDetail={() => setLessonForDetail(null)}
-      showAllLevels={showAllLevels}
-      onCloseAllLevels={() => setShowAllLevels(false)}
       settingsOpen={settingsOpen}
       accessToken={accessToken}
       onCloseSettings={() => setSettingsOpen(false)}
@@ -183,13 +178,10 @@ type LessonsHomeProps = {
   subscribed: boolean | null
   progressTick: number
   onPickLesson: (l: Lesson) => void
-  onBrowseAll: () => void
   onSettings: () => void
   onFreeTalk: () => void
   lessonForDetail: Lesson | null
   onCloseDetail: () => void
-  showAllLevels: boolean
-  onCloseAllLevels: () => void
   settingsOpen: boolean
   accessToken: string | null
   onCloseSettings: () => void
@@ -210,13 +202,10 @@ function LessonsHome(props: LessonsHomeProps) {
     subscribed,
     progressTick,
     onPickLesson,
-    onBrowseAll,
     onSettings,
     onFreeTalk,
     lessonForDetail,
     onCloseDetail,
-    showAllLevels,
-    onCloseAllLevels,
     settingsOpen,
     accessToken,
     onCloseSettings,
@@ -227,7 +216,6 @@ function LessonsHome(props: LessonsHomeProps) {
 
   const navigate = useNavigate()
   const currentLevel = useMemo<LessonLevel>(() => proficiencyToLevel(profile.level), [profile.level])
-  const nextLevel = useMemo<LessonLevel | null>(() => nextLevelOf(currentLevel), [currentLevel])
   const units = useMemo(() => unitsForLevel(currentLevel), [currentLevel])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stateLookup = useMemo(() => readStateLookup(languageCode), [languageCode, progressTick])
@@ -322,32 +310,6 @@ function LessonsHome(props: LessonsHomeProps) {
           </div>
         </section>
 
-        {nextLevel && (
-          <section className="lessons-section">
-            <div className="lessons-section-label">
-              COMING NEXT · {labelForLevel(nextLevel).toUpperCase()}
-            </div>
-            <div className="lessons-rows">
-              {unitsForLevel(nextLevel)[0]?.lessons.slice(0, 2).map((lesson) => (
-                <LessonRow
-                  key={lesson.id}
-                  lesson={lesson}
-                  state="locked"
-                  onClick={() => undefined}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        <button
-          type="button"
-          className="lessons-browse-all"
-          onClick={onBrowseAll}
-        >
-          ▦ Browse all levels
-        </button>
-
         <Link to="/stats" className="lessons-stats-link">
           View stats →
         </Link>
@@ -378,19 +340,6 @@ function LessonsHome(props: LessonsHomeProps) {
         />
       )}
 
-      {showAllLevels && (
-        <AllLevels
-          currentLevel={currentLevel}
-          languageCode={languageCode}
-          isSubscribed={isSubscribed}
-          onTapLesson={(l) => {
-            onCloseAllLevels()
-            // Defer so the All Levels modal finishes dismissing.
-            setTimeout(() => onPickLesson(l), 200)
-          }}
-          onClose={onCloseAllLevels}
-        />
-      )}
     </div>
   )
 }
@@ -456,25 +405,6 @@ function proficiencyToLevel(level: string | undefined): LessonLevel {
     case 'first_timer':
     default:
       return 'first_timer'
-  }
-}
-
-function nextLevelOf(level: LessonLevel): LessonLevel | null {
-  switch (level) {
-    case 'first_timer':
-      return 'basic'
-    case 'basic':
-      return 'intermediate'
-    case 'intermediate':
-      return null
-  }
-}
-
-function labelForLevel(level: LessonLevel): string {
-  switch (level) {
-    case 'first_timer': return 'First Timer'
-    case 'basic': return 'Basic'
-    case 'intermediate': return 'Intermediate'
   }
 }
 
