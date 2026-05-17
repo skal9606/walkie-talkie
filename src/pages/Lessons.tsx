@@ -41,13 +41,6 @@ export default function Lessons() {
   const { user, accessToken, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-
-  /// Preview-only override: `?asSubscribed=1` forces the UI into the
-  /// subscribed state so the branch owner can sanity-check the new
-  /// surfaces without flipping production data. Stripped before merge
-  /// to main.
-  const asSubscribedOverride = searchParams.get('asSubscribed') === '1'
-
   const [subscribed, setSubscribed] = useState<boolean | null>(null)
   const [profile, setProfile] = useState<LearnerProfile | null>(() => loadProfile())
   const [streak] = useState(() => currentStreak())
@@ -151,7 +144,7 @@ export default function Lessons() {
       tutorLanguageLabel={tutorLanguageLabel}
       tutorFlag={tutorFlag}
       streak={streak}
-      subscribed={asSubscribedOverride ? true : subscribed}
+      subscribed={subscribed}
       progressTick={progressTick}
       onPickLesson={setLessonForDetail}
       onSettings={() => setSettingsOpen(true)}
