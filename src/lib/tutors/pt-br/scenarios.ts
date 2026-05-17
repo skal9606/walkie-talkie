@@ -61,7 +61,6 @@ function nameOrFriend(ctx: ModeContext): string {
 
 function beginnerOpener(ctx?: PromptContext): string {
   const n = ctx?.name?.trim()
-  const native = nativeOf(ctx)
   if (n) {
     return `OPENING — your full first message, ENGLISH ONLY, kept SHORT. Two sentences max.
 "Hey ${n}! I'm Natalia, your Portuguese tutor. What made you want to learn Portuguese?"
