@@ -333,7 +333,7 @@ a {
 .hint-panel-item {
   font-size: 15px;
   line-height: 1.4;
-  color: var(--text);
+  color: var(--fg);
   padding: 10px 14px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 10px;
