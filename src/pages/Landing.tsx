@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
-import { JUST_SIGNED_OUT_FLAG, useAuth } from '../lib/auth'
+import { JUST_SIGNED_OUT_FLAG, decideLandingAction, useAuth } from '../lib/auth'
 import { TUTORS } from '../lib/tutors'
 import {
   applyTheme,
@@ -42,19 +42,22 @@ export default function Landing() {
   // click pricing, and re-enter the trial via Chat Now (which auto-starts
   // a free conversation that picks up prior memory at their saved level).
   //
-  // Exception: if the user just clicked Sign Out elsewhere, signOut()
-  // dropped a sessionStorage flag asking us to skip this redirect on
-  // the immediate next page load. Without that, supabase's session
-  // clear may not have finished by the time Landing mounts — we'd see
-  // a still-signed-in user and bounce them right back to /lessons.
+  // The just-signed-out flag is only consumed once auth has resolved —
+  // if we read+removed it during the initial loading pass, supabase's
+  // still-cached session would resolve on the next render and bounce
+  // the learner straight back to /lessons. See decideLandingAction.
   useEffect(() => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem(JUST_SIGNED_OUT_FLAG) === '1') {
+    const justSignedOut =
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem(JUST_SIGNED_OUT_FLAG) === '1'
+    const action = decideLandingAction({ loading, user, justSignedOut })
+    if (action === 'wait') return
+    if (justSignedOut && typeof window !== 'undefined') {
       sessionStorage.removeItem(JUST_SIGNED_OUT_FLAG)
-      return
     }
-    if (loading || !user) return
-    if (user.is_anonymous) return
-    navigate('/lessons', { replace: true })
+    if (action === 'redirect-to-lessons') {
+      navigate('/lessons', { replace: true })
+    }
   }, [user, loading, navigate])
 
   // Pricing cards navigate to /chat with a ?checkout=<plan> param. Tutor.tsx

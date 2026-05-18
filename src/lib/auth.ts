@@ -46,6 +46,30 @@ export function useAuth(): {
  *  the immediate next page load. Cleared on read. */
 export const JUST_SIGNED_OUT_FLAG = 'walkie.justSignedOut'
 
+export type LandingRedirectAction =
+  | 'wait'
+  | 'stay-on-landing'
+  | 'redirect-to-lessons'
+
+/** Pure decision: should Landing redirect a signed-in learner straight
+ *  to /lessons, stay on the marketing page, or wait for auth to finish
+ *  loading? The just-signed-out flag must only be consumed once we know
+ *  we'd actually have redirected — otherwise the loading-state pass
+ *  burns the flag before `user` has resolved, and the very next render
+ *  (when supabase returns the still-cached session) bounces the user
+ *  back to /lessons. That's the bug this function exists to prevent. */
+export function decideLandingAction(args: {
+  loading: boolean
+  user: { is_anonymous?: boolean | null } | null
+  justSignedOut: boolean
+}): LandingRedirectAction {
+  if (args.loading) return 'wait'
+  if (!args.user) return 'stay-on-landing'
+  if (args.user.is_anonymous) return 'stay-on-landing'
+  if (args.justSignedOut) return 'stay-on-landing'
+  return 'redirect-to-lessons'
+}
+
 export async function signOut(): Promise<void> {
   // The sign-out flow has two competing races we have to dodge:
   //   (a) Auth-state-change listeners on mounted auth-gated pages
