@@ -105,6 +105,58 @@ export async function synthesizeSpeech(
   }
 }
 
+/// Search Unsplash for a single representative photo matching the query.
+/// Used by the iOS Review deck to give First Timer + Basic vocab cards
+/// a visual cue (Duolingo-style). Returns null imageUrl when the query
+/// has no good match — caller skips the visual and falls back to text-
+/// only. Attribution metadata is included so the client can render the
+/// "Photo by X on Unsplash" credit per Unsplash's API terms.
+export async function unsplashImageLookup(
+  accessKey: string | undefined,
+  query: string | undefined,
+): Promise<HandlerResult> {
+  if (!accessKey) {
+    return { status: 500, body: { error: 'UNSPLASH_ACCESS_KEY not set.' } }
+  }
+  const q = (query ?? '').trim()
+  if (!q) {
+    return { status: 400, body: { error: 'No query provided.' } }
+  }
+  try {
+    const url = new URL('https://api.unsplash.com/search/photos')
+    url.searchParams.set('query', q)
+    url.searchParams.set('per_page', '1')
+    url.searchParams.set('content_filter', 'high')
+    url.searchParams.set('orientation', 'squarish')
+    const r = await fetch(url, {
+      headers: { Authorization: `Client-ID ${accessKey}` },
+    })
+    if (!r.ok) {
+      return { status: r.status, body: { imageUrl: null, error: `Unsplash ${r.status}` } }
+    }
+    const data = (await r.json()) as {
+      results?: Array<{
+        urls?: { regular?: string; small?: string }
+        user?: { name?: string; links?: { html?: string } }
+      }>
+    }
+    const top = data.results?.[0]
+    if (!top?.urls?.regular) {
+      return { status: 200, body: { imageUrl: null } }
+    }
+    return {
+      status: 200,
+      body: {
+        imageUrl: top.urls.regular,
+        photographer: top.user?.name ?? null,
+        photographerUrl: top.user?.links?.html ?? null,
+      },
+    }
+  } catch (err) {
+    return { status: 500, body: { error: String(err) } }
+  }
+}
+
 export async function translate(
   apiKey: string | undefined,
   text: string | undefined,
