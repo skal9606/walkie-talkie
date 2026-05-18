@@ -98,14 +98,15 @@ export default function Landing() {
         <div className="hero-content">
           <div className="hero-eyebrow">
             <span className="hero-eyebrow-dot" />
-            Voice AI tutor for any language
+            Voice AI for language learners
           </div>
           <h1 className="hero-headline">
-            Master a new language with your personal AI tutor
+            From textbook to fluent.
           </h1>
           <p className="hero-subtext">
-            Real voice conversations with a tutor that hears you, corrects you, and speaks
-            as slowly as you need. 24/7, no scheduling, no judgment.
+            Real voice conversations for people who already know the basics. Your tutor
+            remembers what you talked about last time, what you keep getting wrong, and
+            what you came here to learn.
           </p>
           <div className="hero-cta-group">
             <Link to="/chat" className="landing-cta landing-cta-large">
@@ -166,16 +167,16 @@ export default function Landing() {
             body="Speech-to-speech AI that actually hears your pronunciation and corrects it — not another flashcard app."
           />
           <Feature
-            title="Tailored to your level"
-            body="Pick beginner, intermediate, or advanced. The tutor meets you where you are and pushes you forward."
+            title="Remembers what you said last time"
+            body="Your tutor picks up where you left off — your goal, the topics you brought up, the mistakes you keep making. The kind of memory you'd want from a human tutor."
           />
           <Feature
             title="Roleplays for real life"
             body="Order tacos in CDMX, meet the in-laws, check into a hotel — practice the conversations you'll actually have."
           />
           <Feature
-            title="Every session, reviewed"
-            body="Each session ends with a summary of corrections, new vocabulary, and what to work on next time."
+            title="Tracks your gaps. Quietly."
+            body="Every grammar slip gets logged. Next session, the tutor circles back without making it weird — and over time you stop making it."
           />
         </div>
       </section>
