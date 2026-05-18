@@ -488,6 +488,9 @@ function NavBar(props: {
         ) : (
           <div className="tutor-nav-badge free">Free trial</div>
         )}
+        <Link to="/review" className="tutor-nav-signout" title="Review deck">
+          Review
+        </Link>
         <button
           type="button"
           className="tutor-nav-signout"

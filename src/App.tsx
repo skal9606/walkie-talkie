@@ -5,6 +5,7 @@ import Tutor from './pages/Tutor'
 import Login from './pages/Login'
 import Practice from './pages/Practice'
 import Lessons from './pages/Lessons'
+import Review from './pages/Review'
 import Stats from './pages/Stats'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/practice" element={<Practice />} />
         <Route path="/lessons" element={<Lessons />} />
+        <Route path="/review" element={<Review />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/chat" element={<Tutor />} />
         <Route path="/terms" element={<Terms />} />

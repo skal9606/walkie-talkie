@@ -48,6 +48,7 @@ import {
   LESSON_SCENARIO_OVERRIDE,
 } from '../lib/lessons/instructions'
 import { lessonsCompleted, markLessonAttempt } from '../lib/lessons/progress'
+import { seedDeckForCompletedLesson } from '../lib/review'
 
 type Turn = {
   id: string
@@ -561,6 +562,12 @@ export default function Tutor() {
         const outcome = markLessonAttempt(tutor.language, lessonId, { elapsedSeconds, userTurnCount })
         if (outcome === 'completed' || outcome === 'in_progress') {
           setLastLessonOutcome({ lessonId, state: outcome })
+        }
+        // On completion, seed the SRS review deck with this lesson's
+        // phrases. Idempotent — re-completing the same lesson doesn't
+        // reset cards already advanced up the ladder.
+        if (outcome === 'completed' && user) {
+          void seedDeckForCompletedLesson(user.id, tutor.language, lessonId)
         }
       }
 
