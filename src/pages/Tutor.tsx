@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
 
 /// Mirrors the backend shape in lib/api-handlers.ts. Inlined here rather
@@ -47,7 +47,7 @@ import {
   buildLessonInstructions,
   LESSON_SCENARIO_OVERRIDE,
 } from '../lib/lessons/instructions'
-import { markLessonAttempt } from '../lib/lessons/progress'
+import { lessonsCompleted, markLessonAttempt } from '../lib/lessons/progress'
 
 type Turn = {
   id: string
@@ -152,6 +152,7 @@ export default function Tutor() {
     state: 'completed' | 'in_progress'
   } | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   // --- Complete-beginner visual cards ---
   // The card pinned in the lower-right while live. Cleared on session start,
@@ -393,18 +394,18 @@ export default function Tutor() {
       const lesson = lessonById(lessonId)
       if (!lesson) return
 
-      // Lessons are a subscriber feature. Free-trial users get free
-      // conversation only — tapping a lesson on the home shouldn't
-      // burn their trial minutes on a session they're not meant to
-      // access. Open the paywall and bail; don't start the session.
+      // Trial users get ONE free lesson to feel the structure of the
+      // app, then the paywall fires on lesson #2. This is how cold
+      // users actually see "the curriculum" before deciding to pay —
+      // gating them out entirely was the conversion leak.
       //
-      // Critically: also kill autoStartAfterAuth + LEAVE the ?lesson
-      // param in the URL. If we strip it first, the autoStartAfterAuth
-      // effect (which guards `if (searchParams.get('lesson')) return`)
-      // no longer sees the lesson and races ahead with a free-talk
-      // session — the user saw the paywall AND heard Natalia start
-      // chatting in the background.
-      if (!subscribed) {
+      // Critically: when we paywall, also kill autoStartAfterAuth +
+      // LEAVE the ?lesson param in the URL. If we strip it first, the
+      // autoStartAfterAuth effect (which guards `if (searchParams.get
+      // ('lesson')) return`) no longer sees the lesson and races
+      // ahead with a free-talk session — the user saw the paywall
+      // AND heard Natalia start chatting in the background.
+      if (!subscribed && lessonsCompleted(tutor.language) >= 1) {
         setAutoStartAfterAuth(false)
         setPaywallOpen('blocked')
         return
@@ -1040,6 +1041,20 @@ export default function Tutor() {
               level: picked.level,
             })
             setProfile(merged)
+            // After onboarding, route to /lessons so cold users see the
+            // structured curriculum (catalog of 4 levels of lessons)
+            // before paying — competitor signal (ISSEN reviews) shows
+            // trials that surface the curriculum convert better than
+            // trials that drop the user straight into free conversation.
+            // Honor explicit intent params (?mode=, ?lesson=, ?checkout=)
+            // by staying on /chat; those mean the user wanted to talk.
+            const hasIntent =
+              searchParams.get('mode') ||
+              searchParams.get('lesson') ||
+              searchParams.get('checkout')
+            if (!hasIntent) {
+              navigate('/lessons', { replace: true })
+            }
           }}
         />
       </div>
