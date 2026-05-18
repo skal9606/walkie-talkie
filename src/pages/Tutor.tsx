@@ -33,6 +33,7 @@ import { buildPreferencesPromptBlock, loadPreferences } from '../lib/preferences
 import { addMemoryItems, clearMemory, loadMemory } from '../lib/memory'
 import { addVocabItems, buildVocabBlock, clearVocab, loadVocab } from '../lib/vocab'
 import { buildFocusBlock, clearFocus, loadFocus, saveFocus } from '../lib/focus'
+import { buildMistakesBlock } from '../lib/mistakes'
 import { PRACTICE_THRESHOLD_MS, recordPractice } from '../lib/streak'
 import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
@@ -706,9 +707,49 @@ export default function Tutor() {
     const activeScenario = overrideScenario ?? scenario
     setLiveScenario(activeScenario)
     const nativeLanguage = profile?.nativeLanguage ?? 'English'
+
+    // Mint the session token FIRST so we can read server-side learner
+    // state (recentMistakes / recentMemory / nextFocus per language) and
+    // weave it into the system prompt BEFORE the opener fires. Without
+    // this pre-fetch, the opener would run with no mistakes context and
+    // a session.update after-the-fact would land too late.
+    const realtime = new RealtimeTutor()
+    tutorRef.current = realtime
+
+    let minted:
+      | Awaited<ReturnType<RealtimeTutor['mintSession']>>
+      | null = null
+    try {
+      const freshToken = await getFreshAccessToken()
+      minted = await realtime.mintSession({
+        accessToken: freshToken ?? undefined,
+        language: tutor.language,
+      })
+    } catch (err) {
+      const e = err as Error & { status?: number; secondsRemaining?: number }
+      // 402 = trial exhausted. Mirror the previous behavior — paywall,
+      // surface the seconds-remaining the server reported.
+      if (e.status === 402) {
+        if (typeof e.secondsRemaining === 'number') setSecondsRemaining(e.secondsRemaining)
+        setPaywallOpen(e.secondsRemaining === 0 ? 'exhausted' : 'blocked')
+      } else {
+        setError(e.message || 'Could not start a session.')
+      }
+      setStatus('idle')
+      return
+    }
+
+    // Prefer server memory (cross-device source of truth) and fall back
+    // to localStorage when it's empty (e.g. first session ever, or a
+    // user who hasn't roundtripped through /api/review yet on the
+    // server-side path).
+    const serverMemory = minted.recentMemory.filter((m) => m.trim().length > 0)
+    const localMemory = loadMemory(tutor.id)
+    const promptMemory = serverMemory.length > 0 ? serverMemory : localMemory
+
     const addon = activeScenario.buildPromptAddon({
       name: profile?.name,
-      memory: loadMemory(tutor.id),
+      memory: promptMemory,
       nativeLanguage,
     })
     const learnerContext = buildLearnerContextBlock(profile)
@@ -719,19 +760,23 @@ export default function Tutor() {
     const isFreeConversation = activeScenario.id.startsWith('free-')
     const vocabBlock = isFreeConversation ? buildVocabBlock(loadVocab(tutor.id)) : ''
     const focusBlock = isFreeConversation ? buildFocusBlock(loadFocus(tutor.id)) : ''
+    // Mistakes block — was previously stored server-side but never
+    // injected into the prompt. Closes the cross-session memory gap
+    // on web (iOS already had this via TutorPrompt.swift).
+    const mistakesBlock = isFreeConversation
+      ? buildMistakesBlock(minted.recentMistakes)
+      : ''
     const instructions = [
       tutor.buildSystemInstructions({ nativeLanguage }),
       addon,
       learnerContext,
       vocabBlock,
       focusBlock,
+      mistakesBlock,
       preferencesBlock,
     ]
       .filter(Boolean)
       .join('\n\n')
-
-    const realtime = new RealtimeTutor()
-    tutorRef.current = realtime
 
     realtime.onEvent((event: RealtimeEvent) => {
       switch (event.type) {
@@ -861,14 +906,13 @@ export default function Tutor() {
     })
 
     try {
-      const freshToken = await getFreshAccessToken()
       const info = await realtime.connect(instructions, {
         vadEagerness: activeScenario.vadEagerness,
-        accessToken: freshToken ?? undefined,
+        mintedToken: minted.ephemeralKey,
         transcriptionLanguage: tutor.transcriptionLanguage(profile?.level),
       })
-      setSubscribed(info.subscribed)
-      setSecondsRemaining(info.secondsRemaining)
+      setSubscribed(minted.subscribed || info.subscribed)
+      setSecondsRemaining(minted.secondsRemaining || info.secondsRemaining)
       sessionStartedAtRef.current = Date.now()
       setStatus('live')
     } catch (err) {

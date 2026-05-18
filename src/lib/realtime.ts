@@ -22,11 +22,77 @@ export class RealtimeTutor {
     return () => this.handlers.delete(handler)
   }
 
+  /// Mint the realtime session token. Pulled out of connect() so the
+  /// caller can read the server-side learner state (recentMistakes /
+  /// recentMemory / nextFocus per language) BEFORE building the system
+  /// prompt — that data needs to land in the prompt at session start,
+  /// not after the opener has already fired.
+  async mintSession(opts: {
+    accessToken?: string
+    /** Per-language scoping so the server returns the right learner
+     *  state. Without it, the response is identical but the mistakes/
+     *  memory arrays come back empty. */
+    language?: string
+  } = {}): Promise<{
+    ephemeralKey: string
+    subscribed: boolean
+    secondsRemaining: number
+    recentMistakes: Array<{ original: string; corrected: string; explanation: string; recordedAt?: string }>
+    recentMemory: string[]
+    nextFocus: string | null
+  }> {
+    const url = opts.language
+      ? `/api/session?language=${encodeURIComponent(opts.language)}`
+      : '/api/session'
+    const tokenRes = await fetch(url, {
+      headers: opts.accessToken
+        ? { Authorization: `Bearer ${opts.accessToken}` }
+        : {},
+    })
+    const tokenData = (await tokenRes.json()) as {
+      client_secret?: { value?: string }
+      error?: string
+      subscribed?: boolean
+      secondsRemaining?: number
+      recentMistakes?: Array<{ original: string; corrected: string; explanation: string; recordedAt?: string }>
+      recentMemory?: string[]
+      nextFocus?: string | null
+    }
+    if (!tokenRes.ok) {
+      const err = new Error(tokenData.error ?? `Session token request failed (${tokenRes.status})`)
+      ;(err as Error & { status?: number; secondsRemaining?: number }).status = tokenRes.status
+      ;(err as Error & { status?: number; secondsRemaining?: number }).secondsRemaining =
+        tokenData.secondsRemaining
+      throw err
+    }
+    const ephemeralKey = tokenData?.client_secret?.value
+    if (!ephemeralKey) {
+      throw new Error(`Malformed session response: ${JSON.stringify(tokenData)}`)
+    }
+    return {
+      ephemeralKey,
+      subscribed: !!tokenData.subscribed,
+      secondsRemaining: tokenData.secondsRemaining ?? 0,
+      recentMistakes: tokenData.recentMistakes ?? [],
+      recentMemory: tokenData.recentMemory ?? [],
+      nextFocus: tokenData.nextFocus ?? null,
+    }
+  }
+
   async connect(
     instructions: string,
     options: {
       vadEagerness?: 'low' | 'medium' | 'high' | 'auto'
       accessToken?: string
+      /// Skip the internal /api/session fetch when the caller has
+      /// already minted via mintSession() (the recommended pattern,
+      /// since the caller needs server learner state for prompt
+      /// assembly anyway).
+      mintedToken?: string
+      /// Per-language scoping for the internal mint path (ignored
+      /// when mintedToken is provided since the caller has already
+      /// done the scoped mint).
+      language?: string
       /**
        * ISO-639-1 hint for the transcription model. Pinning eliminates
        * cross-language hallucinations (room tone rendered as Japanese,
@@ -40,28 +106,19 @@ export class RealtimeTutor {
       transcriptionLanguage?: 'pt' | 'en' | 'es' | 'fr' | 'it' | 'de'
     } = {},
   ): Promise<{ subscribed: boolean; secondsRemaining: number }> {
-    const tokenRes = await fetch('/api/session', {
-      headers: options.accessToken
-        ? { Authorization: `Bearer ${options.accessToken}` }
-        : {},
-    })
-    const tokenData = (await tokenRes.json()) as {
-      client_secret?: { value?: string }
-      error?: string
-      subscribed?: boolean
-      secondsRemaining?: number
-    }
-    if (!tokenRes.ok) {
-      // Preserve status code so the caller can distinguish 401 / 402.
-      const err = new Error(tokenData.error ?? `Session token request failed (${tokenRes.status})`)
-      ;(err as Error & { status?: number; secondsRemaining?: number }).status = tokenRes.status
-      ;(err as Error & { status?: number; secondsRemaining?: number }).secondsRemaining =
-        tokenData.secondsRemaining
-      throw err
-    }
-    const ephemeralKey = tokenData?.client_secret?.value
-    if (!ephemeralKey) {
-      throw new Error(`Malformed session response: ${JSON.stringify(tokenData)}`)
+    let ephemeralKey: string
+    let subscribed = false
+    let secondsRemaining = 0
+    if (options.mintedToken) {
+      ephemeralKey = options.mintedToken
+    } else {
+      const minted = await this.mintSession({
+        accessToken: options.accessToken,
+        language: options.language,
+      })
+      ephemeralKey = minted.ephemeralKey
+      subscribed = minted.subscribed
+      secondsRemaining = minted.secondsRemaining
     }
 
     const pc = new RTCPeerConnection()
@@ -418,8 +475,8 @@ export class RealtimeTutor {
     await pc.setRemoteDescription({ type: 'answer', sdp: await sdpRes.text() })
 
     return {
-      subscribed: tokenData.subscribed ?? false,
-      secondsRemaining: tokenData.secondsRemaining ?? 0,
+      subscribed,
+      secondsRemaining,
     }
   }
 
