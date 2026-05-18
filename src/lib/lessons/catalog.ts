@@ -36,11 +36,13 @@ export function unitsForLevel(level: LessonLevel): LessonUnit[] {
       return BASIC
     case 'intermediate':
       return INTERMEDIATE
+    case 'advanced':
+      return ADVANCED
   }
 }
 
 export function lessonById(id: string): Lesson | undefined {
-  for (const level of ['first_timer', 'basic', 'intermediate'] as LessonLevel[]) {
+  for (const level of ['first_timer', 'basic', 'intermediate', 'advanced'] as LessonLevel[]) {
     for (const unit of unitsForLevel(level)) {
       const found = unit.lessons.find((l) => l.id === id)
       if (found) return found
@@ -242,6 +244,74 @@ const INTERMEDIATE: LessonUnit[] = [
       { id: 'i-4-3', emoji: '🍷', title: 'Recommend a place',
         summary: 'Learn 5 anchor phrases · 9 min',
         scene: 'Your tutor is visiting your city for a weekend. Recommend three places they should go — and explain why each one matters to you.' },
+    ],
+  },
+]
+
+// MARK: - Advanced (B2/C1)
+// Open-ended discussion prompts. Phrases are advanced vocabulary the
+// tutor can weave in if it fits — not a strict "produce these five"
+// mandate. Scenes are topics to argue, narrate, or explain.
+
+const ADVANCED: LessonUnit[] = [
+  {
+    id: 'a-1',
+    title: 'Unit 1: Opinions in Depth',
+    lessons: [
+      { id: 'a-1-1', emoji: '💼', title: 'Debate: remote work or office?',
+        summary: 'Discussion · 10 min',
+        scene: 'The tutor sets up the topic: post-pandemic, companies are split on remote vs office work. The tutor will take the OPPOSITE side from you. Defend your stance with at least three reasons, respond to their counterpoints, and push back when you disagree.' },
+      { id: 'a-1-2', emoji: '🌶️', title: 'Defend an unpopular opinion',
+        summary: 'Discussion · 10 min',
+        scene: 'The tutor asks you to share an opinion most people disagree with. Walk them through why you hold it, anticipate the standard objections, and address them. The tutor will play devil\'s advocate.' },
+      { id: 'a-1-3', emoji: '🗞️', title: 'Discuss something controversial from home',
+        summary: 'Discussion · 10 min',
+        scene: 'The tutor asks about a debate happening in your country right now (politics, social issue, cultural shift). Explain what\'s at stake, where you stand, and why.' },
+    ],
+  },
+  {
+    id: 'a-2',
+    title: 'Unit 2: Storytelling',
+    lessons: [
+      { id: 'a-2-1', emoji: '🎭', title: 'Tell a story with a twist',
+        summary: 'Discussion · 10 min',
+        scene: 'Walk the tutor through a memorable story from your life — set the scene, build tension, land the twist. Use past tenses naturally and pull them in with vivid details.' },
+      { id: 'a-2-2', emoji: '🔀', title: 'Explain a turning point',
+        summary: 'Discussion · 10 min',
+        scene: 'Tell the tutor about a moment that changed how you see something — a job, a relationship, a place, an idea. What did you believe before, what changed it, what do you believe now?' },
+      { id: 'a-2-3', emoji: '📖', title: 'A book or film that moved you',
+        summary: 'Discussion · 10 min',
+        scene: 'Pick something that genuinely moved you. Tell the tutor what it\'s about, what it made you feel, and what you took away. The tutor will ask probing follow-ups.' },
+    ],
+  },
+  {
+    id: 'a-3',
+    title: 'Unit 3: Professional Discourse',
+    lessons: [
+      { id: 'a-3-1', emoji: '🧑‍💻', title: 'Explain your job to an outsider',
+        summary: 'Discussion · 10 min',
+        scene: 'The tutor knows nothing about your field. Make your work understandable in 2-3 minutes — what you do day-to-day, why it matters, what\'s hard about it. The tutor will interrupt with naive questions; lean into them.' },
+      { id: 'a-3-2', emoji: '🎤', title: 'Pitch an idea you believe in',
+        summary: 'Discussion · 10 min',
+        scene: 'Sell the tutor on something — a project, a product, a side hustle, an idea you care about. Be persuasive. The tutor will be a skeptical audience asking "why now", "why you", "why this".' },
+      { id: 'a-3-3', emoji: '🤔', title: 'Disagree constructively with a colleague',
+        summary: 'Discussion · 10 min',
+        scene: 'The tutor plays a colleague who states an opinion you disagree with about a work decision. Push back without being aggressive — acknowledge their point first, then make yours. Practice the art of professional dissent.' },
+    ],
+  },
+  {
+    id: 'a-4',
+    title: 'Unit 4: Culture & Society',
+    lessons: [
+      { id: 'a-4-1', emoji: '🌐', title: 'Compare cultures meaningfully',
+        summary: 'Discussion · 10 min',
+        scene: 'Pick a meaningful difference between your culture and the target-language country\'s — not stereotypes, real observations. What does each get right? What\'s a fair critique of your own? Avoid easy generalizations.' },
+      { id: 'a-4-2', emoji: '📈', title: 'A societal shift you\'ve noticed',
+        summary: 'Discussion · 10 min',
+        scene: 'Talk about something that\'s changed in your country or community over the past 5-10 years. What\'s different? Better or worse? What do you think it means? The tutor will push for specifics.' },
+      { id: 'a-4-3', emoji: '🎧', title: 'The media you actually consume',
+        summary: 'Discussion · 10 min',
+        scene: 'Walk the tutor through what news, podcasts, books, or shows actually shape your worldview. Why these? What do you think they reveal about you? Be honest, not performative.' },
     ],
   },
 ]

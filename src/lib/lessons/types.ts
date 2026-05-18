@@ -3,9 +3,9 @@
 // won't be re-prompted on web. Catalogue metadata lives in catalog.ts,
 // per-language phrase content lives in content/<lang>.ts.
 
-export type LessonLevel = 'first_timer' | 'basic' | 'intermediate'
+export type LessonLevel = 'first_timer' | 'basic' | 'intermediate' | 'advanced'
 
-export const LESSON_LEVELS: LessonLevel[] = ['first_timer', 'basic', 'intermediate']
+export const LESSON_LEVELS: LessonLevel[] = ['first_timer', 'basic', 'intermediate', 'advanced']
 
 export function lessonLevelDisplayName(level: LessonLevel): string {
   switch (level) {
@@ -15,6 +15,8 @@ export function lessonLevelDisplayName(level: LessonLevel): string {
       return 'Basic'
     case 'intermediate':
       return 'Intermediate'
+    case 'advanced':
+      return 'Advanced'
   }
 }
 
@@ -27,6 +29,8 @@ export function lessonLevelOrder(level: LessonLevel): number {
       return 1
     case 'intermediate':
       return 2
+    case 'advanced':
+      return 3
   }
 }
 

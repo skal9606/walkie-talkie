@@ -480,8 +480,9 @@ function proficiencyToLevel(level: string | undefined): LessonLevel {
     case 'basic':
       return 'basic'
     case 'intermediate':
-    case 'advanced':
       return 'intermediate'
+    case 'advanced':
+      return 'advanced'
     case 'complete-beginner':
     case 'first_timer':
     default:

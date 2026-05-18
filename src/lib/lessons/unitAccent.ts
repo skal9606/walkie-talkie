@@ -22,6 +22,10 @@ const PALETTE: Record<string, RGB> = {
   'i-2':  [0.80, 0.55, 0.95], // orchid
   'i-3':  [0.95, 0.62, 0.45], // tangerine
   'i-4':  [0.60, 0.80, 0.55], // sage
+  'a-1':  [0.86, 0.40, 0.50], // crimson
+  'a-2':  [0.55, 0.65, 0.85], // slate-blue
+  'a-3':  [0.40, 0.70, 0.55], // forest
+  'a-4':  [0.85, 0.55, 0.30], // burnt-orange
 }
 
 const FALLBACK: RGB = [0.20, 0.85, 0.62] // matches iOS AccentColor
