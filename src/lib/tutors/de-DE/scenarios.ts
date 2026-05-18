@@ -145,16 +145,17 @@ const FREE_CONVERSATIONS: Scenario[] = [
         language: 'German',
         workedExample: `You: "Hey Sam! I'm Lena, your German tutor. What made you want to learn German?"
 Learner: "My wife is German."
-You: "Oh, that's wonderful. Where is she from?"
+You: "Oh, that's wonderful. Where in Germany is she from?"
 Learner: "Munich."
-You: "Beautiful place. Have you been?"
+You: "Munich — 'wie schön' (how lovely). Have you been together?"  [Pattern 8]
 Learner: "Yes, last year."
-You: "Amazing. Hey — want to learn how to say 'I went to Munich' in German? It's 'Ich war in München' — try it: 'Ich war in München'."
-[wait]
-Learner: "Ich war in München."
-You: "Yes! Perfect. What did you love most?"
-Learner: "The food."
-You: "Bavarian food is legendary. Want to learn 'I love the food'? It's 'Ich liebe das Essen' — say it: 'Ich liebe das Essen'."`,
+You: "How was your first visit?"  [Pattern 4]
+Learner: "Amazing. The food was incredible."
+You: "Bavarian food is something else — 'das bayerische Essen ist klasse' (Bavarian food is great). What stood out?"  [Pattern 1]
+Learner: "The pretzels."
+You: "Mmm, classic. Want to try 'ich liebe Brezeln' — 'I love pretzels'?"  [Pattern 5 — sparingly]
+Learner: "Ich liebe Brezeln."
+You: "Yes! Beautiful. Do you cook any German food at home?"`,
         opener: memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx),
       })
     },
@@ -170,15 +171,18 @@ You: "Bavarian food is legendary. Want to learn 'I love the food'? It's 'Ich lie
         native,
         language: 'German',
         workedExample: `You: "Hey Sam! I'm Lena, your German tutor. What's bringing you to German?"
-Learner: "I want to travel next year."
-You: "Oh, exciting! Where are you thinking?"
-Learner: "Somewhere local."
-You: "Want to learn how to say 'I want to go to Berlin' in German? It's 'Ich will nach Berlin' — try it: 'Ich will nach Berlin'."
-[wait]
-Learner: "Ich will nach Berlin."
-You: "Perfect! What's drawing you there?"
-Learner: "The beaches."
-You: "Beautiful. Want to put it together? 'Ich liebe den Strand' — 'I love the beach'. Try it: 'Ich liebe den Strand'."`,
+Learner: "I want to travel to Germany next year."
+You: "Exciting — 'wie schön' (how lovely). Where are you thinking?"  [Pattern 8]
+Learner: "Munich."
+You: "Munich is incredible. What's drawing you there?"  [Pattern 4]
+Learner: "The food."
+You: "Germans say 'Essen ist Leben' (food is life). Try 'Essen': 'Essen'."  [Pattern 3]
+Learner: "Essen."
+You: "Yes! Perfect. Any dish you're excited to try?"
+Learner: "Pretzels."
+You: "Mmm — 'ich will Brezeln essen' (I want to eat pretzels). Try it."  [Pattern 5]
+Learner: "Ich will Brezeln essen."
+You: "Beautiful. Are you going with anyone?"`,
         opener: memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx),
       })
     },

@@ -159,16 +159,17 @@ const FREE_CONVERSATIONS: Scenario[] = [
         language: 'Spanish',
         workedExample: `You: "Hey Sam! I'm María, your Spanish tutor. What made you want to learn Spanish?"
 Learner: "My wife is Mexican."
-You: "Oh, that's wonderful. Where is she from?"
+You: "Oh, that's wonderful. Where in Mexico is she from?"
 Learner: "Oaxaca."
-You: "Beautiful place. Have you been?"
+You: "Oaxaca — 'qué padre' (how cool). Have you been together?"  [Pattern 8]
 Learner: "Yes, last year."
-You: "Amazing. Hey — want to learn how to say 'I went to Oaxaca' in Spanish? It's 'Fui a Oaxaca' — try it: 'Fui a Oaxaca'."
-[wait]
-Learner: "Fui a Oaxaca."
-You: "Yes! Perfect. What did you love most?"
-Learner: "The food."
-You: "Oaxacan cuisine is legendary. Want to learn 'I love the food'? It's 'Amo la comida' — say it: 'Amo la comida'."`,
+You: "How was your first visit?"  [Pattern 4]
+Learner: "Amazing. The food was incredible."
+You: "Oaxacan food is something else — 'la comida oaxaqueña está buenísima' (Oaxacan food is so good). What stood out?"  [Pattern 1]
+Learner: "The mole."
+You: "Mmm, classic. Want to try 'amo el mole' — 'I love mole'?"  [Pattern 5 — sparingly]
+Learner: "Amo el mole."
+You: "Yes! Beautiful. Do you cook any Mexican food at home?"`,
         opener: memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx),
       })
     },
@@ -184,15 +185,18 @@ You: "Oaxacan cuisine is legendary. Want to learn 'I love the food'? It's 'Amo l
         native,
         language: 'Spanish',
         workedExample: `You: "Hey Sam! I'm María, your Spanish tutor. What's bringing you to Spanish?"
-Learner: "I want to travel next year."
-You: "Oh, exciting! Where are you thinking?"
-Learner: "Somewhere local."
-You: "Want to learn how to say 'I want to go to Mexico' in Spanish? It's 'Quiero ir a México' — try it: 'Quiero ir a México'."
-[wait]
-Learner: "Quiero ir a México."
-You: "Perfect! What's drawing you there?"
-Learner: "The beaches."
-You: "Beautiful. Want to put it together? 'Adoro la playa' — 'I love the beach'. Try it: 'Adoro la playa'."`,
+Learner: "I want to travel to Mexico next year."
+You: "Exciting — 'qué padre' (how cool). Where are you thinking?"  [Pattern 8]
+Learner: "Oaxaca."
+You: "Oaxaca's incredible. What's drawing you there?"  [Pattern 4]
+Learner: "The food."
+You: "Mexicans say 'comer es vivir' (to eat is to live). Try 'comida': 'comida'."  [Pattern 3]
+Learner: "Comida."
+You: "Yes! Perfect. Any dish you're excited to try?"
+Learner: "Mole."
+You: "Mmm — 'quiero comer mole' (I want to eat mole). Try it: 'quiero comer mole'."  [Pattern 5]
+Learner: "Quiero comer mole."
+You: "Beautiful. Are you going with anyone?"`,
         opener: memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx),
       })
     },

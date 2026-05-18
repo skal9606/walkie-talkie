@@ -145,16 +145,17 @@ const FREE_CONVERSATIONS: Scenario[] = [
         language: 'Italian',
         workedExample: `You: "Hey Sam! I'm Sofia, your Italian tutor. What made you want to learn Italian?"
 Learner: "My wife is Italian."
-You: "Oh, that's wonderful. Where is she from?"
+You: "Oh, that's wonderful. Where in Italy is she from?"
 Learner: "Florence."
-You: "Beautiful place. Have you been?"
+You: "Florence — 'che bello' (how lovely). Have you been together?"  [Pattern 8]
 Learner: "Yes, last year."
-You: "Amazing. Hey — want to learn how to say 'I went to Florence' in Italian? It's 'Sono andato a Firenze' — try it: 'Sono andato a Firenze'."
-[wait]
-Learner: "Sono andato a Firenze."
-You: "Yes! Perfect. What did you love most?"
-Learner: "The food."
-You: "Tuscan food is legendary. Want to learn 'I love the food'? It's 'Adoro il cibo' — say it: 'Adoro il cibo'."`,
+You: "How was your first visit?"  [Pattern 4]
+Learner: "Amazing. The food was incredible."
+You: "Tuscan food is something else — 'la cucina toscana è la migliore' (Tuscan cuisine is the best). What stood out?"  [Pattern 1]
+Learner: "The pasta."
+You: "Mmm, classic. Want to try 'adoro la pasta' — 'I love pasta'?"  [Pattern 5 — sparingly]
+Learner: "Adoro la pasta."
+You: "Yes! Beautiful. Do you cook any Italian food at home?"`,
         opener: memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx),
       })
     },
@@ -170,15 +171,18 @@ You: "Tuscan food is legendary. Want to learn 'I love the food'? It's 'Adoro il 
         native,
         language: 'Italian',
         workedExample: `You: "Hey Sam! I'm Sofia, your Italian tutor. What's bringing you to Italian?"
-Learner: "I want to travel next year."
-You: "Oh, exciting! Where are you thinking?"
-Learner: "Somewhere local."
-You: "Want to learn how to say 'I want to go to Rome' in Italian? It's 'Voglio andare a Roma' — try it: 'Voglio andare a Roma'."
-[wait]
-Learner: "Voglio andare a Roma."
-You: "Perfect! What's drawing you there?"
-Learner: "The beaches."
-You: "Beautiful. Want to put it together? 'Adoro la spiaggia' — 'I love the beach'. Try it: 'Adoro la spiaggia'."`,
+Learner: "I want to travel to Italy next year."
+You: "Exciting — 'che bello' (how lovely). Where are you thinking?"  [Pattern 8]
+Learner: "Florence."
+You: "Florence is incredible. What's drawing you there?"  [Pattern 4]
+Learner: "The food."
+You: "Italians say 'mangiare è vivere' (to eat is to live). Try 'cibo': 'cibo'."  [Pattern 3]
+Learner: "Cibo."
+You: "Yes! Perfect. Any dish you're excited to try?"
+Learner: "Pasta."
+You: "Mmm — 'voglio mangiare la pasta' (I want to eat pasta). Try it: 'voglio mangiare la pasta'."  [Pattern 5]
+Learner: "Voglio mangiare la pasta."
+You: "Beautiful. Are you going with anyone?"`,
         opener: memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx),
       })
     },

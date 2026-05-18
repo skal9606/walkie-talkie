@@ -168,16 +168,17 @@ const FREE_CONVERSATIONS: Scenario[] = [
         language: 'Portuguese',
         workedExample: `You: "Hey Sam! I'm Natalia, your Portuguese tutor. What made you want to learn Portuguese?"
 Learner: "My wife is Brazilian."
-You: "Oh, that's wonderful. Where is she from in Brazil?"
+You: "Oh, that's wonderful. Where in Brazil is she from?"  [pure conversation]
 Learner: "Salvador."
-You: "Beautiful city. Have you been?"
+You: "Salvador — 'que legal' (how cool). Have you been together?"  [Pattern 8 — filler with translation]
 Learner: "Yes, last year."
-You: "Amazing. Hey — want to learn how to say 'I went to Salvador' in Portuguese? It's 'Eu fui a Salvador' — try it: 'Eu fui a Salvador'."
-[wait]
-Learner: "Eu fui a Salvador."
-You: "Yes! Perfect. What did you love most about it?"
-Learner: "The food."
-You: "Bahian food is legendary. Want to learn 'I love the food'? It's 'Eu amo a comida' — say it: 'Eu amo a comida'."`,
+You: "How was your first visit?"  [Pattern 4 — no teaching]
+Learner: "Amazing. The food was incredible."
+You: "Bahian food is something else — 'a comida baiana é demais' (Bahian food is amazing). What stood out?"  [Pattern 1 — embedded use]
+Learner: "The acarajé."
+You: "Mmm, classic. Want to try 'eu amo acarajé' — 'I love acarajé'?"  [Pattern 5 — sparingly]
+Learner: "Eu amo acarajé."
+You: "Yes! Beautiful. Do you cook any Brazilian food at home?"`,
         opener: memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx),
       })
     },
@@ -194,14 +195,17 @@ You: "Bahian food is legendary. Want to learn 'I love the food'? It's 'Eu amo a 
         language: 'Portuguese',
         workedExample: `You: "Hey Sam! I'm Natalia, your Portuguese tutor. What's bringing you to Portuguese?"
 Learner: "I want to travel to Brazil next year."
-You: "Oh, exciting! Where in Brazil are you thinking?"
-Learner: "Rio mostly."
-You: "Rio is incredible. Want to learn how to say 'I want to go to Rio' in Portuguese? It's 'Eu quero ir ao Rio' — try it: 'Eu quero ir ao Rio'."
-[wait]
-Learner: "Eu quero ir ao Rio."
-You: "Isso! 'That's it!' What's drawing you there?"
+You: "Exciting — 'que legal' (how cool). Where in Brazil are you thinking?"  [Pattern 8]
+Learner: "Rio."
+You: "Rio's incredible. What's drawing you there?"  [Pattern 4 — no teaching]
 Learner: "The beaches."
-You: "The beaches are unreal. 'Praia' is beach. Want to put it together? 'Eu adoro a praia' — 'I love the beach.' Try it: 'Eu adoro a praia'."`,
+You: "Cariocas — that's locals from Rio — say 'praia é vida' (beach is life). Try saying 'praia': 'praia'."  [Pattern 3 — cultural anchor]
+Learner: "Praia."
+You: "Yes! Perfect. Which beach is on your list?"
+Learner: "Copacabana."
+You: "Classic — 'eu quero ir a Copacabana' (I want to go to Copacabana). Try it: 'eu quero ir a Copacabana'."  [Pattern 5 — sparingly]
+Learner: "Eu quero ir a Copacabana."
+You: "Beautiful. Are you going with anyone?"  [back to conversation]`,
         opener: memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx),
       })
     },

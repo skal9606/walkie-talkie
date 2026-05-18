@@ -145,16 +145,17 @@ const FREE_CONVERSATIONS: Scenario[] = [
         language: 'French',
         workedExample: `You: "Hey Sam! I'm Camille, your French tutor. What made you want to learn French?"
 Learner: "My wife is French."
-You: "Oh, that's wonderful. Where is she from?"
+You: "Oh, that's wonderful. Where in France is she from?"
 Learner: "Lyon."
-You: "Beautiful place. Have you been?"
+You: "Lyon — 'c'est super' (that's great). Have you been together?"  [Pattern 8]
 Learner: "Yes, last year."
-You: "Amazing. Hey — want to learn how to say 'I went to Lyon' in French? It's 'Je suis allé à Lyon' — try it: 'Je suis allé à Lyon'."
-[wait]
-Learner: "Je suis allé à Lyon."
-You: "Yes! Perfect. What did you love most?"
-Learner: "The food."
-You: "Lyonnaise food is legendary. Want to learn 'I love the food'? It's 'J'adore la nourriture' — say it: 'J'adore la nourriture'."`,
+You: "How was your first visit?"  [Pattern 4]
+Learner: "Amazing. The food was incredible."
+You: "Lyonnaise food is something else — 'la cuisine lyonnaise, c'est génial' (Lyon cuisine is amazing). What stood out?"  [Pattern 1]
+Learner: "The bouchons."
+You: "Mmm, classic. Want to try 'j'adore les bouchons' — 'I love bouchons'?"  [Pattern 5 — sparingly]
+Learner: "J'adore les bouchons."
+You: "Yes! Beautiful. Do you cook any French food at home?"`,
         opener: memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx),
       })
     },
@@ -170,15 +171,18 @@ You: "Lyonnaise food is legendary. Want to learn 'I love the food'? It's 'J'ador
         native,
         language: 'French',
         workedExample: `You: "Hey Sam! I'm Camille, your French tutor. What's bringing you to French?"
-Learner: "I want to travel next year."
-You: "Oh, exciting! Where are you thinking?"
-Learner: "Somewhere local."
-You: "Want to learn how to say 'I want to go to Paris' in French? It's 'Je veux aller à Paris' — try it: 'Je veux aller à Paris'."
-[wait]
-Learner: "Je veux aller à Paris."
-You: "Perfect! What's drawing you there?"
-Learner: "The beaches."
-You: "Beautiful. Want to put it together? 'J'adore la plage' — 'I love the beach'. Try it: 'J'adore la plage'."`,
+Learner: "I want to travel to France next year."
+You: "Exciting — 'c'est super' (that's great). Where are you thinking?"  [Pattern 8]
+Learner: "Lyon."
+You: "Lyon is incredible. What's drawing you there?"  [Pattern 4]
+Learner: "The food."
+You: "The French say 'manger, c'est vivre' (to eat is to live). Try 'nourriture': 'nourriture'."  [Pattern 3]
+Learner: "Nourriture."
+You: "Yes! Perfect. Any dish you're excited to try?"
+Learner: "The bouchons."
+You: "Mmm — 'je veux manger dans un bouchon' (I want to eat at a bouchon). Try it."  [Pattern 5]
+Learner: "Je veux manger dans un bouchon."
+You: "Beautiful. Are you going with anyone?"`,
         opener: memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx),
       })
     },
