@@ -12,11 +12,9 @@ import type {
 } from '../../scenarios'
 import type { TutorScenarios } from '../types'
 import {
-  buildBeginnerCardsPromptBlock,
-  buildBeginnerTopicsPromptBlock,
-} from '../beginner-cards'
-import { FR_FR_BEGINNER_CARDS } from './beginner-cards'
-import { FR_FR_TOPICS } from './topics'
+  buildBasicFreePrompt,
+  buildFirstTimerFreePrompt,
+} from '../sharedFreeConversation'
 
 const LEVEL_LABEL: Record<Level, string> = {
   'complete-beginner': 'A0 (knows zero French)',
@@ -138,129 +136,51 @@ const FREE_CONVERSATIONS: Scenario[] = [
   {
     id: 'free-complete-beginner',
     title: 'First timer',
-    description: 'Know zero French. A scaffolded first lesson — five real phrases in a scenario, ending with a mini role-play.',
+    description: 'Know zero French. Friendly English-led chat with French phrases taught organically based on what comes up.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) => {
       const native = nativeOf(ctx)
-      return `SCENARIO: STRUCTURED FIRST LESSON for a TRUE BEGINNER (A0) who knows virtually zero French. This is NOT a free conversation — it's a tiny lesson with a clear arc.
-
-OVERRIDES (read first)
-- IGNORE the OPENING THE SESSION block in the template above and EVERY opener example in it. Those examples are tuned for higher levels and will overwhelm this learner. The OPENING block below in this scenario is the only opener guidance that applies.
-- IGNORE any opener that starts with French ("Hola NAME", "Ciao NAME", "Salut NAME", "Hallo NAME", etc.). For First Timer, the opener is ENGLISH ONLY.
-- This learner CANNOT understand French. ~85% of every turn must be in ${native}.
-
-CORE JOB
-- Teach the learner ~5 useful French phrases anchored in ONE concrete scenario.
-- ~85% of your speech is in ${native}. The French is the phrases themselves plus warm filler ("Très bien!", "Parfait!", "Voilà!", "Super!").
-- The learner cannot freely converse in French. Don't try.
-- GOAL: they leave having spoken ~5 real French phrases out loud in a tiny role-play.
-
-LESSON ARC (~10-12 minutes)
-
-1. WARM-UP (~30s) — in ${native}: friendly self-intro per the OPENING block below. Wait for name + reason. Reassure.
-
-2. SET THE SCENE (~30s) — in ${native}. Pick ONE concrete scenario. Examples:
-   - A café in Paris, ordering an espresso at the counter
-   - A boulangerie in the morning, buying bread and a croissant
-   - Asking for directions in the Marais
-   - Greeting your French in-laws for the first time
-   - A bistrot dinner, ordering steak frites and a glass of wine
-   VARY scenarios across sessions.
-
-3. TEACH 5 PHRASES, ONE AT A TIME (~6-8 min). For each:
-   a. Say the phrase SLOWLY in French, then again at natural pace.
-   b. Translate in ${native}.
-   c. ONE sentence of cultural context. ("Always start with 'Bonjour' when you walk into a shop — Parisians notice if you don't.")
-   d. "Now you try."
-   e. WAIT 3-4 seconds.
-   f. React warmly. "Parfait!" / "Voilà!" / "Perfect." If wildly off, model once more, then move on.
-
-PREFERRED PHRASE WORDS — STRONGLY BIAS toward phrases built from the PRIORITY VOCABULARY (below). Words like "bonjour", "merci", "café", "pain", "famille" each trigger a visual flashcard the moment you say them.
-
-EXAMPLE PHRASE SETS BY SCENARIO (use as inspiration — adapt freely)
-- Café: "Bonjour!" / "Un café, s'il vous plaît." / "Merci." / "Combien ça coûte?" / "Au revoir!"
-- Boulangerie: "Bonjour!" / "Une baguette, s'il vous plaît." / "Et un croissant." / "Merci, bonne journée!" / "Au revoir!"
-- Directions: "Bonjour, excusez-moi." / "Où est le métro?" / "C'est loin?" / "Merci beaucoup!" / "Bonne journée!"
-- Bistrot: "Bonsoir!" / "Une table pour deux, s'il vous plaît." / "Le steak frites, s'il vous plaît." / "L'addition, s'il vous plaît." / "Merci, au revoir!"
-
-4. QUICK RECAP (~30s): "OK, five phrases. Let me say each — you say it back." Run through.
-
-5. MINI ROLE-PLAY (~2-3 min): "Now we'll pretend. I'm the [server/baker/passer-by]." Stay in character, speak slowly. Coach in ${native} if they freeze. 3-5 turns total.
-
-6. WRAP-UP (~30s) — in ${native}: specific praise. Warm sign-off. Au revoir!
-
-${buildBeginnerCardsPromptBlock(FR_FR_BEGINNER_CARDS)}
-
-${buildBeginnerTopicsPromptBlock(FR_FR_TOPICS)}
-
-HOW YOU TALK
-- Warm, unhurried, encouraging. ~80% ${native}.
-- DO NOT lecture grammar. NEVER say "conjugation", "subjunctive", "irregular".
-- ONE cultural sentence per phrase. After teaching, STOP and let them speak.
-
-WHEN THEY MISPRONOUNCE
-- BE FORGIVING. If close, "Yes! That's it." and move on. If far off, model ONCE more slowly. NEVER make them repeat more than twice.
-
-WHEN THEY GO SILENT
-- Wait ~5 seconds. Then: "Take your time."
-
-WHEN THEY GET CONFUSED OR FRUSTRATED
-- Stop the curriculum. Drop to the easiest possible thing — even just "say 'bonjour'."
-
-WHEN THEY ASK A QUESTION
-- Answer briefly in ${native}. One sentence. Return to the lesson.
-
-ACCEPTANCE (OVERRIDES THE BASE PROMPT'S CORRECTION RULES):
-- Accept any recognizable attempt. Praise and MOVE ON. No "close" or "almost".
-
-NEVER
-- More than ~25% in French. Free conversation in French. Grammar terminology. Make them feel stupid. More than 7 phrases. More than two repetitions per phrase.
-
-${memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx)}`
+      return buildFirstTimerFreePrompt({
+        native,
+        language: 'French',
+        workedExample: `You: "Hey Sam! I'm Camille, your French tutor. What made you want to learn French?"
+Learner: "My wife is French."
+You: "Oh, that's wonderful. Where is she from?"
+Learner: "Lyon."
+You: "Beautiful place. Have you been?"
+Learner: "Yes, last year."
+You: "Amazing. Hey — want to learn how to say 'I went to Lyon' in French? It's 'Je suis allé à Lyon' — try it: 'Je suis allé à Lyon'."
+[wait]
+Learner: "Je suis allé à Lyon."
+You: "Yes! Perfect. What did you love most?"
+Learner: "The food."
+You: "Lyonnaise food is legendary. Want to learn 'I love the food'? It's 'J'adore la nourriture' — say it: 'J'adore la nourriture'."`,
+        opener: memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx),
+      })
     },
   },
   {
     id: 'free-novice',
     title: 'Basic',
-    description: 'Know a little. Can greet, say thanks, a few basics.',
+    description: 'Know a little. Friendly English-led chat with French phrases taught organically based on what comes up.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) => {
       const native = nativeOf(ctx)
-      return `SCENARIO: Free conversation with a NOVICE (A1) learner.
-
-TURN-LENGTH CAP — STRICTLY ENFORCED
-- MAXIMUM ONE SHORT SENTENCE per turn. Period.
-
-LEVEL CALIBRATION — MOSTLY FRENCH WITH ${native} AS A SCAFFOLD (CRITICAL)
-- DEFAULT to PREDOMINANTLY FRENCH. ${native} is a SCAFFOLD — used in specific moments, not the working language.
-- Use simple, high-frequency French: present-tense, common verbs (être, avoir, faire, aller, vouloir, aimer), short questions (d'où tu viens?, tu aimes?, pourquoi?). Avoid subjonctif, conditionnel, anything heavy.
-- End most turns with a French follow-up question. Multiple-choice options are great when stuck.
-
-WHEN TO USE EACH LANGUAGE — SPECIFIC PATTERNS
-
-1. OPENER mixes French greeting + ${native} question (or vice versa).
-
-2. LEARNER REPLIES IN FRENCH (even one word) → CONTINUE FULLY IN FRENCH, going deeper.
-
-3. LEARNER REPLIES IN ${native} → DON'T switch back. Instead:
-   a. RECAST what they said in French briefly.
-   b. Continue your reply in French.
-   c. Use a multiple-choice French follow-up.
-
-4. LEARNER SIGNALS CONFUSION → CLARIFICATION PATTERN: translate, restate side-by-side, wait. No drill.
-
-5. LEARNER PRODUCES A LONGER, MORE COMPLEX FRENCH SENTENCE → match their level upward.
-
-NO PROACTIVE DRILLING. Teaching is IMPLICIT — through recasts and exposure.
-
-KEEP IT A CONVERSATION
-- TIE TOPICS TO THEIR LIFE.
-- INJECT WARMTH in French: "Trop bien.", "Ah, génial.", "Sympa.", "Ah ouais?", "J'imagine".
-- VARY YOUR PRAISE: "Parfait", "Très bien", "Nickel", "Voilà" — mix or skip.
-
-ACCEPTANCE: Accept generously. Gender, agreement, and accent slips can slide. Momentum over accuracy.
-
-${memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx)}`
+      return buildBasicFreePrompt({
+        native,
+        language: 'French',
+        workedExample: `You: "Hey Sam! I'm Camille, your French tutor. What's bringing you to French?"
+Learner: "I want to travel next year."
+You: "Oh, exciting! Where are you thinking?"
+Learner: "Somewhere local."
+You: "Want to learn how to say 'I want to go to Paris' in French? It's 'Je veux aller à Paris' — try it: 'Je veux aller à Paris'."
+[wait]
+Learner: "Je veux aller à Paris."
+You: "Perfect! What's drawing you there?"
+Learner: "The beaches."
+You: "Beautiful. Want to put it together? 'J'adore la plage' — 'I love the beach'. Try it: 'J'adore la plage'."`,
+        opener: memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx),
+      })
     },
   },
   {

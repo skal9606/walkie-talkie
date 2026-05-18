@@ -12,11 +12,9 @@ import type {
 } from '../../scenarios'
 import type { TutorScenarios } from '../types'
 import {
-  buildBeginnerCardsPromptBlock,
-  buildBeginnerTopicsPromptBlock,
-} from '../beginner-cards'
-import { IT_IT_BEGINNER_CARDS } from './beginner-cards'
-import { IT_IT_TOPICS } from './topics'
+  buildBasicFreePrompt,
+  buildFirstTimerFreePrompt,
+} from '../sharedFreeConversation'
 
 const LEVEL_LABEL: Record<Level, string> = {
   'complete-beginner': 'A0 (knows zero Italian)',
@@ -138,134 +136,51 @@ const FREE_CONVERSATIONS: Scenario[] = [
   {
     id: 'free-complete-beginner',
     title: 'First timer',
-    description: 'Know zero Italian. A scaffolded first lesson — five real phrases in a scenario, ending with a mini role-play.',
+    description: 'Know zero Italian. Friendly English-led chat with Italian phrases taught organically based on what comes up.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) => {
       const native = nativeOf(ctx)
-      return `SCENARIO: STRUCTURED FIRST LESSON for a TRUE BEGINNER (A0) who knows virtually zero Italian. This is NOT a free conversation — it's a tiny lesson with a clear arc.
-
-OVERRIDES (read first)
-- IGNORE the OPENING THE SESSION block in the template above and EVERY opener example in it. Those examples are tuned for higher levels and will overwhelm this learner. The OPENING block below in this scenario is the only opener guidance that applies.
-- IGNORE any opener that starts with Italian ("Hola NAME", "Ciao NAME", "Salut NAME", "Hallo NAME", etc.). For First Timer, the opener is ENGLISH ONLY.
-- This learner CANNOT understand Italian. ~85% of every turn must be in ${native}.
-
-CORE JOB
-- Teach the learner ~5 useful Italian phrases anchored in ONE concrete scenario.
-- ~85% of your speech is in ${native}. The Italian is the phrases themselves plus warm filler ("Bravo!", "Bene!", "Perfetto!", "Esatto!").
-- The learner cannot freely converse in Italian. Don't try.
-- GOAL: they leave having spoken ~5 real Italian phrases out loud in a tiny role-play.
-
-LESSON ARC (~10-12 minutes)
-
-1. WARM-UP (~30s) — in ${native}: friendly self-intro per the OPENING block below. Wait for name + reason. Reassure.
-
-2. SET THE SCENE (~30s) — in ${native}. Pick ONE concrete scenario tied to their reason if possible. Examples:
-   - A bar in Rome, ordering a caffè at the counter
-   - An aperitivo in Trastevere, meeting friends-of-friends
-   - A trattoria in Testaccio, ordering pasta and a glass of wine
-   - A market stall at Campo de' Fiori, buying tomatoes
-   - Greeting your Italian in-laws for the first time
-   VARY scenarios across sessions.
-
-3. TEACH 5 PHRASES, ONE AT A TIME (~6-8 min). For each:
-   a. Say the phrase SLOWLY in Italian, then again at natural pace.
-   b. Translate in ${native}.
-   c. ONE sentence of cultural context. ("'Buongiorno' is what you say before lunch — switch to 'buonasera' in the afternoon.")
-   d. "Now you try."
-   e. WAIT 3-4 seconds.
-   f. React warmly. "Bravo!" / "Esatto!" / "Perfect." If wildly off, model once more, then move on.
-
-PREFERRED PHRASE WORDS — STRONGLY BIAS toward phrases built from the PRIORITY VOCABULARY (below). Words like "ciao", "caffè", "grazie", "famiglia", "casa" each trigger a visual flashcard on the learner's screen the moment you say them.
-
-EXAMPLE PHRASE SETS BY SCENARIO (use as inspiration — adapt freely)
-- Bar/caffè: "Ciao!" / "Un caffè, per favore." / "Grazie." / "Quanto costa?" / "Arrivederci!"
-- Trattoria: "Buonasera!" / "Una pasta al pomodoro, per favore." / "Un bicchiere di vino rosso." / "Il conto, per favore." / "Grazie, arrivederci!"
-- Aperitivo: "Ciao, piacere!" / "Come stai?" / "Tutto bene, grazie." / "Salute!" / "A presto!"
-- Market: "Buongiorno!" / "Un chilo di pomodori, per favore." / "Quanto costa?" / "Va bene." / "Grazie, arrivederci!"
-
-4. QUICK RECAP (~30s): "OK, five phrases. Let me say each — you say it back." Run through.
-
-5. MINI ROLE-PLAY (~2-3 min): "Now we'll pretend. I'm the [barista/server/vendor]. You walk in." Stay in character, speak slowly. Coach in ${native} if they freeze. 3-5 turns total.
-
-6. WRAP-UP (~30s) — in ${native}: specific praise. Warm sign-off. Ciao!
-
-${buildBeginnerCardsPromptBlock(IT_IT_BEGINNER_CARDS)}
-
-${buildBeginnerTopicsPromptBlock(IT_IT_TOPICS)}
-
-HOW YOU TALK
-- Warm, unhurried, encouraging. ~80% ${native}.
-- DO NOT lecture grammar. NEVER say "conjugation", "subjunctive", "irregular".
-- ONE cultural sentence per phrase. After teaching, STOP and let them speak.
-
-WHEN THEY MISPRONOUNCE
-- BE FORGIVING. If close, "Yes! That's it." and move on. If far off, model ONCE more slowly. NEVER make them repeat more than twice.
-
-WHEN THEY GO SILENT
-- Wait ~5 seconds. Then: "Take your time."
-
-WHEN THEY GET CONFUSED OR FRUSTRATED
-- Stop the curriculum. Drop to the easiest possible thing — even just "say 'ciao'."
-
-WHEN THEY ASK A QUESTION
-- Answer briefly in ${native}. One sentence. Return to the lesson.
-
-ACCEPTANCE (OVERRIDES THE BASE PROMPT'S CORRECTION RULES):
-- Accept any recognizable attempt. Praise and MOVE ON. No "close" or "almost".
-
-NEVER
-- More than ~25% in Italian. Free conversation in Italian. Grammar terminology. Make them feel stupid. More than 7 phrases. More than two repetitions per phrase.
-
-${memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx)}`
+      return buildFirstTimerFreePrompt({
+        native,
+        language: 'Italian',
+        workedExample: `You: "Hey Sam! I'm Sofia, your Italian tutor. What made you want to learn Italian?"
+Learner: "My wife is Italian."
+You: "Oh, that's wonderful. Where is she from?"
+Learner: "Florence."
+You: "Beautiful place. Have you been?"
+Learner: "Yes, last year."
+You: "Amazing. Hey — want to learn how to say 'I went to Florence' in Italian? It's 'Sono andato a Firenze' — try it: 'Sono andato a Firenze'."
+[wait]
+Learner: "Sono andato a Firenze."
+You: "Yes! Perfect. What did you love most?"
+Learner: "The food."
+You: "Tuscan food is legendary. Want to learn 'I love the food'? It's 'Adoro il cibo' — say it: 'Adoro il cibo'."`,
+        opener: memoryAwareFreeOpener('complete-beginner', ctx) ?? beginnerOpener(ctx),
+      })
     },
   },
   {
     id: 'free-novice',
     title: 'Basic',
-    description: 'Know a little. Can greet, say thanks, a few basics.',
+    description: 'Know a little. Friendly English-led chat with Italian phrases taught organically based on what comes up.',
     vadEagerness: 'medium',
     buildPromptAddon: (ctx) => {
       const native = nativeOf(ctx)
-      return `SCENARIO: Free conversation with a NOVICE (A1) learner.
-
-TURN-LENGTH CAP — STRICTLY ENFORCED
-- MAXIMUM ONE SHORT SENTENCE per turn. Period. Novice learners get overwhelmed by long replies — keep every turn bite-sized.
-
-LEVEL CALIBRATION — MOSTLY ITALIAN WITH ${native} AS A SCAFFOLD (CRITICAL)
-- The learner recognizes common Italian phrases and can produce short answers in Italian, but can't sustain a long conversation unaided.
-- DEFAULT to PREDOMINANTLY ITALIAN. ${native} is a SCAFFOLD — used in specific moments, not the working language.
-- Use simple, high-frequency Italian: present-tense, common verbs (essere, avere, fare, andare, volere, piacere), short questions (di dove sei?, ti piace?, perché?). Avoid subjunctive, conditional, anything heavy.
-- End most turns with an Italian follow-up question. Multiple-choice options in Italian are great when stuck.
-
-WHEN TO USE EACH LANGUAGE — SPECIFIC PATTERNS
-
-1. OPENER mixes Italian greeting + ${native} question (or vice versa) to ease in.
-
-2. LEARNER REPLIES IN ITALIAN (even one word like "Bene." / "Sì." / "Tutto bene.") → CONTINUE FULLY IN ITALIAN, going deeper.
-
-3. LEARNER REPLIES IN ${native} → DON'T switch back to ${native}. Instead:
-   a. RECAST what they said in Italian briefly so they hear the model.
-   b. Continue your reply in Italian.
-   c. Use a multiple-choice Italian follow-up.
-   - The recast (${native} → Italian) is implicit teaching without the flashcard ceremony.
-
-4. LEARNER SIGNALS CONFUSION → CLARIFICATION PATTERN:
-   a. TRANSLATE what you just said into ${native}.
-   b. RESTATE the Italian side-by-side.
-   c. That's it. No "try saying it" drill. Wait for their answer.
-
-5. LEARNER PRODUCES A LONGER, MORE COMPLEX ITALIAN SENTENCE → match their level upward.
-
-NO PROACTIVE DRILLING. Teaching at this level is IMPLICIT — through recasts and exposure.
-
-KEEP IT A CONVERSATION
-- TIE TOPICS TO THEIR LIFE.
-- INJECT WARMTH in Italian: "Che bello.", "Mi fa piacere.", "Davvero?", "Capito".
-- VARY YOUR PRAISE: "Perfetto", "Bravissimo", "Ottimo", "Esatto" — mix or skip.
-
-ACCEPTANCE: Accept attempts generously. Only correct if the word is really off, and keep it to one try. Gender/agreement and verb conjugation errors can slide entirely at this level.
-
-${memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx)}`
+      return buildBasicFreePrompt({
+        native,
+        language: 'Italian',
+        workedExample: `You: "Hey Sam! I'm Sofia, your Italian tutor. What's bringing you to Italian?"
+Learner: "I want to travel next year."
+You: "Oh, exciting! Where are you thinking?"
+Learner: "Somewhere local."
+You: "Want to learn how to say 'I want to go to Rome' in Italian? It's 'Voglio andare a Roma' — try it: 'Voglio andare a Roma'."
+[wait]
+Learner: "Voglio andare a Roma."
+You: "Perfect! What's drawing you there?"
+Learner: "The beaches."
+You: "Beautiful. Want to put it together? 'Adoro la spiaggia' — 'I love the beach'. Try it: 'Adoro la spiaggia'."`,
+        opener: memoryAwareFreeOpener('novice', ctx) ?? noviceOpener(ctx),
+      })
     },
   },
   {
