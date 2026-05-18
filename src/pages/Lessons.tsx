@@ -16,6 +16,7 @@ import { OnboardingFlow, type OnboardingResult } from '../components/OnboardingF
 import { Settings } from '../components/Settings'
 import { LessonDetail } from '../components/LessonDetail'
 import { LessonRow, TodaysLessonCard } from '../components/LessonCards'
+import { recommendForGoals } from '../lib/lessons/curriculum'
 import {
   lessonLevelOrder,
   type Lesson,
@@ -294,6 +295,23 @@ function LessonsHome(props: LessonsHomeProps) {
     return all.find((l) => (stateLookup[l.id] ?? 'not_started') === 'not_started') ?? null
   }, [units, stateLookup])
 
+  /// Goal-driven recommendations — lessons whose tags overlap with
+  /// keywords in the learner's stated goals (e.g. "traveling to Brazil"
+  /// surfaces taxi / directions / souvenirs). Empty when goals is
+  /// blank or no tags match; the section hides entirely in that case.
+  const goalRecommendations = useMemo<Lesson[]>(() => {
+    const completed = new Set(
+      Object.entries(stateLookup)
+        .filter(([, state]) => state === 'completed')
+        .map(([id]) => id),
+    )
+    return recommendForGoals({
+      goals: profile.goals,
+      level: currentLevel,
+      completedLessonIds: completed,
+    })
+  }, [profile.goals, currentLevel, stateLookup])
+
   const currentUnit = useMemo(() => {
     if (!recommendedLesson) return units[0]
     return units.find((u) => u.lessons.some((l) => l.id === recommendedLesson.id)) ?? units[0]
@@ -348,6 +366,26 @@ function LessonsHome(props: LessonsHomeProps) {
           <section className="lessons-section">
             <div className="lessons-section-label">WHAT YOU'RE WORKING ON</div>
             <MistakesStrip mistakes={mistakes} />
+          </section>
+        )}
+
+        {goalRecommendations.length > 0 && (
+          <section className="lessons-section">
+            <div className="lessons-section-label">RECOMMENDED FOR YOU</div>
+            <div className="recommended-strip">
+              {goalRecommendations.map((lesson) => (
+                <button
+                  key={lesson.id}
+                  type="button"
+                  className="recommended-card"
+                  onClick={() => onPickLesson(lesson)}
+                >
+                  <div className="recommended-card-icon">{lesson.emoji}</div>
+                  <div className="recommended-card-title">{lesson.title}</div>
+                  <div className="recommended-card-summary">{lesson.summary}</div>
+                </button>
+              ))}
+            </div>
           </section>
         )}
 
