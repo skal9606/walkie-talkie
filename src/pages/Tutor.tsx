@@ -47,7 +47,7 @@ import {
   buildLessonInstructions,
   LESSON_SCENARIO_OVERRIDE,
 } from '../lib/lessons/instructions'
-import { lessonsCompleted, markLessonAttempt } from '../lib/lessons/progress'
+import { markLessonAttempt } from '../lib/lessons/progress'
 import { seedDeckForCompletedLesson } from '../lib/review'
 
 type Turn = {
@@ -395,22 +395,10 @@ export default function Tutor() {
       const lesson = lessonById(lessonId)
       if (!lesson) return
 
-      // Trial users get ONE free lesson to feel the structure of the
-      // app, then the paywall fires on lesson #2. This is how cold
-      // users actually see "the curriculum" before deciding to pay —
-      // gating them out entirely was the conversion leak.
-      //
-      // Critically: when we paywall, also kill autoStartAfterAuth +
-      // LEAVE the ?lesson param in the URL. If we strip it first, the
-      // autoStartAfterAuth effect (which guards `if (searchParams.get
-      // ('lesson')) return`) no longer sees the lesson and races
-      // ahead with a free-talk session — the user saw the paywall
-      // AND heard Natalia start chatting in the background.
-      if (!subscribed && lessonsCompleted(tutor.language) >= 1) {
-        setAutoStartAfterAuth(false)
-        setPaywallOpen('blocked')
-        return
-      }
+      // Trial users can run any lesson freely — the 10-minute trial
+      // budget (enforced server-side via /api/heartbeat) is the only
+      // gate. When seconds hit zero mid-session the server returns
+      // trial-exhausted and the paywall fires on the next start.
 
       const next = new URLSearchParams(searchParams)
       next.delete('lesson')
