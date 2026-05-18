@@ -652,13 +652,28 @@ export async function getSubscriptionDetail(
   // have both a Stripe and an Apple sub (rare edge case), this returns
   // whichever was most recently activity-modified — usually the one they
   // care about.
-  const { data: row } = await supabaseAdmin()
-    .from('subscriptions')
-    .select('source, product_id, status, current_period_end, cancel_at_period_end')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  //
+  // Also piggyback the per-language mistakes map. The Lessons home wants
+  // to render a "What you're working on" card from this data, and we're
+  // at the Vercel Hobby 12-function limit — bundling it here avoids a
+  // new endpoint. The payload is small (≤5 langs × ≤10 mistakes).
+  const [subRow, mistakesRow] = await Promise.all([
+    supabaseAdmin()
+      .from('subscriptions')
+      .select('source, product_id, status, current_period_end, cancel_at_period_end')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin()
+      .from('profiles')
+      .select('recent_mistakes')
+      .eq('user_id', userId)
+      .maybeSingle(),
+  ])
+  const recentMistakes =
+    (mistakesRow.data?.recent_mistakes ?? {}) as Record<string, PersistedMistake[]>
+  const row = subRow.data
   if (!row) {
     return {
       status: 200,
@@ -667,6 +682,7 @@ export async function getSubscriptionDetail(
         status: 'trial',
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
+        recentMistakes,
       },
     }
   }
@@ -678,6 +694,7 @@ export async function getSubscriptionDetail(
       source: row.source,
       currentPeriodEnd: row.current_period_end,
       cancelAtPeriodEnd: row.cancel_at_period_end ?? false,
+      recentMistakes,
     },
   }
 }

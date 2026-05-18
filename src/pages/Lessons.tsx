@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { signOut, useAuth } from '../lib/auth'
-import { supabase } from '../lib/supabase'
 import {
   hasFullProfile,
   hasLanguageSelection,
@@ -45,6 +44,14 @@ export default function Lessons() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [subscribed, setSubscribed] = useState<boolean | null>(null)
+  /// Per-language map of "mistakes the tutor is tracking for you" —
+  /// shown on the Lessons home as a "What you're working on" card.
+  /// Loaded from /api/subscription-status (piggybacked there to avoid
+  /// adding a new serverless function — we're at the Vercel Hobby 12-
+  /// function limit).
+  const [mistakesByLanguage, setMistakesByLanguage] = useState<
+    Record<string, Array<{ original: string; corrected: string; explanation: string }>>
+  >({})
   const [profile, setProfile] = useState<LearnerProfile | null>(() => loadProfile())
   const [streak] = useState(() => currentStreak())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -63,14 +70,31 @@ export default function Lessons() {
   const tutorFlag = tutor.flag
 
   const refreshStatus = useCallback(async () => {
-    if (!user) return
-    const { data } = await supabase
-      .from('subscriptions')
-      .select('status')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    setSubscribed(data?.status === 'active' || data?.status === 'trialing')
-  }, [user])
+    if (!user || !accessToken) return
+    // /api/subscription-status returns both the subscription row and the
+    // per-language recent-mistakes map (piggybacked). One call covers
+    // both the paywall gate and the mistakes card.
+    try {
+      const r = await fetch('/api/subscription-status', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!r.ok) {
+        setSubscribed(false)
+        return
+      }
+      const body = (await r.json()) as {
+        status?: string
+        recentMistakes?: Record<
+          string,
+          Array<{ original: string; corrected: string; explanation: string }>
+        >
+      }
+      setSubscribed(body.status === 'active' || body.status === 'trialing')
+      setMistakesByLanguage(body.recentMistakes ?? {})
+    } catch {
+      setSubscribed(false)
+    }
+  }, [user, accessToken])
 
   useEffect(() => {
     if (!user) return
@@ -185,6 +209,7 @@ export default function Lessons() {
       tutorFlag={tutorFlag}
       streak={streak}
       subscribed={subscribed}
+      mistakes={mistakesByLanguage[languageCode] ?? []}
       progressTick={progressTick}
       onPickLesson={setLessonForDetail}
       onSettings={() => setSettingsOpen(true)}
@@ -201,6 +226,8 @@ export default function Lessons() {
   )
 }
 
+type Mistake = { original: string; corrected: string; explanation: string }
+
 type LessonsHomeProps = {
   profile: LearnerProfile
   languageCode: string
@@ -209,6 +236,7 @@ type LessonsHomeProps = {
   tutorFlag: string
   streak: number
   subscribed: boolean | null
+  mistakes: Mistake[]
   progressTick: number
   onPickLesson: (l: Lesson) => void
   onSettings: () => void
@@ -233,6 +261,7 @@ function LessonsHome(props: LessonsHomeProps) {
     tutorFlag,
     streak,
     subscribed,
+    mistakes,
     progressTick,
     onPickLesson,
     onSettings,
@@ -314,6 +343,13 @@ function LessonsHome(props: LessonsHomeProps) {
             </p>
           </div>
         </header>
+
+        {mistakes.length > 0 && (
+          <section className="lessons-section">
+            <div className="lessons-section-label">WHAT YOU'RE WORKING ON</div>
+            <MistakesStrip mistakes={mistakes} />
+          </section>
+        )}
 
         {recommendedLesson && (
           <section className="lessons-section">
@@ -506,3 +542,32 @@ function displayState(
 // Suppress unused-import for lessonLevelOrder until the All Levels view
 // uses it (it's imported here for re-export convenience).
 void lessonLevelOrder
+
+/// Horizontal-scroll strip of recent mistakes the tutor has flagged.
+/// Source: the same recent_mistakes data the tutor reads from when
+/// seeding "MISTAKES TO REVISIT" in the next session prompt — surfaced
+/// here so the learner can SEE what the tutor is tracking. Top praise
+/// for ISSEN was "the app remembers what I struggle with"; making that
+/// memory visible is the lift.
+function MistakesStrip({ mistakes }: { mistakes: Mistake[] }) {
+  // Cap at 8 so the strip stays scannable; freshest entries are last
+  // in the array (the API caps + dedupes server-side already), so
+  // slice from the start to show them most-recent-last.
+  const visible = mistakes.slice(0, 8)
+  return (
+    <div className="mistakes-strip">
+      {visible.map((m, i) => (
+        <div key={`${m.original}-${i}`} className="mistake-card">
+          <div className="mistake-original">{m.original}</div>
+          <div className="mistake-arrow" aria-hidden>
+            →
+          </div>
+          <div className="mistake-corrected">{m.corrected}</div>
+          {m.explanation && (
+            <div className="mistake-explanation">{m.explanation}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}

@@ -3026,6 +3026,62 @@ a {
   gap: 10px;
 }
 
+/* --- "What you're working on" mistakes strip --- */
+
+.mistakes-strip {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 8px;
+}
+.mistakes-strip::-webkit-scrollbar { display: none; }
+
+.mistake-card {
+  flex: 0 0 auto;
+  min-width: 200px;
+  max-width: 280px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.mistake-original {
+  font-size: 14px;
+  color: var(--fg);
+  opacity: 0.55;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  word-break: break-word;
+}
+
+.mistake-arrow {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.mistake-corrected {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  word-break: break-word;
+}
+
+.mistake-explanation {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 /* --- Today's Lesson card --- */
 
 .todays-lesson-card {
