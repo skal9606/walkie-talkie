@@ -71,26 +71,38 @@ export function decideLandingAction(args: {
 }
 
 export async function signOut(): Promise<void> {
-  // The sign-out flow has two competing races we have to dodge:
-  //   (a) Auth-state-change listeners on mounted auth-gated pages
-  //       (Lessons / Tutor) react when the session clears and bounce
-  //       to /login. Awaiting signOut() before navigating lets them
-  //       win — user lands on /login instead of /.
+  // Sign-out has two competing races:
+  //   (a) Auth-state-change listeners on Lessons / Tutor react to the
+  //       cleared session and React-Router-navigate to /login.
   //   (b) Landing.tsx auto-redirects signed-in users to /lessons. If
   //       we navigate to / before supabase has actually cleared the
-  //       local session, Landing sees a still-signed-in user and
-  //       bounces them back to /lessons.
+  //       local session, Landing sees a still-signed-in user.
   //
-  // Resolution: drop a sessionStorage flag and hard-navigate to /
-  // synchronously. Landing.tsx reads the flag on mount and skips its
-  // auto-redirect once. The supabase signOut runs fire-and-forget on
-  // the already-unmounting page — the token revocation lands when it
-  // lands; the user is already on / with a clean session.
+  // Resolution:
+  //   1. Drop a sessionStorage flag as belt-and-suspenders insurance
+  //      so Landing skips its redirect even if supabase is still
+  //      reporting a cached session.
+  //   2. AWAIT supabase.auth.signOut() so the session is actually
+  //      gone before we navigate. Fire-and-forget left a window where
+  //      Landing could see the still-cached session.
+  //   3. Use window.location.replace('/') instead of href = '/'. Both
+  //      are hard navigations (canceling any React-Router-internal
+  //      pending /login bounce), but replace also collapses the
+  //      /lessons history entry so the back button doesn't put the
+  //      user right back where they started.
   if (typeof window !== 'undefined') {
     sessionStorage.setItem(JUST_SIGNED_OUT_FLAG, '1')
-    window.location.href = '/'
   }
-  void supabase.auth.signOut()
+  try {
+    await supabase.auth.signOut()
+  } catch {
+    // Network failure shouldn't strand the user signed-in. The local
+    // session is cleared either way; supabase will revoke server-side
+    // on its next reachable call.
+  }
+  if (typeof window !== 'undefined') {
+    window.location.replace('/')
+  }
 }
 
 /**
