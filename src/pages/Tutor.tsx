@@ -1034,6 +1034,7 @@ export default function Tutor() {
               targetLanguage: picked.targetLanguage,
               tutorId: picked.tutorId,
               level: picked.level,
+              goals: picked.goals,
             })
             setProfile(merged)
             // After onboarding, route to /lessons so cold users see the

@@ -139,9 +139,10 @@ export default function Lessons() {
   /// OnboardingFlow gives us name + native language + tutor + level —
   /// everything we actually need to start. We mark questionnaireCompleted
   /// here so we don't drag the user through a second screen asking for
-  /// the same fields. Goals (the optional "why are you learning?" field)
-  /// can be set later in Settings — the tutor infers it from conversation
-  /// otherwise.
+  /// the same fields. Goals is captured in the OnboardingFlow now,
+  /// so any text the user typed lands directly on the profile and the
+  /// home view's "For your goal" recommendations are populated from
+  /// session #1.
   function handleInitialOnboarding(result: OnboardingResult) {
     const merged = mergeProfileBlanks({
       name: result.name,
@@ -149,6 +150,7 @@ export default function Lessons() {
       targetLanguage: result.targetLanguage,
       tutorId: result.tutorId,
       level: result.level,
+      goals: result.goals,
       questionnaireCompleted: true,
     })
     saveProfile(merged)

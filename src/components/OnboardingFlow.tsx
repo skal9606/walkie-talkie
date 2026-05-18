@@ -14,14 +14,14 @@ import type { Level } from '../lib/scenarios'
 // jump straight into the questionnaire here.
 //
 // Steps:
-//   name → native → target → level → onComplete()
+//   name → native → target → level → goals → onComplete()
 //
 // Settings still uses simple selects to switch native/target — this
 // component is only for the first-time path.
 
-type Step = 'name' | 'native' | 'target' | 'level'
+type Step = 'name' | 'native' | 'target' | 'level' | 'goals'
 
-const STEP_ORDER: Step[] = ['name', 'native', 'target', 'level']
+const STEP_ORDER: Step[] = ['name', 'native', 'target', 'level', 'goals']
 
 type LevelOption = {
   id: Level
@@ -48,6 +48,7 @@ export type OnboardingResult = {
   targetLanguage: LanguageCode
   tutorId: TutorId
   level: Level
+  goals?: string
 }
 
 export function OnboardingFlow({
@@ -62,6 +63,7 @@ export function OnboardingFlow({
     TUTORS.length === 1 ? TUTORS[0].id : null,
   )
   const [level, setLevel] = useState<Level>('complete-beginner')
+  const [goals, setGoals] = useState('')
 
   const stepIdx = STEP_ORDER.indexOf(step)
   const progressPct = ((stepIdx + 1) / STEP_ORDER.length) * 100
@@ -88,6 +90,7 @@ export function OnboardingFlow({
       targetLanguage: tutor.language,
       tutorId: tutor.id,
       level,
+      goals: goals.trim() || undefined,
     })
   }
 
@@ -250,10 +253,38 @@ export function OnboardingFlow({
               <button
                 type="button"
                 className="onboarding-flow-cta"
+                onClick={goNext}
+                disabled={!tutorId || !name.trim()}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'goals' && (
+          <div className="onboarding-step">
+            <p className="onboarding-step-eyebrow">
+              We'll pre-fill lesson recommendations and steer your tutor toward what matters to you.
+            </p>
+            <h1 className="onboarding-step-title">Why are you learning?</h1>
+            <textarea
+              value={goals}
+              onChange={(e) => setGoals(e.target.value)}
+              placeholder="e.g. Visiting Brazil next year · talking with my in-laws · work meetings…"
+              className="onboarding-input onboarding-textarea"
+              rows={3}
+              maxLength={300}
+              autoFocus
+            />
+            <div className="onboarding-flow-actions">
+              <button
+                type="button"
+                className="onboarding-flow-cta"
                 onClick={handleComplete}
                 disabled={!tutorId || !name.trim()}
               >
-                Start free trial
+                {goals.trim() ? 'Start free trial' : 'Skip for now'}
               </button>
             </div>
           </div>
