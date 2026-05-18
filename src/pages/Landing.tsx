@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
-import { useAuth } from '../lib/auth'
+import { JUST_SIGNED_OUT_FLAG, useAuth } from '../lib/auth'
 import { TUTORS } from '../lib/tutors'
 import {
   applyTheme,
@@ -37,11 +37,21 @@ export default function Landing() {
   }
 
   // Signed-in (non-anonymous / subscribed) learners skip the marketing
-  // landing and go straight to /practice. Anonymous users — even if they
+  // landing and go straight to /lessons. Anonymous users — even if they
   // already finished onboarding — stay here so they can re-see the pitch,
   // click pricing, and re-enter the trial via Chat Now (which auto-starts
   // a free conversation that picks up prior memory at their saved level).
+  //
+  // Exception: if the user just clicked Sign Out elsewhere, signOut()
+  // dropped a sessionStorage flag asking us to skip this redirect on
+  // the immediate next page load. Without that, supabase's session
+  // clear may not have finished by the time Landing mounts — we'd see
+  // a still-signed-in user and bounce them right back to /lessons.
   useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem(JUST_SIGNED_OUT_FLAG) === '1') {
+      sessionStorage.removeItem(JUST_SIGNED_OUT_FLAG)
+      return
+    }
     if (loading || !user) return
     if (user.is_anonymous) return
     navigate('/lessons', { replace: true })
