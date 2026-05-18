@@ -56,10 +56,12 @@ export default function Review() {
 
   // Auto-speak the target phrase the moment a card is revealed so the
   // learner hears the model pronunciation alongside the visible text.
+  // Uses the same OpenAI 'coral' voice as live tutor sessions (via the
+  // /api/translate TTS piggyback) rather than the browser default.
   useEffect(() => {
-    if (!revealed || !current) return
-    speakTarget(current.phrase_target, languageCode)
-  }, [revealed, current, languageCode])
+    if (!revealed || !current || !accessToken) return
+    void speakTarget(current.phrase_target, accessToken)
+  }, [revealed, current, accessToken])
 
   async function onGrade(g: Grade) {
     if (!current) return
@@ -201,17 +203,35 @@ function ReviewNav() {
   )
 }
 
-/// Browser TTS — best-effort. If the browser doesn't have a voice
-/// matching the language tag, it falls back to its default voice. We
-/// don't block on this; the visible text is the primary signal.
-function speakTarget(text: string, languageCode: string) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+/// Tracks the current audio playback so a quick "next card" tap can
+/// cancel a stale playback in flight. Module-scoped because Review
+/// re-renders on every card change and we don't want a fresh ref each
+/// time.
+let currentAudio: HTMLAudioElement | null = null
+
+/// Speak the target phrase via OpenAI TTS (matches the live tutor's
+/// 'coral' voice). Falls back silently on network/permission errors —
+/// the visible text is the primary signal regardless.
+async function speakTarget(text: string, accessToken: string): Promise<void> {
   try {
-    window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(text)
-    u.lang = languageCode
-    u.rate = 0.9
-    window.speechSynthesis.speak(u)
+    if (currentAudio) {
+      currentAudio.pause()
+      currentAudio = null
+    }
+    const r = await fetch('/api/translate', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ type: 'tts', text, voice: 'coral' }),
+    })
+    if (!r.ok) return
+    const body = (await r.json()) as { audioBase64?: string; mimeType?: string }
+    if (!body.audioBase64) return
+    const audio = new Audio(`data:${body.mimeType ?? 'audio/mpeg'};base64,${body.audioBase64}`)
+    currentAudio = audio
+    await audio.play()
   } catch {
     // Silent — the visible target is the primary signal.
   }

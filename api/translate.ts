@@ -1,6 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { translate } from '../lib/api-handlers.js'
+import { synthesizeSpeech, translate } from '../lib/api-handlers.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
+
+// Both translate (chat-completions) and TTS (audio/speech) live behind
+// this one endpoint so we stay under the Vercel Hobby 12-function cap.
+// Route on `type` in the body — default 'translate' for back-compat
+// with existing callers.
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -10,7 +15,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) {
     return res.status(401).json({ error: 'Not signed in.' })
   }
-  const body = (req.body ?? {}) as { text?: string; language?: string }
+  const body = (req.body ?? {}) as {
+    type?: 'translate' | 'tts'
+    text?: string
+    language?: string
+    voice?: string
+  }
+  if (body.type === 'tts') {
+    const result = await synthesizeSpeech(process.env.OPENAI_API_KEY, body.text, body.voice)
+    return res.status(result.status).json(result.body)
+  }
   const result = await translate(process.env.OPENAI_API_KEY, body.text, body.language)
   res.status(result.status).json(result.body)
 }

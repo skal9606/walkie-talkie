@@ -55,6 +55,56 @@ function languageLabel(code: string | undefined): string {
   return LANGUAGE_LABELS[code] ?? code
 }
 
+/// OpenAI TTS via /v1/audio/speech. Used by the /review surface so
+/// review cards play in the same warm voice as live tutor sessions
+/// instead of the robotic Web Speech API default. Returns base64-
+/// encoded audio so we can keep the call inside the JSON response of
+/// /api/translate (consolidating endpoints is how we stay under the
+/// Vercel Hobby 12-function limit).
+///
+/// `voice` defaults to 'coral' to match the Realtime voice in
+/// mintGatedSession. `model` defaults to the higher-quality
+/// gpt-4o-mini-tts — meaningfully warmer than `tts-1`.
+export async function synthesizeSpeech(
+  apiKey: string | undefined,
+  text: string | undefined,
+  voice = 'coral',
+): Promise<HandlerResult> {
+  if (!apiKey) {
+    return { status: 500, body: { error: 'OPENAI_API_KEY not set.' } }
+  }
+  const trimmed = (text ?? '').trim()
+  if (!trimmed) {
+    return { status: 400, body: { error: 'No text provided.' } }
+  }
+  try {
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-tts',
+        voice,
+        input: trimmed,
+        response_format: 'mp3',
+      }),
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      return { status: response.status, body: { error: text.slice(0, 500) } }
+    }
+    const buf = Buffer.from(await response.arrayBuffer())
+    return {
+      status: 200,
+      body: { audioBase64: buf.toString('base64'), mimeType: 'audio/mpeg' },
+    }
+  } catch (err) {
+    return { status: 500, body: { error: String(err) } }
+  }
+}
+
 export async function translate(
   apiKey: string | undefined,
   text: string | undefined,
