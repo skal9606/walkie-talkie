@@ -38,7 +38,7 @@ import { PRACTICE_THRESHOLD_MS, recordPractice } from '../lib/streak'
 import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
-import { trackSubscribe } from '../lib/tiktok'
+import { trackInitiateCheckout, trackStartTrial, trackSubscribe } from '../lib/tiktok'
 import { DEFAULT_TUTOR_ID, TUTORS, getTutor } from '../lib/tutors'
 import { findBeginnerCardInText } from '../lib/tutors/beginner-cards'
 import type { BeginnerCard } from '../lib/tutors/types'
@@ -565,6 +565,7 @@ export default function Tutor() {
       if (finalTurns.length < 2) {
         if (options.reason === 'exhausted') {
           setPaywallOpen('exhausted')
+          trackInitiateCheckout('exhausted')
         }
         setStatus('idle')
         refreshStatus()
@@ -655,6 +656,7 @@ export default function Tutor() {
         // just renders without that block.
         if (options.reason === 'exhausted') {
           setPaywallOpen('exhausted')
+          trackInitiateCheckout('exhausted')
         }
       }
       refreshStatus()
@@ -693,6 +695,7 @@ export default function Tutor() {
     if (!accessToken) return
     if (!subscribed && secondsRemaining <= 0) {
       setPaywallOpen('blocked')
+      trackInitiateCheckout('blocked')
       return
     }
     setStatus('connecting')
@@ -731,7 +734,9 @@ export default function Tutor() {
       // surface the seconds-remaining the server reported.
       if (e.status === 402) {
         if (typeof e.secondsRemaining === 'number') setSecondsRemaining(e.secondsRemaining)
-        setPaywallOpen(e.secondsRemaining === 0 ? 'exhausted' : 'blocked')
+        const reason = e.secondsRemaining === 0 ? 'exhausted' : 'blocked'
+        setPaywallOpen(reason)
+        trackInitiateCheckout(reason)
       } else {
         setError(e.message || 'Could not start a session.')
       }
@@ -915,6 +920,9 @@ export default function Tutor() {
       setSecondsRemaining(minted.secondsRemaining || info.secondsRemaining)
       sessionStartedAtRef.current = Date.now()
       setStatus('live')
+      // TikTok pixel: first-ever session start on this device. Helper is
+      // localStorage-deduped so repeat sessions are no-ops.
+      trackStartTrial()
     } catch (err) {
       realtime.disconnect()
       tutorRef.current = null
@@ -922,6 +930,7 @@ export default function Tutor() {
       if (typed.status === 402) {
         setSecondsRemaining(typed.secondsRemaining ?? 0)
         setPaywallOpen('blocked')
+        trackInitiateCheckout('blocked')
         setStatus('idle')
         return
       }

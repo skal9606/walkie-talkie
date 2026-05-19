@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { trackCompleteRegistration } from './tiktok'
 
 /**
  * Tracks the current Supabase session. Returns { user, accessToken, loading }.
@@ -21,12 +22,21 @@ export function useAuth(): {
       if (!mounted) return
       setSession(data.session)
       setLoading(false)
+      // TikTok pixel: fire CompleteRegistration the first time we see
+      // a real (non-anonymous) account on this device. The helper itself
+      // is localStorage-deduped so repeat tabs / re-logins don't pollute.
+      if (data.session?.user && data.session.user.is_anonymous === false) {
+        trackCompleteRegistration()
+      }
     })
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, next) => {
       if (!mounted) return
       setSession(next)
+      if (next?.user && next.user.is_anonymous === false) {
+        trackCompleteRegistration()
+      }
     })
     return () => {
       mounted = false
