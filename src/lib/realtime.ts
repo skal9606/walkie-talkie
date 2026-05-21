@@ -315,10 +315,14 @@ export class RealtimeTutor {
     dc.addEventListener('message', (e) => {
       try {
         const event = JSON.parse(e.data) as RealtimeEvent
-        // TEMP: log every event received from OpenAI so we can debug
-        // the silent-after-start regression post-GA-migration. Remove
-        // once the model is talking again.
-        console.log('[Realtime] rx', event.type, event)
+        // Dev-only realtime trace. In production we never log the full
+        // event payload — `session.created` includes the ephemeral OpenAI
+        // client_secret and every `*.transcript.*` event includes the
+        // conversation content. Browser extensions / shoulder-surfers
+        // could read either from devtools.
+        if (import.meta.env.DEV) {
+          console.log('[Realtime] rx', event.type, event)
+        }
         if (event.type === 'session.updated' && !initialResponseFired) {
           initialResponseFired = true
           this.send({ type: 'response.create' })
@@ -517,8 +521,12 @@ export class RealtimeTutor {
 
   send(event: object) {
     if (this.dc?.readyState === 'open') {
-      // TEMP: log every event sent to OpenAI to debug silent-after-start.
-      console.log('[Realtime] tx', (event as { type?: string })?.type, event)
+      // Dev-only trace. See the rx log for why this is gated — the
+      // payload includes the conversation content + (on session events)
+      // the ephemeral client_secret.
+      if (import.meta.env.DEV) {
+        console.log('[Realtime] tx', (event as { type?: string })?.type, event)
+      }
       this.dc.send(JSON.stringify(event))
     }
   }

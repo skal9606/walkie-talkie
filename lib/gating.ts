@@ -31,9 +31,16 @@ export async function checkSessionAccess(
   ipHash?: string,
 ): Promise<GateResult> {
   // Local dev bypass — set DEV_BYPASS_GATING=true in .env.local to grant
-  // unlimited access without touching the subscriptions table. Never set
-  // this in production env.
-  if (process.env.DEV_BYPASS_GATING === 'true') {
+  // unlimited access without touching the subscriptions table. STRUCTURAL
+  // guard: never honor this in a production Vercel environment, even if
+  // the env var gets copy-pasted from a preview/local config by accident.
+  // Log loudly when it fires so it's visible in Vercel logs.
+  if (
+    process.env.DEV_BYPASS_GATING === 'true' &&
+    process.env.VERCEL_ENV !== 'production' &&
+    process.env.NODE_ENV !== 'production'
+  ) {
+    console.warn('[gating] DEV_BYPASS_GATING active — granting unlimited access (non-prod env only).')
     return { allowed: true, subscribed: true, secondsRemaining: Number.MAX_SAFE_INTEGER }
   }
   const db = supabaseAdmin()
@@ -132,18 +139,64 @@ export async function addIpUsageSeconds(ipHash: string, seconds: number): Promis
 }
 
 /**
+ * Per-user fixed-window rate limit. Returns true if the request is
+ * allowed; false if the user has exceeded the cap for this bucket in
+ * the current window. Atomic via the check_and_bump_rate_limit Postgres
+ * function — no race between check and bump.
+ *
+ * Buckets are arbitrary strings — pass 'session' / 'translate' / etc.
+ * Tunables (max + window) live at the call site so we can adjust
+ * without a migration.
+ *
+ * Best-effort: if the RPC fails (migration not applied, transient
+ * outage), allow the request through. The trial cap + per-IP cap
+ * still apply as defense in depth.
+ */
+export async function checkRateLimit(
+  userId: string,
+  bucket: string,
+  maxCount: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin().rpc('check_and_bump_rate_limit', {
+      p_user_id: userId,
+      p_bucket: bucket,
+      p_window_seconds: windowSeconds,
+    })
+    if (error) {
+      console.error('[rate-limit] RPC failed:', error.message)
+      return true
+    }
+    const count = (data as number) ?? 0
+    return count <= maxCount
+  } catch (err) {
+    console.error('[rate-limit] threw:', err)
+    return true
+  }
+}
+
+/**
  * Extract a stable client identifier from request headers and return its
  * SHA-256 hash. We hash so the raw IP is never persisted. Returns null in
  * dev / test where no IP is available — callers should fall back to
  * per-user gating only.
+ *
+ * SECURITY: ONLY trust headers that Vercel sets after stripping any
+ * client-supplied values. The naive `x-forwarded-for` is client-mutable
+ * — an attacker just sets `X-Forwarded-For: 1.2.3.4` to bypass per-IP
+ * trial caps. Vercel writes the verified peer IP into BOTH
+ * `x-vercel-forwarded-for` (preferred — Vercel-namespaced, always trusted)
+ * and `x-real-ip` (overwritten by Vercel even if a client supplied one).
+ * We never read raw `x-forwarded-for` from the client.
  */
 export function clientIpHash(headers: Record<string, string | string[] | undefined>): string | null {
   const raw =
-    (headers['x-forwarded-for'] as string | undefined) ??
+    (headers['x-vercel-forwarded-for'] as string | undefined) ??
     (headers['x-real-ip'] as string | undefined) ??
     null
   if (!raw) return null
-  // x-forwarded-for can be "client, proxy1, proxy2" — take the first.
+  // x-vercel-forwarded-for can be "client, proxy1, proxy2" — take the first.
   const first = String(Array.isArray(raw) ? raw[0] : raw).split(',')[0].trim()
   if (!first) return null
   return crypto.createHash('sha256').update(first).digest('hex')

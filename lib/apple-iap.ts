@@ -415,30 +415,31 @@ export async function handleAppleWebhook(
 
   const db = supabaseAdmin()
 
-  // Resolve user_id: prefer appAccountToken (we set this to the Supabase
-  // user_id at purchase time so renewal webhooks always know who they're
-  // for, even before the iOS client posts to /verify). Fall back to looking
-  // up an existing subscription row.
-  let userId: string | null = null
-  if (txn.appAccountToken && /^[0-9a-f-]{36}$/i.test(txn.appAccountToken)) {
-    userId = txn.appAccountToken
-  }
+  // SECURITY: Resolve user_id ONLY from an existing subscriptions row created
+  // by the authenticated /verify call (which derives user_id from the JWT).
+  //
+  // We previously fell back to txn.appAccountToken when no row existed. But
+  // appAccountToken is set by the iOS client at purchase time — an attacker
+  // could call StoreKit purchase with someone else's Supabase user_id as the
+  // appAccountToken, then have THIS webhook fire from Apple's servers (which
+  // is unauthenticated by design) and we'd happily write an `active`
+  // subscription row keyed to the victim. Or "transfer" their own paid sub
+  // between accounts at will.
+  //
+  // Instead: require the row to already exist. If it doesn't, defer — Apple
+  // re-sends notifications on failure, and iOS retries /verify on next app
+  // open. Either path lands us back here with the row in place.
+  const { data: row } = await db
+    .from('subscriptions')
+    .select('user_id')
+    .eq('source', 'apple')
+    .eq('external_id', externalId)
+    .maybeSingle()
+  const userId: string | null = row?.user_id ?? null
   if (!userId) {
-    const { data: row } = await db
-      .from('subscriptions')
-      .select('user_id')
-      .eq('source', 'apple')
-      .eq('external_id', externalId)
-      .maybeSingle()
-    userId = row?.user_id ?? null
-  }
-  if (!userId) {
-    // Race: webhook arrived before iOS /verify call. Ack — /verify will
-    // create the row when it lands. We don't lose state because Apple
-    // re-sends notifications on failure, and iOS retries verify on app open.
     return {
       status: 200,
-      body: { ok: true, deferred: true, reason: 'no user_id resolvable' },
+      body: { ok: true, deferred: true, reason: 'no verified subscription row yet' },
     }
   }
 

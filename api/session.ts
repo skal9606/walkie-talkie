@@ -1,6 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { clientIpHash, mintGatedSession } from '../lib/gating.js'
+import { checkRateLimit, clientIpHash, mintGatedSession } from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
+
+// Tunables — picked to be generous for real users and tight enough to
+// block the "burn OpenAI budget" attack. A real user mints ~once per
+// conversation. 8 mints/min lets them recover from a couple of failed
+// connects without hitting the cap.
+const SESSION_MINTS_PER_MIN = 8
 
 // Note: tried Edge runtime to cut cold-start time, but Vercel routed
 // requests to a Singapore POP (x-vercel-id: sin1) while Supabase + the
@@ -18,6 +24,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // language learner state (mistakes, memory, focus) without leaking
   // facts from one tutor into another's session. Legacy callers that
   // don't pass it just get empty state — no error.
+  // Rate limit: cap session-token mints per user-minute. Anonymous
+  // Supabase users (which we auto-create) are subject to the same cap,
+  // closing the "burn the OpenAI budget by hammering /api/session" path.
+  const allowed = await checkRateLimit(userId, 'session', SESSION_MINTS_PER_MIN, 60)
+  if (!allowed) {
+    return res.status(429).json({
+      error: 'Too many session requests. Please wait a moment and try again.',
+    })
+  }
   const langParam = req.query?.language
   const language = typeof langParam === 'string' ? langParam : undefined
   // Hash the client IP for the per-IP trial cap (see 2026-05-21 migration).
