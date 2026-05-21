@@ -24,21 +24,30 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
     // 400 beta_api_shape_disabled as of 2026-05-20. New endpoint nests config
     // under a session{} object and returns the ephemeral token at the top-
     // level `value` field (was `client_secret.value` in beta).
+    const reqBody = {
+      session: {
+        type: 'realtime',
+        model: 'gpt-realtime',
+        audio: { output: { voice: 'coral' } },
+      },
+    }
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        session: {
-          type: 'realtime',
-          model: 'gpt-realtime',
-          audio: { output: { voice: 'coral' } },
-        },
-      }),
+      body: JSON.stringify(reqBody),
     })
     const data = await response.json()
+    // TEMP DEBUG LOGGING — remove after diagnosing the silent-after-start bug.
+    // Logs request body, response status, and (redacted) response so we can
+    // see what OpenAI is actually returning post-GA-migration.
+    const dataPreview = JSON.stringify(data).slice(0, 800)
+    console.log(
+      `[mintSessionToken] OpenAI status=${response.status} ` +
+        `reqBody=${JSON.stringify(reqBody)} respBody=${dataPreview}`,
+    )
     if (response.status !== 200) {
       return { status: response.status, body: data }
     }
