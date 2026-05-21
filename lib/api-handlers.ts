@@ -24,11 +24,33 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
     // 400 beta_api_shape_disabled as of 2026-05-20. New endpoint nests config
     // under a session{} object and returns the ephemeral token at the top-
     // level `value` field (was `client_secret.value` in beta).
+    // Set the full audio config at mint time. The existing client code
+    // (web src/lib/realtime.ts and iOS RealtimeClient.swift) sends a
+    // session.update event AFTER connecting that uses the old beta field
+    // layout (turn_detection and input_audio_transcription at the top
+    // level of session). The GA API moved those under audio.input.*, so
+    // those updates are likely being silently rejected — leaving the
+    // server with no turn detection, which is why the model never
+    // responds to the user. Setting these here gives the session usable
+    // defaults regardless of whether the client's session.update lands.
     const reqBody = {
       session: {
         type: 'realtime',
         model: 'gpt-realtime',
-        audio: { output: { voice: 'coral' } },
+        audio: {
+          input: {
+            turn_detection: {
+              type: 'server_vad',
+              threshold: 0.82,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 1200,
+              create_response: true,
+              interrupt_response: false,
+            },
+            transcription: { model: 'gpt-4o-transcribe' },
+          },
+          output: { voice: 'coral' },
+        },
       },
     }
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
