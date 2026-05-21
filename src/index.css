@@ -1310,16 +1310,20 @@ body:has(.landing) {
   max-width: 560px;
 }
 
-/* Features — circular brass-medal style icons + minimal text. Layout
-   is centered like a row of buttons on a leather case. */
+/* Features — editorial magazine-style row. Each feature is a floating
+   emoji + thin peach divider + serif title + body. No surrounding card
+   or circle (the brass-rim treatment is reserved for the language
+   medals below — using it here too was repetitive and read as "iOS
+   app buttons" rather than "vintage magazine spread"). */
 .features {
-  padding: 56px 8px 32px;
+  padding: 48px 8px 56px;
 }
 
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  column-gap: 32px;
+  row-gap: 48px;
 }
 
 @media (max-width: 720px) {
@@ -1331,47 +1335,59 @@ body:has(.landing) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 8px;
+  gap: 10px;
+  padding: 0 8px;
 }
 
-/* Brass-rim disc holding the feature emoji — the "buttons on the
-   vintage device" look. Two rings + inner gradient give it depth. */
+/* Free-floating emoji — no background container. The element keeps
+   the old .feature-medal class name so existing JSX doesn't change. */
 .feature-medal {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 178, 107, 0.22), rgba(255, 178, 107, 0.04) 70%),
-    var(--landing-bg-elevated);
-  border: 1px solid var(--landing-accent);
-  box-shadow:
-    0 0 0 4px var(--landing-bg),
-    0 0 0 5px var(--landing-border),
-    inset 0 1px 0 rgba(255, 178, 107, 0.35),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
-    0 6px 14px rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
+  font-size: 40px;
+  line-height: 1;
+  /* Soft warm halo behind the emoji so it doesn't look like it's
+     glued onto the bg. Same effect as iOS welcome screen, dialed
+     way down. */
+  filter: drop-shadow(0 0 14px rgba(255, 178, 107, 0.22));
+  margin-bottom: 4px;
+}
+
+/* Thin peach divider under each emoji — the "small section header in
+   a printed magazine" cue. */
+.feature::after {
+  display: none;
 }
 
 .feature-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--landing-text);
   margin: 0;
   font-family: 'New York', 'Charter', Georgia, serif;
   letter-spacing: 0.1px;
+  position: relative;
+  padding-top: 12px;
+}
+
+/* The thin divider sits above the title so spacing is locked to the
+   title block instead of floating between emoji and title. */
+.feature-title::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 1px;
+  background: var(--landing-accent);
+  opacity: 0.7;
 }
 
 .feature-body {
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--landing-text-secondary);
   margin: 0;
-  max-width: 180px;
+  max-width: 200px;
 }
 
 /* Chat preview — vintage typewritten paper on a leather mat. The
