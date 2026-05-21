@@ -3,15 +3,12 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { signOut, useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import {
-  hasFullProfile,
   loadProfile,
-  mergeProfileBlanks,
   type LearnerProfile,
 } from '../lib/profile'
 import { PRACTICE_MODES, type ModeId } from '../lib/scenarios'
 import { currentStreak } from '../lib/streak'
 import { trackSubscribe } from '../lib/tiktok'
-import { Onboarding } from '../components/Onboarding'
 import { Settings } from '../components/Settings'
 
 // The "home" for any signed-in learner. After a successful subscription
@@ -72,40 +69,10 @@ export default function Practice() {
     }
   }, [authLoading, user, accessToken, navigate])
 
-  function handleQuestionnaireSubmit(p: LearnerProfile) {
-    const merged = mergeProfileBlanks(p)
-    setProfile(merged)
-  }
-
   if (authLoading || !user) {
     return (
       <div className="app">
         <div className="empty" style={{ marginTop: 80 }}>Loading…</div>
-      </div>
-    )
-  }
-
-  // Show the post-subscribe questionnaire until it's been completed,
-  // prefilled with anything we inferred during the trial.
-  if (!hasFullProfile(profile)) {
-    return (
-      <div className="app">
-        <nav className="tutor-nav">
-          <Link to="/" className="tutor-nav-back">
-            ← Home
-          </Link>
-          <div className="tutor-nav-right">
-            {subscribed === null ? null : subscribed ? (
-              <div className="tutor-nav-badge">Subscribed</div>
-            ) : (
-              <div className="tutor-nav-badge free">Free trial</div>
-            )}
-          </div>
-        </nav>
-        <Onboarding
-          initialProfile={profile}
-          onComplete={handleQuestionnaireSubmit}
-        />
       </div>
     )
   }

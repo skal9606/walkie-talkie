@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { signOut, useAuth } from '../lib/auth'
 import {
-  hasFullProfile,
   hasLanguageSelection,
   loadProfile,
   mergeProfileBlanks,
@@ -11,7 +10,6 @@ import {
 } from '../lib/profile'
 import { currentStreak } from '../lib/streak'
 import { trackSubscribe } from '../lib/tiktok'
-import { Onboarding } from '../components/Onboarding'
 import { OnboardingFlow, type OnboardingResult } from '../components/OnboardingFlow'
 import { Settings } from '../components/Settings'
 import { LessonDetail } from '../components/LessonDetail'
@@ -131,10 +129,6 @@ export default function Lessons() {
     return () => window.removeEventListener('focus', onFocus)
   }, [])
 
-  function handleQuestionnaireSubmit(p: LearnerProfile) {
-    setProfile(mergeProfileBlanks(p))
-  }
-
   /// Brand-new sign-in: the user has authed but has no profile yet.
   /// OnboardingFlow gives us name + native language + tutor + level —
   /// everything we actually need to start. We mark questionnaireCompleted
@@ -178,29 +172,10 @@ export default function Lessons() {
     )
   }
 
-  // Second gate: language is picked but the post-sign-up questionnaire
-  // (goals etc.) hasn't been filled in yet. Show the lighter Onboarding
-  // component on top of the lessons nav so they can pick up where they
-  // left off.
-  if (!hasFullProfile(profile)) {
-    return (
-      <div className="app">
-        <NavBar
-          streak={streak}
-          subscribed={subscribed}
-          onSettings={() => setSettingsOpen(true)}
-          user={user}
-        />
-        <Onboarding
-          initialProfile={profile}
-          onComplete={handleQuestionnaireSubmit}
-        />
-      </div>
-    )
-  }
-
-  // hasFullProfile narrowed profile above, but TS doesn't carry that type
-  // narrowing through helper functions — assert non-null here.
+  // OnboardingFlow above captures everything (name, language, tutor,
+  // level, goals) and marks the profile as complete, so there's no
+  // second-pass questionnaire to render. We assert non-null since we
+  // know hasLanguageSelection passed.
   const fullProfile = profile as LearnerProfile
 
   return (

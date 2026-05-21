@@ -38,7 +38,16 @@ export function SignIn() {
     setError(null)
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.href },
+      options: {
+        redirectTo: window.location.href,
+        // prompt=select_account forces Google's account chooser instead
+        // of silently re-using the previous session. Without this, a
+        // user who signs out then taps "Sign in" gets auto-logged back
+        // into the same Gmail account they were just trying to leave —
+        // they never see Google's account picker and can't pick a
+        // different account.
+        queryParams: { prompt: 'select_account' },
+      },
     })
     if (oauthError) {
       setError(oauthError.message)

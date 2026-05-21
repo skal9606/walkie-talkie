@@ -1314,16 +1314,13 @@ export default function Tutor() {
           accessToken={accessToken}
           isAnonymous={user?.is_anonymous ?? false}
           cefr={cefr}
-          // Only the 'blocked' variant is dismissible — that's the
-          // "trial user tapped a lesson" path, where they can back out
-          // and keep using free chat. The 'exhausted' variant (trial
-          // burned through) stays modal: they have to subscribe to
-          // continue.
-          onClose={
-            paywallOpen === 'blocked'
-              ? () => setPaywallOpen(null)
-              : undefined
-          }
+          // Both variants are dismissible. Trying to start another
+          // conversation while the trial is exhausted re-opens the
+          // paywall, so closing doesn't let the user bypass the
+          // limit — it just gives them control over the UI (e.g.
+          // navigate back to Lessons, look at their review deck,
+          // etc.) instead of being trapped on a modal.
+          onClose={() => setPaywallOpen(null)}
         />
       )}
     </div>

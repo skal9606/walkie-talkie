@@ -205,7 +205,7 @@ export function OnboardingFlow({
                   <span className="onboarding-option-text">
                     <span className="onboarding-option-label">{t.languageLabel}</span>
                     <span className="onboarding-option-sub">
-                      {t.name} · {t.city} · {t.age}
+                      {t.name} · {t.city}
                     </span>
                   </span>
                 </button>
