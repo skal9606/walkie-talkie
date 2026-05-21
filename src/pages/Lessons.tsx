@@ -433,7 +433,7 @@ function LessonsHome(props: LessonsHomeProps) {
         onClick={onFreeTalk}
         title="Free conversation"
       >
-        <span className="practice-free-cta-emoji" aria-hidden>📞</span>
+        <span className="practice-free-cta-emoji" aria-hidden>📻</span>
         <span className="practice-free-cta-label">Chat Now</span>
       </button>
 

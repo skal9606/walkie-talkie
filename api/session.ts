@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { mintGatedSession } from '../lib/gating.js'
+import { clientIpHash, mintGatedSession } from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 
 // Note: tried Edge runtime to cut cold-start time, but Vercel routed
@@ -20,6 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // don't pass it just get empty state — no error.
   const langParam = req.query?.language
   const language = typeof langParam === 'string' ? langParam : undefined
-  const result = await mintGatedSession(userId, process.env.OPENAI_API_KEY, language)
+  // Hash the client IP for the per-IP trial cap (see 2026-05-21 migration).
+  // Null in local dev (no x-forwarded-for header) — gating falls back to
+  // per-user only when ipHash is null.
+  const ipHash = clientIpHash(req.headers) ?? undefined
+  const result = await mintGatedSession(userId, process.env.OPENAI_API_KEY, language, ipHash)
   res.status(result.status).json(result.body)
 }

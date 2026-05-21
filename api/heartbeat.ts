@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { addUsageSeconds, checkSessionAccess } from '../lib/gating.js'
+import {
+  addIpUsageSeconds,
+  addUsageSeconds,
+  checkSessionAccess,
+  clientIpHash,
+} from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 import { loadStreak, tickStreak } from '../lib/api-handlers.js'
 
@@ -36,8 +41,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     localDate?: string
   }
   const seconds = Math.min(Math.max(0, Math.floor(body.seconds ?? 0)), 60)
+  // Mirror trial usage into the per-IP bucket too — that's what
+  // enforces the "can't cycle through anonymous accounts on the same
+  // device" rule. Best-effort; if the migration hasn't been run yet
+  // it logs and continues with the per-user cap only.
+  const ipHash = clientIpHash(req.headers)
   try {
     await addUsageSeconds(userId, seconds)
+    if (ipHash && seconds > 0) {
+      await addIpUsageSeconds(ipHash, seconds)
+    }
   } catch (err) {
     return res.status(500).json({ error: String(err) })
   }
@@ -52,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     streak = await tickStreak(userId, body.localDate)
   }
 
-  const access = await checkSessionAccess(userId)
+  const access = await checkSessionAccess(userId, ipHash ?? undefined)
   return res.status(200).json({
     subscribed: access.subscribed,
     secondsRemaining: access.secondsRemaining,
