@@ -36,7 +36,10 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
     const reqBody = {
       session: {
         type: 'realtime',
-        model: 'gpt-realtime',
+        // gpt-realtime-2 (GA, May 2026). Quality bump at the same per-
+        // minute price. Affects both web and iOS — model is encoded in
+        // the ephemeral token returned to whichever client mints.
+        model: 'gpt-realtime-2',
         audio: {
           input: {
             turn_detection: {
