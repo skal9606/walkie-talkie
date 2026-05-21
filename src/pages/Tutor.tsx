@@ -1273,8 +1273,14 @@ export default function Tutor() {
         {status === 'idle' && !paywallOpen && (
           <button
             className="mic-btn start"
-            onClick={() => start()}
-            disabled={freeExhausted || !statusLoaded}
+            onClick={() => {
+              if (freeExhausted) {
+                setPaywallOpen('exhausted')
+              } else {
+                start()
+              }
+            }}
+            disabled={!statusLoaded}
             title={
               freeExhausted
                 ? 'Your free trial is up — subscribe to continue'

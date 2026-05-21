@@ -888,6 +888,7 @@ export async function createCheckoutSession(
 // -- Subscription detail (settings panel) ---------------------------------
 
 import { supabaseAdmin } from './supabase-admin.js'
+import { FREE_TIER_SECONDS } from './constants.js'
 
 export async function getSubscriptionDetail(
   userId: string,
@@ -902,7 +903,7 @@ export async function getSubscriptionDetail(
   // to render a "What you're working on" card from this data, and we're
   // at the Vercel Hobby 12-function limit — bundling it here avoids a
   // new endpoint. The payload is small (≤5 langs × ≤10 mistakes).
-  const [subRow, mistakesRow] = await Promise.all([
+  const [subRow, mistakesRow, usageRow] = await Promise.all([
     supabaseAdmin()
       .from('subscriptions')
       .select('source, product_id, status, current_period_end, cancel_at_period_end')
@@ -915,9 +916,19 @@ export async function getSubscriptionDetail(
       .select('recent_mistakes')
       .eq('user_id', userId)
       .maybeSingle(),
+    // Trial seconds — piggybacked so the lessons / review / etc.
+    // headers can render "Free trial · X:XX left" without firing
+    // /api/session (which mints an OpenAI token, expensive).
+    supabaseAdmin()
+      .from('usage')
+      .select('seconds_used')
+      .eq('user_id', userId)
+      .maybeSingle(),
   ])
   const recentMistakes =
     (mistakesRow.data?.recent_mistakes ?? {}) as Record<string, PersistedMistake[]>
+  const secondsUsed = (usageRow.data?.seconds_used as number | undefined) ?? 0
+  const secondsRemaining = Math.max(0, FREE_TIER_SECONDS - secondsUsed)
   const row = subRow.data
   if (!row) {
     return {
@@ -928,6 +939,7 @@ export async function getSubscriptionDetail(
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
         recentMistakes,
+        secondsRemaining,
       },
     }
   }
@@ -940,6 +952,7 @@ export async function getSubscriptionDetail(
       currentPeriodEnd: row.current_period_end,
       cancelAtPeriodEnd: row.cancel_at_period_end ?? false,
       recentMistakes,
+      secondsRemaining,
     },
   }
 }

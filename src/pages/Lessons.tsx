@@ -43,6 +43,10 @@ export default function Lessons() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [subscribed, setSubscribed] = useState<boolean | null>(null)
+  /// Free-trial seconds remaining for the badge in the nav. Comes from
+  /// the same /api/subscription-status call so we don't fire a second
+  /// network request just for the header.
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
   const [profile, setProfile] = useState<LearnerProfile | null>(() => loadProfile())
   const [streak] = useState(() => currentStreak())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -75,8 +79,11 @@ export default function Lessons() {
         setSubscribed(false)
         return
       }
-      const body = (await r.json()) as { status?: string }
+      const body = (await r.json()) as { status?: string; secondsRemaining?: number }
       setSubscribed(body.status === 'active' || body.status === 'trialing')
+      if (typeof body.secondsRemaining === 'number') {
+        setSecondsRemaining(body.secondsRemaining)
+      }
     } catch {
       setSubscribed(false)
     }
@@ -174,6 +181,7 @@ export default function Lessons() {
       tutorFlag={tutorFlag}
       streak={streak}
       subscribed={subscribed}
+      secondsRemaining={secondsRemaining}
       progressTick={progressTick}
       onPickLesson={setLessonForDetail}
       onSettings={() => setSettingsOpen(true)}
@@ -198,6 +206,7 @@ type LessonsHomeProps = {
   tutorFlag: string
   streak: number
   subscribed: boolean | null
+  secondsRemaining: number | null
   progressTick: number
   onPickLesson: (l: Lesson) => void
   onSettings: () => void
@@ -222,6 +231,7 @@ function LessonsHome(props: LessonsHomeProps) {
     tutorFlag,
     streak,
     subscribed,
+    secondsRemaining,
     progressTick,
     onPickLesson,
     onSettings,
@@ -299,6 +309,7 @@ function LessonsHome(props: LessonsHomeProps) {
       <NavBar
         streak={streak}
         subscribed={subscribed}
+        secondsRemaining={secondsRemaining}
         onSettings={onSettings}
         user={user}
         onSignOut={onSignOut}
@@ -423,7 +434,7 @@ function LessonsHome(props: LessonsHomeProps) {
         title="Free conversation"
       >
         <span className="practice-free-cta-emoji" aria-hidden>📞</span>
-        <span className="practice-free-cta-label">Free conversation</span>
+        <span className="practice-free-cta-label">Chat Now</span>
       </button>
 
       {lessonForDetail && (
@@ -456,17 +467,18 @@ function LessonsHome(props: LessonsHomeProps) {
 function NavBar(props: {
   streak: number
   subscribed: boolean | null
+  secondsRemaining: number | null
   onSettings: () => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user?: any
   onSignOut?: () => void
 }) {
-  const { streak, subscribed, onSettings, user, onSignOut } = props
+  const { streak, subscribed, secondsRemaining, onSettings, user, onSignOut } = props
   return (
     <nav className="tutor-nav">
-      <Link to="/" className="tutor-nav-back">
-        ← Home
-      </Link>
+      {/* Home link removed — /lessons is the app's home for signed-in
+          learners; sending them to / would just bounce them back. */}
+      <div />
       <div className="tutor-nav-right">
         {streak > 0 && (
           <div className="streak-pill" title={`${streak}-day streak`}>
@@ -476,7 +488,9 @@ function NavBar(props: {
         {subscribed === null ? null : subscribed ? (
           <div className="tutor-nav-badge">Subscribed</div>
         ) : (
-          <div className="tutor-nav-badge free">Free trial</div>
+          <div className="tutor-nav-badge free">
+            Free trial{secondsRemaining !== null && ` · ${formatSecondsShort(secondsRemaining)} left`}
+          </div>
         )}
         <Link to="/review" className="tutor-nav-signout" title="Review deck">
           Review
@@ -501,6 +515,15 @@ function NavBar(props: {
       </div>
     </nav>
   )
+}
+
+/// "M:SS" countdown for the Free trial badge. Same shape Tutor.tsx
+/// uses in the in-session header.
+function formatSecondsShort(total: number): string {
+  const s = Math.max(0, Math.ceil(total))
+  const m = Math.floor(s / 60)
+  const r = s % 60
+  return `${m}:${r.toString().padStart(2, '0')}`
 }
 
 function proficiencyToLevel(level: string | undefined): LessonLevel {

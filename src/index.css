@@ -1123,6 +1123,19 @@ body:has(.landing) {
   font-size: 16px;
 }
 
+/* Disabled state — used for "Download App" until the iOS build hits
+   the App Store. Still reads as the primary CTA shape so the hero
+   layout doesn't shift, but visibly de-emphasized. */
+.landing-cta-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+  border: 0;
+  font-family: inherit;
+}
+.landing-cta-disabled:hover { transform: none; box-shadow: none; }
+
 .landing-cta-outline {
   display: inline-flex;
   align-items: center;
@@ -2121,37 +2134,37 @@ body:has(.landing) {
   position: sticky;
   bottom: max(20px, env(safe-area-inset-bottom));
   align-self: center;
-  margin: 28px auto 4px;
+  margin: 24px auto 4px;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 22px 14px 18px;
+  gap: 10px;
+  padding: 10px 18px 10px 14px;
   background: var(--accent);
   color: #12130F;
   border: 0;
   border-radius: 999px;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 12px 32px rgba(124, 196, 168, 0.28);
+  box-shadow: 0 10px 24px rgba(255, 178, 107, 0.28);
   transition: transform 0.08s ease, box-shadow 0.12s ease;
 }
 
 .practice-free-cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 16px 36px rgba(124, 196, 168, 0.36);
+  box-shadow: 0 14px 28px rgba(255, 178, 107, 0.36);
 }
 
 .practice-free-cta-emoji {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
-  background: rgba(15, 17, 21, 0.12);
-  font-size: 18px;
+  background: rgba(18, 19, 15, 0.14);
+  font-size: 15px;
 }
 
 .practice-free-cta-label {
@@ -3552,13 +3565,13 @@ body:has(.landing) {
 .todays-lesson-card {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
   text-align: left;
   background: rgba(255, 255, 255, 0.05);
   border: 0;
-  border-radius: 20px;
-  padding: 16px;
+  border-radius: 18px;
+  padding: 14px;
   color: var(--fg);
   cursor: pointer;
   font-family: inherit;
@@ -3568,13 +3581,13 @@ body:has(.landing) {
 
 .todays-lesson-icon {
   flex: 0 0 auto;
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-size: 28px;
   line-height: 1;
 }
 
@@ -3583,16 +3596,16 @@ body:has(.landing) {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .todays-lesson-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .todays-lesson-summary {
-  font-size: 13px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -3607,12 +3620,12 @@ body:has(.landing) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   color: #12130F;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 /* --- Inline lesson row --- */
@@ -3620,13 +3633,13 @@ body:has(.landing) {
 .lesson-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
   text-align: left;
   background: rgba(255, 255, 255, 0.05);
   border: 0;
-  border-radius: 16px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 12px;
   color: var(--fg);
   cursor: pointer;
   font-family: inherit;
@@ -3638,13 +3651,13 @@ body:has(.landing) {
 
 .lesson-row-icon {
   flex: 0 0 auto;
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1;
 }
 
@@ -3653,17 +3666,17 @@ body:has(.landing) {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .lesson-row-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--fg);
 }
 
 .lesson-row-summary {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
 }
 

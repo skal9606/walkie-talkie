@@ -54,7 +54,13 @@ export default function Landing() {
             getting wrong.
           </p>
           <div className="hero-cta-group">
-            <Link to="/chat" className="landing-cta landing-cta-large">Download App</Link>
+            {/* Download App is unwired for now — the iOS build hits the
+                App Store next week. Render as a non-link so users see
+                the affordance without it 404-ing or sending them to
+                /chat (which is misleading). */}
+            <button type="button" className="landing-cta landing-cta-large landing-cta-disabled" disabled aria-disabled="true">
+              Download App
+            </button>
             <Link to="/chat" className="landing-cta-outline">Chat on web</Link>
           </div>
           <div className="hero-footnote">First 10 minutes free · $14.99/month after</div>
