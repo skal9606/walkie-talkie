@@ -36,10 +36,14 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
     const reqBody = {
       session: {
         type: 'realtime',
-        // gpt-realtime-2 (GA, May 2026). Quality bump at the same per-
-        // minute price. Affects both web and iOS — model is encoded in
-        // the ephemeral token returned to whichever client mints.
-        model: 'gpt-realtime-2',
+        // Reverted from gpt-realtime-2 after a second-conversation bug
+        // appeared on iOS: Natalia speaks English, repeats her opener,
+        // and doesn't hold the conversational thread on the second
+        // session after ending the first. Could be v2's documented
+        // mid-session language switching regression, or could be iOS
+        // state hygiene that v2's stricter behavior surfaces. Reverting
+        // to v1 isolates the variable.
+        model: 'gpt-realtime',
         audio: {
           input: {
             turn_detection: {
