@@ -1,28 +1,37 @@
+/* Option B warm walkie-talkie palette. Replaces the previous cool
+   dark blue (#0f1115) + teal accent (#7cc4a8) scheme. Every page
+   inherits via the var(--bg) / var(--accent) etc. tokens, so the
+   palette swap automatically reaches /chat, /lessons, /review,
+   /login, /stats, /settings, the paywall, etc. — anywhere the old
+   variables were used. */
 :root {
-  --bg: #0f1115;
-  --bg-2: #161922;
-  --fg: #e8e8ea;
-  --muted: #8b8d96;
-  --accent: #7cc4a8;
-  --accent-dim: #3e6355;
-  --user: #2b3240;
-  --tutor: #1c2a24;
-  --danger: #e76f51;
-  --border: #252833;
+  --bg: #12130F;
+  --bg-2: #1B1F16;
+  --fg: #F2E9DB;
+  --muted: #A3A68C;
+  --accent: #FFB26B;
+  --accent-dim: #8B5A20;
+  --user: #2A2018;
+  --tutor: #1B1F16;
+  --danger: #E76F51;
+  --border: #25281E;
   color-scheme: dark;
 }
 
+/* Light theme is a warm parchment variant of the same family so the
+   toggle still works visually but stays on-brand. Background is
+   cream paper, text is deep sepia, accent stays amber. */
 [data-theme='light'] {
-  --bg: #fafaf7;
-  --bg-2: #ffffff;
-  --fg: #0f1115;
-  --muted: #6c6e75;
-  --accent: #2f9978;
-  --accent-dim: #b3dccd;
-  --user: #e6ebf2;
-  --tutor: #e2efe9;
-  --danger: #c64a2f;
-  --border: #e2e3e7;
+  --bg: #F4E6C8;
+  --bg-2: #FAF0D8;
+  --fg: #2A1F12;
+  --muted: #6B4A25;
+  --accent: #C2772A;
+  --accent-dim: #E8D5A8;
+  --user: #E8D5A8;
+  --tutor: #FAF0D8;
+  --danger: #B85432;
+  --border: #D9C49A;
   color-scheme: light;
 }
 

@@ -32,12 +32,10 @@ export default function Landing() {
       <nav className="landing-nav">
         <div className="landing-logo">Walkie Talkie</div>
         <div className="landing-nav-right">
-          <a href="#features" className="landing-nav-link">Features</a>
-          <a href="#testimonials" className="landing-nav-link">Testimonials</a>
           <a href="#pricing" className="landing-nav-link">Pricing</a>
           <a href="#faq" className="landing-nav-link">FAQ</a>
           <Link to="/login" className="landing-nav-link">Login</Link>
-          <Link to="/chat" className="landing-cta">Get Started</Link>
+          <Link to="/chat" className="landing-cta">Chat Now</Link>
         </div>
       </nav>
 
@@ -56,7 +54,7 @@ export default function Landing() {
             getting wrong.
           </p>
           <div className="hero-cta-group">
-            <Link to="/chat" className="landing-cta landing-cta-large">Get Started</Link>
+            <Link to="/chat" className="landing-cta landing-cta-large">Download App</Link>
             <Link to="/chat" className="landing-cta-outline">Chat on web</Link>
           </div>
           <div className="hero-footnote">First 10 minutes free · $14.99/month after</div>
@@ -171,7 +169,7 @@ export default function Landing() {
             plan={null}
             title="Free"
             price="$0"
-            period="forever"
+            period=""
             description="10 minutes of voice practice. No card required."
             features={["10-minute voice trial", "All 5 languages", "Basic feedback"]}
             ctaLabel="Get started"
