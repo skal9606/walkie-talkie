@@ -1288,61 +1288,78 @@ body:has(.landing) {
   max-width: 560px;
 }
 
-/* Features grid (4 cards) */
+/* Features — circular brass-medal style icons + minimal text. Layout
+   is centered like a row of buttons on a leather case. */
 .features {
-  padding: 72px 8px;
+  padding: 56px 8px 32px;
 }
 
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 24px;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 720px) {
   .feature-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 520px) {
-  .feature-grid { grid-template-columns: 1fr; }
-}
-
 .feature {
-  padding: 24px 20px;
-  background: var(--landing-bg-elevated);
-  border: 1px solid var(--landing-border);
-  border-radius: 16px;
+  text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
 }
 
-.feature-icon {
-  font-size: 28px;
-  line-height: 1;
+/* Brass-rim disc holding the feature emoji — the "buttons on the
+   vintage device" look. Two rings + inner gradient give it depth. */
+.feature-medal {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 178, 107, 0.22), rgba(255, 178, 107, 0.04) 70%),
+    var(--landing-bg-elevated);
+  border: 1px solid var(--landing-accent);
+  box-shadow:
+    0 0 0 4px var(--landing-bg),
+    0 0 0 5px var(--landing-border),
+    inset 0 1px 0 rgba(255, 178, 107, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 6px 14px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
 }
 
 .feature-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--landing-text);
   margin: 0;
+  font-family: 'New York', 'Charter', Georgia, serif;
+  letter-spacing: 0.1px;
 }
 
 .feature-body {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--landing-text-secondary);
   margin: 0;
+  max-width: 180px;
 }
 
-/* Chat preview section */
+/* Chat preview — vintage typewritten paper on a leather mat. The
+   "paper" sits in a wider warm-leather frame to feel inset. */
 .chat-preview {
   display: grid;
   grid-template-columns: 1fr 1.1fr;
   gap: 56px;
   align-items: center;
-  padding: 72px 8px;
+  padding: 56px 8px;
 }
 
 @media (max-width: 920px) {
@@ -1366,55 +1383,82 @@ body:has(.landing) {
   }
 }
 
-.chat-preview-card {
-  background: var(--landing-bg-elevated);
+/* Outer leather/wood frame. */
+.chat-preview-paper {
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(255, 178, 107, 0.06), transparent 60%),
+    linear-gradient(135deg, #2A2018 0%, #1B1F16 100%);
   border: 1px solid var(--landing-border);
-  border-radius: 24px;
-  padding: 24px;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 178, 107, 0.06);
+}
+
+/* Inner aged-paper card. Off-white with subtle ribbed grain via
+   repeating gradient — sells the "typewritten on aged stock" feel. */
+.chat-preview-paper-inner {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.015) 0px,
+      rgba(0, 0, 0, 0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    linear-gradient(135deg, #F4E6C8 0%, #E8D5A8 100%);
+  color: #2A1F12;
+  border-radius: 10px;
+  padding: 22px 24px;
+  font-family: 'Courier New', Courier, monospace;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.chat-line {
+  display: flex;
   gap: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  align-items: baseline;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-.chat-bubble {
-  padding: 12px 16px;
-  border-radius: 18px;
-  font-size: 15px;
-  line-height: 1.4;
-  max-width: 80%;
+.chat-line-speaker {
+  font-weight: 700;
+  color: #6B4A25;
+  letter-spacing: 0.3px;
+  min-width: 56px;
+  font-size: 11px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  padding-top: 2px;
 }
 
-.chat-bubble-tutor {
-  background: var(--landing-bg);
-  color: var(--landing-text);
-  align-self: flex-start;
-  border: 1px solid var(--landing-border);
+.chat-line-user .chat-line-speaker {
+  color: #8B5A20;
 }
 
-.chat-bubble-user {
-  background: var(--landing-accent);
-  color: var(--landing-on-accent);
-  align-self: flex-end;
-  font-weight: 500;
+.chat-line-text {
+  color: #2A1F12;
 }
 
 .chat-typing {
   display: inline-flex;
-  align-self: flex-start;
   align-items: center;
   gap: 4px;
-  padding: 12px 18px;
-  background: var(--landing-bg);
-  border: 1px solid var(--landing-border);
-  border-radius: 18px;
+  margin-left: 66px;
 }
 
 .chat-typing span {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--landing-text-tertiary);
+  background: #6B4A25;
   animation: chat-dot 1.2s infinite ease-in-out;
 }
 
@@ -1423,55 +1467,72 @@ body:has(.landing) {
 
 @keyframes chat-dot {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-4px); opacity: 1; }
+  30% { transform: translateY(-3px); opacity: 1; }
 }
 
-/* Languages section */
+/* Languages — medal-style brass-rimmed flag discs. */
 .languages {
-  padding: 72px 8px;
+  padding: 72px 8px 56px;
   text-align: center;
 }
 
-.language-flags {
+.language-medals {
   display: flex;
   justify-content: center;
-  gap: 28px;
+  gap: 36px;
   flex-wrap: wrap;
-  margin-top: 24px;
+  margin-top: 28px;
 }
 
-.language-flag {
+.language-medal {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
-  background: var(--landing-bg-elevated);
-  border: 1px solid var(--landing-border);
-  border-radius: 16px;
-  min-width: 110px;
+  gap: 10px;
 }
 
-.language-flag > span:first-child {
-  font-size: 40px;
+/* Same brass-rim treatment as feature medals, just bigger so the
+   flag emoji reads at a distance. */
+.language-medal-disc {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 178, 107, 0.18), rgba(0, 0, 0, 0.35) 75%),
+    var(--landing-bg-elevated);
+  border: 1px solid var(--landing-accent);
+  box-shadow:
+    0 0 0 5px var(--landing-bg),
+    0 0 0 6px var(--landing-border),
+    inset 0 1px 0 rgba(255, 178, 107, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 8px 20px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
   line-height: 1;
 }
 
-.language-flag > span:last-child {
-  font-size: 13px;
-  font-weight: 500;
+.language-medal-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
   color: var(--landing-text-secondary);
+  font-family: 'New York', 'Charter', Georgia, serif;
 }
 
-/* Testimonials */
+/* Testimonials — aged-parchment cards on the dark page. Each one
+   reads as a card pulled from an old leather review book. */
 .testimonials {
-  padding: 72px 8px;
+  padding: 56px 8px 72px;
 }
 
 .testimonial-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 20px;
 }
 
 @media (max-width: 860px) {
@@ -1479,44 +1540,97 @@ body:has(.landing) {
 }
 
 .testimonial {
-  padding: 28px 24px;
-  background: var(--landing-bg-elevated);
-  border: 1px solid var(--landing-border);
-  border-radius: 18px;
+  position: relative;
+  padding: 24px 22px 22px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.012) 0px,
+      rgba(0, 0, 0, 0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    linear-gradient(180deg, #F4E6C8 0%, #E8D5A8 100%);
+  color: #2A1F12;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.08) inset,
+    0 12px 28px rgba(0, 0, 0, 0.5);
 }
 
-.testimonial-stars {
-  color: var(--landing-accent);
-  font-size: 14px;
-  letter-spacing: 2px;
-}
-
-.testimonial-quote {
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--landing-text);
-  margin: 0;
-  font-style: italic;
-}
-
-.testimonial-attribution {
+.testimonial-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: auto;
+  gap: 12px;
 }
 
-.testimonial-avatar {
-  font-size: 24px;
+.testimonial-portrait {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(107, 74, 37, 0.12);
+  border: 1px solid rgba(107, 74, 37, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.testimonial-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .testimonial-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2A1F12;
+  font-family: 'New York', 'Charter', Georgia, serif;
+}
+
+.testimonial-role {
+  font-size: 11px;
+  color: #6B4A25;
+  letter-spacing: 0.2px;
+}
+
+.testimonial-stars {
+  color: #C2772A;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--landing-text-secondary);
+  letter-spacing: 3px;
+}
+
+.testimonial-quote {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #3A2A18;
+  margin: 0;
+  font-family: 'New York', 'Charter', Georgia, serif;
+  font-style: italic;
+}
+
+.testimonial-quote::before {
+  content: '\201C';
+  font-size: 32px;
+  line-height: 0;
+  vertical-align: -8px;
+  color: #B8841F;
+  margin-right: 2px;
+}
+
+.testimonial-quote::after {
+  content: '\201D';
+  font-size: 32px;
+  line-height: 0;
+  vertical-align: -8px;
+  color: #B8841F;
+  margin-left: 2px;
 }
 
 /* Pricing */

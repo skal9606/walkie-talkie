@@ -48,7 +48,7 @@ export default function Landing() {
             Voice AI for language learners
           </div>
           <h1 className="hero-headline">
-            Grab the walkie talkie. Start a real conversation.
+            Learn a language by talking.
           </h1>
           <p className="hero-subtext">
             Real voice practice for people who already know the basics. Your
@@ -73,48 +73,54 @@ export default function Landing() {
           <Feature
             icon="🎙️"
             title="Speak naturally"
-            body="Real conversations, not flashcards. Just talk."
+            body="Real conversations. Just talk."
           />
           <Feature
             icon="🎯"
             title="Tailored feedback"
-            body="The tutor catches your slips and corrects them — gently."
+            body="Slips caught and corrected, gently."
           />
           <Feature
             icon="🧠"
             title="Remembers you"
-            body="Picks up where you left off. Your goals, your gaps, your topics."
+            body="Your goals, gaps, and topics."
           />
           <Feature
             icon="⏰"
             title="Always on"
-            body="24/7. No bookings. No waiting. Open and start talking."
+            body="24/7. No bookings."
           />
         </div>
       </section>
 
       <section className="chat-preview">
         <div className="chat-preview-text">
-          <h2 className="section-title">Like texting, but for speaking.</h2>
+          <h2 className="section-title">Like texting,<br />but for speaking.</h2>
           <p className="section-subtitle">
             Natural conversations. Helpful corrections. Real progress.
           </p>
         </div>
-        <div className="chat-preview-card">
-          <div className="chat-bubble chat-bubble-tutor">
-            Oi! Como foi seu fim de semana?
-          </div>
-          <div className="chat-bubble chat-bubble-user">
-            Eu fui ao parque com meu cachorro.
-          </div>
-          <div className="chat-bubble chat-bubble-tutor">
-            Que legal! "Eu fui ao" está perfeito. E como se chama seu cachorro?
-          </div>
-          <div className="chat-bubble chat-bubble-user">
-            Ele se chama Luna.
-          </div>
-          <div className="chat-typing">
-            <span /><span /><span />
+        <div className="chat-preview-paper">
+          <div className="chat-preview-paper-inner">
+            <div className="chat-line chat-line-tutor">
+              <span className="chat-line-speaker">Natalia</span>
+              <span className="chat-line-text">Oi! Como foi seu fim de semana?</span>
+            </div>
+            <div className="chat-line chat-line-user">
+              <span className="chat-line-speaker">You</span>
+              <span className="chat-line-text">Eu fui ao parque com meu cachorro.</span>
+            </div>
+            <div className="chat-line chat-line-tutor">
+              <span className="chat-line-speaker">Natalia</span>
+              <span className="chat-line-text">Que legal! Como se chama seu cachorro?</span>
+            </div>
+            <div className="chat-line chat-line-user">
+              <span className="chat-line-speaker">You</span>
+              <span className="chat-line-text">Ele se chama Luna.</span>
+            </div>
+            <div className="chat-typing">
+              <span /><span /><span />
+            </div>
           </div>
         </div>
       </section>
@@ -122,12 +128,12 @@ export default function Landing() {
       <section className="languages">
         <h2 className="section-title">Practice in 5 languages</h2>
         <p className="section-subtitle">One subscription unlocks every tutor.</p>
-        <div className="language-flags">
-          <div className="language-flag"><span>🇧🇷</span><span>Portuguese</span></div>
-          <div className="language-flag"><span>🇲🇽</span><span>Spanish</span></div>
-          <div className="language-flag"><span>🇮🇹</span><span>Italian</span></div>
-          <div className="language-flag"><span>🇫🇷</span><span>French</span></div>
-          <div className="language-flag"><span>🇩🇪</span><span>German</span></div>
+        <div className="language-medals">
+          <LanguageMedal flag="🇧🇷" name="Portuguese" />
+          <LanguageMedal flag="🇲🇽" name="Spanish" />
+          <LanguageMedal flag="🇮🇹" name="Italian" />
+          <LanguageMedal flag="🇫🇷" name="French" />
+          <LanguageMedal flag="🇩🇪" name="German" />
         </div>
       </section>
 
@@ -137,16 +143,19 @@ export default function Landing() {
           <Testimonial
             avatar="👩‍💼"
             name="Elena R."
-            quote="It feels like talking to a patient friend who happens to be an amazing teacher."
+            role="Learning Portuguese · Lisbon"
+            quote="Feels like talking to a patient friend who happens to be an amazing teacher."
           />
           <Testimonial
             avatar="🧑‍🎓"
             name="Marc S."
-            quote="The feedback is so natural and actually helps me remember how to say things better."
+            role="Learning Spanish · NYC"
+            quote="The feedback is so natural — and I actually remember how to say things better."
           />
           <Testimonial
             avatar="👨‍🔬"
             name="Lucas B."
+            role="Learning Italian · London"
             quote="I can practice anytime, and it remembers everything. Game-changer."
           />
         </div>
@@ -241,23 +250,47 @@ export default function Landing() {
 function Feature({ icon, title, body }: { icon: string; title: string; body: string }) {
   return (
     <div className="feature">
-      <div className="feature-icon">{icon}</div>
+      <div className="feature-medal">{icon}</div>
       <h3 className="feature-title">{title}</h3>
       <p className="feature-body">{body}</p>
     </div>
   )
 }
 
-function Testimonial({ avatar, name, quote }: { avatar: string; name: string; quote: string }) {
+function LanguageMedal({ flag, name }: { flag: string; name: string }) {
   return (
-    <div className="testimonial">
-      <div className="testimonial-stars">★★★★★</div>
-      <p className="testimonial-quote">"{quote}"</p>
-      <div className="testimonial-attribution">
-        <span className="testimonial-avatar">{avatar}</span>
-        <span className="testimonial-name">{name}</span>
+    <div className="language-medal">
+      <div className="language-medal-disc">
+        <span>{flag}</span>
       </div>
+      <div className="language-medal-name">{name}</div>
     </div>
+  )
+}
+
+function Testimonial({
+  avatar,
+  name,
+  role,
+  quote,
+}: {
+  avatar: string
+  name: string
+  role: string
+  quote: string
+}) {
+  return (
+    <article className="testimonial">
+      <header className="testimonial-header">
+        <div className="testimonial-portrait">{avatar}</div>
+        <div className="testimonial-meta">
+          <div className="testimonial-name">{name}</div>
+          <div className="testimonial-role">{role}</div>
+        </div>
+      </header>
+      <div className="testimonial-stars">★★★★★</div>
+      <p className="testimonial-quote">{quote}</p>
+    </article>
   )
 }
 
