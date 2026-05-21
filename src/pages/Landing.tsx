@@ -1,51 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
 import { JUST_SIGNED_OUT_FLAG, decideLandingAction, useAuth } from '../lib/auth'
-import { TUTORS } from '../lib/tutors'
-import {
-  applyTheme,
-  loadPreferences,
-  savePreferences,
-  type Theme,
-} from '../lib/preferences'
-
-// Flags shown in the marquee. Live tutors come from the registry; "soon"
-// flags are aspirational marketing — they hint at the roadmap without
-// committing to a specific date.
-const COMING_SOON_FLAGS = [
-  { flag: '🇪🇸', label: 'Castilian Spanish' },
-  { flag: '🇦🇷', label: 'Argentinian Spanish' },
-  { flag: '🇫🇷', label: 'French' },
-  { flag: '🇮🇹', label: 'Italian' },
-  { flag: '🇩🇪', label: 'German' },
-  { flag: '🇯🇵', label: 'Japanese' },
-  { flag: '🇰🇷', label: 'Korean' },
-  { flag: '🇨🇳', label: 'Mandarin' },
-]
 
 export default function Landing() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
-  const [theme, setTheme] = useState<Theme>(() => loadPreferences().theme)
 
-  function toggleTheme() {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    savePreferences({ ...loadPreferences(), theme: next })
-    applyTheme(next)
-  }
-
-  // Signed-in (non-anonymous / subscribed) learners skip the marketing
-  // landing and go straight to /lessons. Anonymous users — even if they
-  // already finished onboarding — stay here so they can re-see the pitch,
-  // click pricing, and re-enter the trial via Chat Now (which auto-starts
-  // a free conversation that picks up prior memory at their saved level).
-  //
-  // The just-signed-out flag is only consumed once auth has resolved —
-  // if we read+removed it during the initial loading pass, supabase's
-  // still-cached session would resolve on the next render and bounce
-  // the learner straight back to /lessons. See decideLandingAction.
+  // Signed-in users skip the marketing page entirely. See decideLandingAction
+  // for the auth-resolution race we have to wait through before deciding.
   useEffect(() => {
     const justSignedOut =
       typeof window !== 'undefined' &&
@@ -60,8 +23,6 @@ export default function Landing() {
     }
   }, [user, loading, navigate])
 
-  // Pricing cards navigate to /chat with a ?checkout=<plan> param. Tutor.tsx
-  // sends the user through sign-in if needed, then auto-starts checkout.
   function handleSubscribe(plan: Plan) {
     navigate(`/chat?checkout=${plan}`)
   }
@@ -71,112 +32,122 @@ export default function Landing() {
       <nav className="landing-nav">
         <div className="landing-logo">Walkie Talkie</div>
         <div className="landing-nav-right">
-          <a href="#pricing" className="landing-nav-link">
-            Pricing
-          </a>
-          <Link to="/login" className="landing-nav-link">
-            Login
-          </Link>
-          <button
-            type="button"
-            className="landing-theme-toggle"
-            onClick={toggleTheme}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-          <Link to="/chat" className="landing-cta">
-            Chat Now
-          </Link>
+          <a href="#features" className="landing-nav-link">Features</a>
+          <a href="#testimonials" className="landing-nav-link">Testimonials</a>
+          <a href="#pricing" className="landing-nav-link">Pricing</a>
+          <a href="#faq" className="landing-nav-link">FAQ</a>
+          <Link to="/login" className="landing-nav-link">Login</Link>
+          <Link to="/chat" className="landing-cta">Get Started</Link>
         </div>
       </nav>
 
       <section className="hero">
-        <div className="hero-aurora" aria-hidden />
-
         <div className="hero-content">
           <div className="hero-eyebrow">
             <span className="hero-eyebrow-dot" />
             Voice AI for language learners
           </div>
           <h1 className="hero-headline">
-            From textbook to fluent.
+            Grab the walkie talkie. Start a real conversation.
           </h1>
           <p className="hero-subtext">
-            Real voice conversations for people who already know the basics. Your tutor
-            remembers what you talked about last time, what you keep getting wrong, and
-            what you came here to learn.
+            Real voice practice for people who already know the basics. Your
+            tutor remembers what you talked about last time and what you keep
+            getting wrong.
           </p>
           <div className="hero-cta-group">
-            <Link to="/chat" className="landing-cta landing-cta-large">
-              Chat Now
-            </Link>
-            <div className="hero-footnote">First 10 minutes free · $14.99/month after</div>
+            <Link to="/chat" className="landing-cta landing-cta-large">Get Started</Link>
+            <Link to="/chat" className="landing-cta-outline">Chat on web</Link>
           </div>
+          <div className="hero-footnote">First 10 minutes free · $14.99/month after</div>
         </div>
 
-        <div className="hero-orb-wrap" aria-hidden>
-          <div className="orb-ping orb-ping-1" />
-          <div className="orb-ping orb-ping-2" />
-          <div className="orb-ping orb-ping-3" />
-          <div className="orb">
-            <div className="orb-shine" />
-            <div className="orb-wave">
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
+        <div className="hero-image-wrap" aria-hidden>
+          <div className="hero-image-glow" />
+          <img src="/walkie-talkie-hero.png" alt="" className="hero-image" />
         </div>
       </section>
 
-      <FlagMarquee />
-
-      <section className="languages-available">
-        <h2 className="section-title">Available now</h2>
-        <p className="section-subtitle">
-          One subscription, every tutor. More languages and regional dialects landing soon.
-        </p>
-        <div className="language-tile-grid">
-          {TUTORS.map((t) => (
-            <div key={t.id} className="language-tile">
-              <span className="language-tile-flag" aria-hidden>{t.flag}</span>
-              <div className="language-tile-text">
-                <div className="language-tile-language">{t.languageLabel}</div>
-                <div className="language-tile-tutor">
-                  {t.name} · {t.city} · {t.age}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="features">
-        <h2 className="section-title">Why learners love it</h2>
+      <section id="features" className="features">
         <div className="feature-grid">
           <Feature
-            title="Real voice, in real time"
-            body="Speech-to-speech AI that actually hears your pronunciation and corrects it — not another flashcard app."
+            icon="🎙️"
+            title="Speak naturally"
+            body="Real conversations, not flashcards. Just talk."
           />
           <Feature
-            title="Remembers what you said last time"
-            body="Your tutor picks up where you left off — your goal, the topics you brought up, the mistakes you keep making. The kind of memory you'd want from a human tutor."
+            icon="🎯"
+            title="Tailored feedback"
+            body="The tutor catches your slips and corrects them — gently."
           />
           <Feature
-            title="Roleplays for real life"
-            body="Order tacos in CDMX, meet the in-laws, check into a hotel — practice the conversations you'll actually have."
+            icon="🧠"
+            title="Remembers you"
+            body="Picks up where you left off. Your goals, your gaps, your topics."
           />
           <Feature
-            title="Tracks your gaps. Quietly."
-            body="Every grammar slip gets logged. Next session, the tutor circles back without making it weird — and over time you stop making it."
+            icon="⏰"
+            title="Always on"
+            body="24/7. No bookings. No waiting. Open and start talking."
+          />
+        </div>
+      </section>
+
+      <section className="chat-preview">
+        <div className="chat-preview-text">
+          <h2 className="section-title">Like texting, but for speaking.</h2>
+          <p className="section-subtitle">
+            Natural conversations. Helpful corrections. Real progress.
+          </p>
+        </div>
+        <div className="chat-preview-card">
+          <div className="chat-bubble chat-bubble-tutor">
+            Oi! Como foi seu fim de semana?
+          </div>
+          <div className="chat-bubble chat-bubble-user">
+            Eu fui ao parque com meu cachorro.
+          </div>
+          <div className="chat-bubble chat-bubble-tutor">
+            Que legal! "Eu fui ao" está perfeito. E como se chama seu cachorro?
+          </div>
+          <div className="chat-bubble chat-bubble-user">
+            Ele se chama Luna.
+          </div>
+          <div className="chat-typing">
+            <span /><span /><span />
+          </div>
+        </div>
+      </section>
+
+      <section className="languages">
+        <h2 className="section-title">Practice in 5 languages</h2>
+        <p className="section-subtitle">One subscription unlocks every tutor.</p>
+        <div className="language-flags">
+          <div className="language-flag"><span>🇧🇷</span><span>Portuguese</span></div>
+          <div className="language-flag"><span>🇲🇽</span><span>Spanish</span></div>
+          <div className="language-flag"><span>🇮🇹</span><span>Italian</span></div>
+          <div className="language-flag"><span>🇫🇷</span><span>French</span></div>
+          <div className="language-flag"><span>🇩🇪</span><span>German</span></div>
+        </div>
+      </section>
+
+      <section id="testimonials" className="testimonials">
+        <h2 className="section-title">Loved by language learners</h2>
+        <div className="testimonial-grid">
+          <Testimonial
+            avatar="👩‍💼"
+            name="Elena R."
+            quote="It feels like talking to a patient friend who happens to be an amazing teacher."
+          />
+          <Testimonial
+            avatar="🧑‍🎓"
+            name="Marc S."
+            quote="The feedback is so natural and actually helps me remember how to say things better."
+          />
+          <Testimonial
+            avatar="👨‍🔬"
+            name="Lucas B."
+            quote="I can practice anytime, and it remembers everything. Game-changer."
           />
         </div>
       </section>
@@ -184,27 +155,47 @@ export default function Landing() {
       <section id="pricing" className="pricing">
         <h2 className="section-title">Simple pricing</h2>
         <p className="section-subtitle">
-          Try 10 minutes free — or subscribe now to practice without limits.
+          Try free, then pick the plan that fits.
         </p>
         <div className="price-cards">
+          <PriceCard
+            plan={null}
+            title="Free"
+            price="$0"
+            period="forever"
+            description="10 minutes of voice practice. No card required."
+            features={["10-minute voice trial", "All 5 languages", "Basic feedback"]}
+            ctaLabel="Get started"
+            onClick={() => navigate('/chat')}
+          />
           <PriceCard
             plan="monthly"
             title="Monthly"
             price="$14.99"
             period="/ month"
-            description="Cancel anytime"
-            onSubscribe={handleSubscribe}
+            description="Unlimited conversations. Cancel anytime."
+            features={["Unlimited voice practice", "All 5 languages", "Memory across sessions", "Cancel anytime"]}
+            ctaLabel="Subscribe"
+            onClick={() => handleSubscribe('monthly')}
           />
           <PriceCard
             plan="yearly"
             title="Yearly"
             price="$149.99"
             period="/ year"
-            description="Save $30 · $12.49/mo"
+            description="Save $30 · $12.49/mo."
+            features={["Everything in Monthly", "Save $30 vs monthly", "Priority improvements", "Best value"]}
+            ctaLabel="Subscribe"
             highlighted
-            onSubscribe={handleSubscribe}
+            onClick={() => handleSubscribe('yearly')}
           />
         </div>
+      </section>
+
+      <section className="cta-strip">
+        <h2 className="cta-strip-title">Ready to start talking?</h2>
+        <p className="cta-strip-subtitle">Your language tutor is one tap away.</p>
+        <Link to="/chat" className="landing-cta landing-cta-large">Get Started</Link>
       </section>
 
       <section id="faq" className="faq">
@@ -216,7 +207,7 @@ export default function Landing() {
           />
           <FaqItem
             q="What languages can I learn?"
-            a="Brazilian Portuguese (Natalia in São Paulo) and Mexican Spanish (Santiago in Mexico City) are live today. Castilian Spanish, Argentinian Spanish, French, Italian, and more are next on the list."
+            a="Five languages today — Brazilian Portuguese, Mexican Spanish, Italian, French, and German. More on the way."
           />
           <FaqItem
             q="Do I need a different subscription per language?"
@@ -228,7 +219,7 @@ export default function Landing() {
           />
           <FaqItem
             q="Does it work on mobile?"
-            a="Yes, any modern browser on mobile or desktop. Allow microphone access when prompted."
+            a="Yes. Modern browsers on iPhone or Android, plus a native iOS app. Allow microphone access when prompted."
           />
           <FaqItem
             q="Can I cancel anytime?"
@@ -238,68 +229,60 @@ export default function Landing() {
       </section>
 
       <footer className="landing-footer">
-        <div>Walkie Talkie · Voice AI tutor for English speakers</div>
+        <div className="landing-footer-logo">Walkie Talkie</div>
+        <div className="landing-footer-tagline">
+          Voice AI tutor for English speakers learning a second language.
+        </div>
       </footer>
     </div>
   )
 }
 
-function FlagMarquee() {
-  // Speak.com-style infinite scroll. Live tutors first (with names), then
-  // aspirational flags labeled "soon". Duplicated once so the CSS
-  // animation can loop seamlessly.
-  const items = [
-    ...TUTORS.map((t) => ({ flag: t.flag, label: t.languageLabel, live: true })),
-    ...COMING_SOON_FLAGS.map((f) => ({ ...f, live: false })),
-  ]
-  return (
-    <div className="flag-marquee" aria-hidden>
-      <div className="flag-marquee-track">
-        {[...items, ...items].map((item, i) => (
-          <div key={i} className={`flag-marquee-item ${item.live ? 'live' : ''}`}>
-            <span className="flag-marquee-flag">{item.flag}</span>
-            <span className="flag-marquee-label">
-              {item.label}
-              {!item.live && <span className="flag-marquee-soon"> · soon</span>}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Feature({ title, body }: { title: string; body: string }) {
+function Feature({ icon, title, body }: { icon: string; title: string; body: string }) {
   return (
     <div className="feature">
+      <div className="feature-icon">{icon}</div>
       <h3 className="feature-title">{title}</h3>
       <p className="feature-body">{body}</p>
     </div>
   )
 }
 
+function Testimonial({ avatar, name, quote }: { avatar: string; name: string; quote: string }) {
+  return (
+    <div className="testimonial">
+      <div className="testimonial-stars">★★★★★</div>
+      <p className="testimonial-quote">"{quote}"</p>
+      <div className="testimonial-attribution">
+        <span className="testimonial-avatar">{avatar}</span>
+        <span className="testimonial-name">{name}</span>
+      </div>
+    </div>
+  )
+}
+
 function PriceCard({
-  plan,
   title,
   price,
   period,
   description,
+  features,
+  ctaLabel,
   highlighted,
-  onSubscribe,
+  onClick,
 }: {
-  plan: Plan
+  plan: Plan | null
   title: string
   price: string
   period: string
   description: string
+  features: string[]
+  ctaLabel: string
   highlighted?: boolean
-  onSubscribe: (plan: Plan) => void
+  onClick: () => void
 }) {
   return (
-    <button
-      className={`price-card ${highlighted ? 'highlighted' : ''}`}
-      onClick={() => onSubscribe(plan)}
-    >
+    <div className={`price-card ${highlighted ? 'highlighted' : ''}`}>
       {highlighted && <div className="price-badge">Best value</div>}
       <div className="price-title">{title}</div>
       <div className="price-amount-row">
@@ -307,8 +290,13 @@ function PriceCard({
         <span className="price-period">{period}</span>
       </div>
       <div className="price-desc">{description}</div>
-      <div className="price-cta">Subscribe →</div>
-    </button>
+      <ul className="price-features">
+        {features.map((f) => (
+          <li key={f}>{f}</li>
+        ))}
+      </ul>
+      <button className="price-cta" onClick={onClick}>{ctaLabel}</button>
+    </div>
   )
 }
 
