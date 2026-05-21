@@ -20,19 +20,39 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
     }
   }
   try {
-    const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+    // GA API (Aug 2025). The old beta endpoint /v1/realtime/sessions returns
+    // 400 beta_api_shape_disabled as of 2026-05-20. New endpoint nests config
+    // under a session{} object and returns the ephemeral token at the top-
+    // level `value` field (was `client_secret.value` in beta).
+    const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-realtime',
-        voice: 'coral',
+        session: {
+          type: 'realtime',
+          model: 'gpt-realtime',
+          audio: { output: { voice: 'coral' } },
+        },
       }),
     })
-    const body = await response.json()
-    return { status: response.status, body }
+    const data = await response.json()
+    if (response.status !== 200) {
+      return { status: response.status, body: data }
+    }
+    // Re-shape to the legacy { client_secret: { value } } envelope that
+    // existing clients (web src/lib/realtime.ts + iOS) still parse, so we can
+    // ship the backend fix without simultaneously redeploying the web client
+    // and iOS app. Drop this re-shape once both clients read `value` directly.
+    return {
+      status: 200,
+      body: {
+        client_secret: { value: data.value, expires_at: data.expires_at },
+        ...data,
+      },
+    }
   } catch (err) {
     return { status: 500, body: { error: String(err) } }
   }

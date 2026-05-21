@@ -5,7 +5,6 @@ export type RealtimeEvent = {
   [key: string]: unknown
 }
 
-const REALTIME_MODEL = 'gpt-realtime'
 const REALTIME_BASE_URL = 'https://api.openai.com/v1/realtime'
 
 export class RealtimeTutor {
@@ -461,7 +460,11 @@ export class RealtimeTutor {
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
 
-    const sdpRes = await fetch(`${REALTIME_BASE_URL}?model=${REALTIME_MODEL}`, {
+    // GA WebRTC endpoint (Aug 2025). The old beta URL was
+    // `${REALTIME_BASE_URL}?model=${REALTIME_MODEL}` — now returns 400
+    // beta_api_shape_disabled. Model is encoded in the ephemeral token, so we
+    // no longer need to pass it as a query param.
+    const sdpRes = await fetch(`${REALTIME_BASE_URL}/calls`, {
       method: 'POST',
       body: offer.sdp,
       headers: {
