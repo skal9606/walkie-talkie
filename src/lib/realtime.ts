@@ -391,6 +391,8 @@ export class RealtimeTutor {
             this.send({
               type: 'session.update',
               session: {
+                // GA requires session.type on every session.update.
+                type: 'realtime',
                 // GA API moved turn_detection under audio.input.
                 audio: {
                   input: {
@@ -432,6 +434,11 @@ export class RealtimeTutor {
       this.send({
         type: 'session.update',
         session: {
+          // GA requires session.type on every session.update — old beta
+          // didn't. Missing it triggers a "Missing required parameter:
+          // session.type" error and the entire update is rejected, which
+          // is why session.updated never fires and Natalia never speaks.
+          type: 'realtime',
           instructions,
           // GA API (Aug 2025) moved transcription + turn_detection under
           // session.audio.input.*. Old beta locations
