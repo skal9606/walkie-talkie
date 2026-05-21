@@ -387,25 +387,30 @@ export class RealtimeTutor {
             this.send({
               type: 'session.update',
               session: {
-                turn_detection: {
-                  type: 'server_vad',
-                  // interrupt_response:false because barge-in caused a
-                  // cancel-cycle: when a learner did pronunciation
-                  // practice (back-to-back attempts at one word), each
-                  // new VAD turn cancelled the previous in-flight
-                  // response, so Natalia had to wait 2 utterances
-                  // before any reply actually rendered. With it off,
-                  // Natalia always finishes her turn — which is also
-                  // the right pedagogical default for a language
-                  // tutor (learner needs to hear the correction
-                  // through). 1200ms silence_duration is kept as
-                  // belt-and-suspenders against fragmentation of
-                  // rapid attempts within a single thought.
-                  threshold: 0.82,
-                  prefix_padding_ms: 300,
-                  silence_duration_ms: 1200,
-                  create_response: true,
-                  interrupt_response: false,
+                // GA API moved turn_detection under audio.input.
+                audio: {
+                  input: {
+                    turn_detection: {
+                      type: 'server_vad',
+                      // interrupt_response:false because barge-in caused a
+                      // cancel-cycle: when a learner did pronunciation
+                      // practice (back-to-back attempts at one word), each
+                      // new VAD turn cancelled the previous in-flight
+                      // response, so Natalia had to wait 2 utterances
+                      // before any reply actually rendered. With it off,
+                      // Natalia always finishes her turn — which is also
+                      // the right pedagogical default for a language
+                      // tutor (learner needs to hear the correction
+                      // through). 1200ms silence_duration is kept as
+                      // belt-and-suspenders against fragmentation of
+                      // rapid attempts within a single thought.
+                      threshold: 0.82,
+                      prefix_padding_ms: 300,
+                      silence_duration_ms: 1200,
+                      create_response: true,
+                      interrupt_response: false,
+                    },
+                  },
                 },
               },
             })
@@ -424,33 +429,41 @@ export class RealtimeTutor {
         type: 'session.update',
         session: {
           instructions,
-          // gpt-4o-transcribe is significantly more resistant than whisper-1
-          // to hallucinating filler phrases ("I'm just a cat", "thanks for
-          // watching") from silent or low-energy audio. Pinning `language`
-          // (when known) stops the worst failure mode: with no hint, the
-          // transcriber auto-detects per turn and will happily render room
-          // tone as Japanese / Korean / Hindi gibberish in the YOU bubble.
-          // We omit the field during the level-discovery session — we don't
-          // know yet whether the learner will reply in EN or PT, and forcing
-          // either pin would mangle the wrong half of the population.
-          input_audio_transcription: {
-            model: 'gpt-4o-transcribe',
-            ...(options.transcriptionLanguage
-              ? { language: options.transcriptionLanguage }
-              : {}),
+          // GA API (Aug 2025) moved transcription + turn_detection under
+          // session.audio.input.*. Old beta locations
+          // (session.input_audio_transcription, session.turn_detection)
+          // were silently rejected, leaving the session in a half-
+          // configured state where no response ever fired.
+          audio: {
+            input: {
+              // gpt-4o-transcribe is significantly more resistant than
+              // whisper-1 to hallucinating filler phrases ("I'm just a
+              // cat", "thanks for watching") from silent or low-energy
+              // audio. Pinning `language` (when known) stops the worst
+              // failure mode: with no hint, the transcriber auto-detects
+              // per turn and will happily render room tone as Japanese /
+              // Korean / Hindi gibberish in the YOU bubble.
+              transcription: {
+                model: 'gpt-4o-transcribe',
+                ...(options.transcriptionLanguage
+                  ? { language: options.transcriptionLanguage }
+                  : {}),
+              },
+              // Turn detection OFF during the opener so the server
+              // ignores any incoming audio entirely. Combined with
+              // sender.track === null (set up via addTransceiver above),
+              // the opener is guaranteed uninterruptible — there's no
+              // audio reaching the server, and even if there were, the
+              // server isn't listening.
+              //
+              // After the opener's response.done fires, the message
+              // handler sends a second session.update that switches
+              // turn_detection to server_vad with interrupt_response:
+              // true, and scheduleUnmute() swaps in the real mic when
+              // audio drain + mic silence are both detected.
+              turn_detection: null,
+            },
           },
-          // Turn detection OFF during the opener so the server ignores
-          // any incoming audio entirely. Combined with sender.track ===
-          // null (set up via addTransceiver above), the opener is
-          // guaranteed uninterruptible — there's no audio reaching the
-          // server, and even if there were, the server isn't listening.
-          //
-          // After the opener's response.done fires, the message handler
-          // sends a second session.update that switches turn_detection
-          // to server_vad with interrupt_response: true, and
-          // scheduleUnmute() swaps in the real mic when audio drain +
-          // mic silence are both detected.
-          turn_detection: null,
         },
       })
       // We deliberately don't send response.create here — the message
