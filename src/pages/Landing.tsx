@@ -66,28 +66,15 @@ export default function Landing() {
         </div>
       </section>
 
-      <section id="features" className="features">
-        <div className="feature-grid">
-          <Feature
-            icon="🎙️"
-            title="Speak naturally"
-            body="Real conversations. Just talk."
-          />
-          <Feature
-            icon="🎯"
-            title="Tailored feedback"
-            body="Slips caught and corrected, gently."
-          />
-          <Feature
-            icon="🧠"
-            title="Remembers you"
-            body="Your goals, gaps, and topics."
-          />
-          <Feature
-            icon="⏰"
-            title="Always on"
-            body="24/7. No bookings."
-          />
+      <section className="languages">
+        <h2 className="section-title">Practice in 5 languages</h2>
+        <p className="section-subtitle">One subscription unlocks every tutor.</p>
+        <div className="language-medals">
+          <LanguageMedal flag="🇧🇷" name="Portuguese" />
+          <LanguageMedal flag="🇲🇽" name="Spanish" />
+          <LanguageMedal flag="🇮🇹" name="Italian" />
+          <LanguageMedal flag="🇫🇷" name="French" />
+          <LanguageMedal flag="🇩🇪" name="German" />
         </div>
       </section>
 
@@ -123,15 +110,28 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="languages">
-        <h2 className="section-title">Practice in 5 languages</h2>
-        <p className="section-subtitle">One subscription unlocks every tutor.</p>
-        <div className="language-medals">
-          <LanguageMedal flag="🇧🇷" name="Portuguese" />
-          <LanguageMedal flag="🇲🇽" name="Spanish" />
-          <LanguageMedal flag="🇮🇹" name="Italian" />
-          <LanguageMedal flag="🇫🇷" name="French" />
-          <LanguageMedal flag="🇩🇪" name="German" />
+      <section id="features" className="features">
+        <div className="feature-grid">
+          <Feature
+            icon="🎙️"
+            title="Speak naturally"
+            body="Real conversations. Just talk."
+          />
+          <Feature
+            icon="🎯"
+            title="Tailored feedback"
+            body="Slips caught and corrected, gently."
+          />
+          <Feature
+            icon="🧠"
+            title="Remembers you"
+            body="Your goals, gaps, and topics."
+          />
+          <Feature
+            icon="⏰"
+            title="Always on"
+            body="24/7. No bookings."
+          />
         </div>
       </section>
 
