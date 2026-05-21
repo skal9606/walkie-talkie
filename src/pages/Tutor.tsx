@@ -785,11 +785,17 @@ export default function Tutor() {
 
     realtime.onEvent((event: RealtimeEvent) => {
       switch (event.type) {
-        case 'conversation.item.created': {
+        // GA may emit conversation.item.added instead of .created, and may
+        // have dropped or renamed item.type. Drop the type:'message' check
+        // — just require role:'user' + id so the placeholder user bubble
+        // gets inserted in chronological order before Natalia's reply,
+        // even when transcription completes later.
+        case 'conversation.item.created':
+        case 'conversation.item.added': {
           const item = event.item as
             | { id?: string; role?: string; type?: string }
             | undefined
-          if (item?.role === 'user' && item.type === 'message' && item.id) {
+          if (item?.role === 'user' && item.id) {
             const id = item.id
             setTurns((prev) =>
               prev.some((t) => t.id === id)
