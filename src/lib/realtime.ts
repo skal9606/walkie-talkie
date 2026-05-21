@@ -536,7 +536,9 @@ export class RealtimeTutor {
       type: 'response.create',
       response: {
         conversation: 'none',
-        modalities: ['text'],
+        // GA renamed `modalities` → `output_modalities` inside response.create.
+        // Sending the old name returns "Unknown parameter: response.modalities".
+        output_modalities: ['text'],
         instructions,
       },
     })
