@@ -1,5 +1,5 @@
 /* Option B warm walkie-talkie palette. Replaces the previous cool
-   dark blue (#0f1115) + teal accent (#7cc4a8) scheme. Every page
+   dark blue (#12130F) + teal accent (#7cc4a8) scheme. Every page
    inherits via the var(--bg) / var(--accent) etc. tokens, so the
    palette swap automatically reaches /chat, /lessons, /review,
    /login, /stats, /settings, the paywall, etc. — anywhere the old
@@ -257,7 +257,7 @@ a {
 
 .mic-btn {
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   border: 0;
   border-radius: 999px;
   padding: 14px 28px;
@@ -738,7 +738,7 @@ a {
   right: 12px;
   font-size: 11px;
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   padding: 3px 10px;
   border-radius: 999px;
   font-weight: 600;
@@ -958,7 +958,7 @@ a {
   transform: translateX(-50%);
   font-size: 10.5px;
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   padding: 3px 10px;
   border-radius: 999px;
   font-weight: 700;
@@ -993,7 +993,7 @@ a {
   border: none;
   border-radius: 12px;
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -2127,7 +2127,7 @@ body:has(.landing) {
   gap: 12px;
   padding: 14px 22px 14px 18px;
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   border: 0;
   border-radius: 999px;
   font-family: inherit;
@@ -2462,7 +2462,7 @@ body:has(.landing) {
 
 .settings-btn-primary {
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   border: none;
   padding: 10px 16px;
   border-radius: 10px;
@@ -2949,7 +2949,7 @@ body:has(.landing) {
 
 .onboarding-flow-cta {
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   border: none;
   border-radius: 999px;
   padding: 14px 20px;
@@ -3610,7 +3610,7 @@ body:has(.landing) {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  color: #0f1115;
+  color: #12130F;
   font-weight: 700;
   font-size: 13px;
 }
@@ -3750,7 +3750,7 @@ body:has(.landing) {
 
 .lesson-detail {
   position: relative;
-  background: #0f1115;
+  background: #12130F;
   border-radius: 24px 24px 0 0;
   width: 100%;
   max-width: 560px;
@@ -3942,7 +3942,7 @@ body:has(.landing) {
   width: 100%;
   min-height: 56px;
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   border: 0;
   border-radius: 14px;
   font-size: 17px;
@@ -3978,7 +3978,7 @@ body:has(.landing) {
 }
 
 .all-levels {
-  background: #0f1115;
+  background: #12130F;
   width: 100%;
   max-width: 640px;
   display: flex;
@@ -4036,7 +4036,7 @@ body:has(.landing) {
 
 .all-levels-your-level {
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -4099,7 +4099,7 @@ body:has(.landing) {
   height: 112px;
   border-radius: 999px;
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   font-size: 52px;
   font-weight: 700;
   display: flex;
@@ -4154,7 +4154,7 @@ body:has(.landing) {
   min-height: 56px;
   margin-top: 24px;
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   border: 0;
   border-radius: 14px;
   font-size: 17px;
@@ -4303,7 +4303,7 @@ body:has(.landing) {
 
 .lessons-unit-accordion-tag {
   background: var(--accent);
-  color: #0f1115;
+  color: #12130F;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.05em;

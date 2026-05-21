@@ -21,6 +21,8 @@ import {
 /// Voice playback: the Web Speech API speaks the target phrase on
 /// reveal. We don't grade pronunciation here — that's a much bigger
 /// build. The point is the FLIP and the SCHEDULING, not voice grading.
+type Mistake = { original: string; corrected: string; explanation: string }
+
 export default function Review() {
   const { user, accessToken, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -32,6 +34,11 @@ export default function Review() {
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [loading, setLoading] = useState(true)
+  /// Persisted "mistakes the tutor is tracking for you" — moved here
+  /// from /lessons. Loaded from /api/subscription-status (mistakes are
+  /// piggybacked on that endpoint to keep us under the Vercel Hobby
+  /// 12-function limit).
+  const [mistakes, setMistakes] = useState<Mistake[]>([])
 
   const loadCards = useCallback(async () => {
     if (!user) return
@@ -43,6 +50,23 @@ export default function Review() {
     setLoading(false)
   }, [user, languageCode])
 
+  const loadMistakes = useCallback(async () => {
+    if (!user || !accessToken) return
+    try {
+      const r = await fetch('/api/subscription-status', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!r.ok) return
+      const body = (await r.json()) as {
+        recentMistakes?: Record<string, Mistake[]>
+      }
+      setMistakes(body.recentMistakes?.[languageCode] ?? [])
+    } catch {
+      // Silent — mistakes section just won't render. Review cards
+      // (the primary content) still work.
+    }
+  }, [user, accessToken, languageCode])
+
   useEffect(() => {
     if (authLoading) return
     if (!user || !accessToken) {
@@ -50,7 +74,8 @@ export default function Review() {
       return
     }
     void loadCards()
-  }, [authLoading, user, accessToken, navigate, loadCards])
+    void loadMistakes()
+  }, [authLoading, user, accessToken, navigate, loadCards, loadMistakes])
 
   const current = cards[index]
 
@@ -90,6 +115,7 @@ export default function Review() {
     return (
       <div className="app">
         <ReviewNav />
+        <MistakesSection mistakes={mistakes} />
         <div className="review-empty">
           <h2>You're all caught up.</h2>
           <p>Finish a lesson to add phrases to your review deck.</p>
@@ -102,6 +128,7 @@ export default function Review() {
   return (
     <div className="app">
       <ReviewNav />
+      <MistakesSection mistakes={mistakes} />
       <div className="review-shell">
         <div className="review-progress">
           {index + 1} / {cards.length}
@@ -189,6 +216,39 @@ function ExportAnkiButton({
     >
       {busy ? 'Exporting…' : 'Export deck to Anki (CSV)'}
     </button>
+  )
+}
+
+/// "What you're working on" — moved here from /lessons. Renders the
+/// horizontal-scroll strip of recent mistakes the tutor has flagged
+/// for the current target language. Source: profiles.recent_mistakes
+/// via /api/subscription-status. Hidden when there's nothing tracked
+/// (brand-new learner, or after the user has cleared everything).
+function MistakesSection({
+  mistakes,
+}: {
+  mistakes: Array<{ original: string; corrected: string; explanation: string }>
+}) {
+  if (mistakes.length === 0) return null
+  // Cap at 8 so the strip stays scannable. Freshest entries are last
+  // in the array (server-side dedupes / caps already).
+  const visible = mistakes.slice(0, 8)
+  return (
+    <section className="lessons-section" style={{ paddingTop: 16 }}>
+      <div className="lessons-section-label">WHAT YOU'RE WORKING ON</div>
+      <div className="mistakes-strip">
+        {visible.map((m, i) => (
+          <div key={`${m.original}-${i}`} className="mistake-card">
+            <div className="mistake-original">{m.original}</div>
+            <div className="mistake-arrow" aria-hidden>→</div>
+            <div className="mistake-corrected">{m.corrected}</div>
+            {m.explanation && (
+              <div className="mistake-explanation">{m.explanation}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
