@@ -823,7 +823,10 @@ export default function Tutor() {
           })
           break
         }
-        case 'response.audio_transcript.delta': {
+        // GA renamed `response.audio_transcript.*` to `response.output_audio_transcript.*`.
+        // Keep the beta names too in case OpenAI ever rolls anything back.
+        case 'response.audio_transcript.delta':
+        case 'response.output_audio_transcript.delta': {
           const id = (event.response_id as string) ?? 'tutor'
           const delta = (event.delta as string) ?? ''
           setTurns((prev) => {
@@ -858,7 +861,8 @@ export default function Tutor() {
           }
           break
         }
-        case 'response.audio_transcript.done': {
+        case 'response.audio_transcript.done':
+        case 'response.output_audio_transcript.done': {
           const id = (event.response_id as string) ?? 'tutor'
           setTurns((prev) =>
             prev.map((t) =>
@@ -870,12 +874,14 @@ export default function Tutor() {
         // Hint button output channel. Out-of-band text responses
         // (modalities: ["text"]) fire these events; audio responses use
         // response.audio_transcript.delta handled above.
-        case 'response.text.delta': {
+        case 'response.text.delta':
+        case 'response.output_text.delta': {
           const delta = (event.delta as string) ?? ''
           hintBufferRef.current += delta
           break
         }
-        case 'response.text.done': {
+        case 'response.text.done':
+        case 'response.output_text.done': {
           const final = (event.text as string) ?? hintBufferRef.current
           hintBufferRef.current = ''
           // Clean up: strip bullets/numbering, drop preamble headers,
