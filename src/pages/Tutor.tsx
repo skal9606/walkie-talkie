@@ -488,29 +488,49 @@ export default function Tutor() {
     if (el) el.scrollTop = el.scrollHeight
   }, [turns, translations])
 
-  // --- Heartbeat loop: while live + not subscribed, POST /api/heartbeat ---
+  // --- Heartbeat loop: while live, POST /api/heartbeat ---
+  // Fires for subscribed AND free-tier users now (used to be free-tier only).
+  // Reason: the heartbeat also ticks the daily-practice streak server-side,
+  // which applies to everyone. For subscribed users we send seconds=0 so no
+  // usage is double-counted, but we still pass sessionSeconds + localDate so
+  // the server can tick the streak the moment the session crosses 60s.
 
   useEffect(() => {
-    if (status !== 'live' || subscribed || !accessToken) return
+    if (status !== 'live' || !accessToken) return
+    const sessionStartMs = sessionStartedAtRef.current ?? Date.now()
     const interval = setInterval(async () => {
       try {
         const fresh = await getFreshAccessToken()
         if (!fresh) return
+        const sessionSeconds = Math.floor((Date.now() - sessionStartMs) / 1000)
+        const { todayLocalDate, applyServerStreak } = await import('../lib/streak')
         const res = await fetch('/api/heartbeat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${fresh}`,
           },
-          body: JSON.stringify({ seconds: HEARTBEAT_INTERVAL_MS / 1000 }),
+          // Subscribed users don't consume the trial budget, so seconds=0
+          // for them. The server treats sessionSeconds + localDate as the
+          // streak inputs regardless of seconds.
+          body: JSON.stringify({
+            seconds: subscribed ? 0 : HEARTBEAT_INTERVAL_MS / 1000,
+            sessionSeconds,
+            localDate: todayLocalDate(),
+          }),
         })
         if (!res.ok) return
         const data = (await res.json()) as {
           subscribed?: boolean
           secondsRemaining?: number
+          streakCount?: number
+          streakLastDay?: string | null
         }
         setSubscribed(data.subscribed ?? false)
         setSecondsRemaining(data.secondsRemaining ?? 0)
+        if (typeof data.streakCount === 'number') {
+          applyServerStreak(data.streakCount, data.streakLastDay ?? null)
+        }
         if ((data.secondsRemaining ?? 0) <= 0 && !data.subscribed) {
           // Free minutes burned through — cut the session and show the paywall.
           await stopRef.current?.({ reason: 'exhausted' })

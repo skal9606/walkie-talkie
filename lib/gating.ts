@@ -129,6 +129,20 @@ export async function mintGatedSession(
     }
   }
 
+  // Pull current streak so the home screen can render immediately on
+  // session start without a separate round-trip. Best-effort — a DB
+  // hiccup just renders 0/null, never blocks the session mint.
+  let streak: { streakCount: number; streakLastDay: string | null } = {
+    streakCount: 0,
+    streakLastDay: null,
+  }
+  try {
+    const { loadStreak } = await import('./api-handlers.js')
+    streak = await loadStreak(userId)
+  } catch (err) {
+    console.error('[session] loadStreak failed:', err)
+  }
+
   return {
     status: 200,
     body: {
@@ -138,6 +152,8 @@ export async function mintGatedSession(
       recentMistakes: learnerState.mistakes,
       recentMemory: learnerState.memory,
       nextFocus: learnerState.nextFocus,
+      streakCount: streak.streakCount,
+      streakLastDay: streak.streakLastDay,
     },
   }
 }

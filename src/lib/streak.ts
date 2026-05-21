@@ -1,18 +1,30 @@
-// Daily-practice streak. A "practice day" = a single session of >= 30s in
-// the learner's local time zone. Stored in localStorage as the current
-// streak count + the most-recent practice date. The streak is visible (>0)
-// if the user practiced today or yesterday; once a calendar day passes with
-// no practice, the next session starts a new streak from 1.
+// Daily-practice streak. SERVER is the source of truth (Supabase profiles
+// table, fields streak_count + streak_last_day) so iOS and web share one
+// number — having a conversation on web today and on iOS tomorrow extends
+// the same streak. The server ticks the count via /api/heartbeat once a
+// session crosses 60s.
+//
+// localStorage is used here ONLY as a cache so display calls (currentStreak)
+// stay synchronous and the home page can render the badge without waiting on
+// the network. The cache is refreshed every time the client receives a
+// streak field from the server (mintSession response, heartbeat response).
+//
+// Migration note: pre-2026-05-21 builds stored an authoritative streak in
+// 'walkie_streak_v1'. Those rows are abandoned — users start fresh on the
+// new system. Considered porting them up but the failure mode (lose one
+// streak) is mild and the migration code carries forever; not worth it.
 
-const STORAGE_KEY = 'walkie_streak_v1'
+const CACHE_KEY = 'walkie_streak_v2'
 
-/** Minimum session duration (ms) that counts as a practice day. */
-export const PRACTICE_THRESHOLD_MS = 30_000
+/** Minimum session duration (ms) that counts as a practice day. Mirrors the
+ *  server-side constant. Kept exported for callers that decide whether to
+ *  show "almost there" UX hints. */
+export const PRACTICE_THRESHOLD_MS = 60_000
 
-type StreakRecord = {
-  streak: number
-  /** YYYY-MM-DD in the learner's local timezone. */
-  lastPracticeDate: string
+type StreakCache = {
+  streakCount: number
+  /** YYYY-MM-DD in the learner's local timezone, or '' if no streak yet. */
+  streakLastDay: string
 }
 
 function localDateString(d: Date): string {
@@ -32,65 +44,74 @@ function yesterdayLocal(): string {
   return localDateString(d)
 }
 
-function readRaw(): StreakRecord {
+function readCache(): StreakCache {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { streak: 0, lastPracticeDate: '' }
-    const parsed = JSON.parse(raw) as Partial<StreakRecord>
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return { streakCount: 0, streakLastDay: '' }
+    const parsed = JSON.parse(raw) as Partial<StreakCache>
     if (
-      typeof parsed.streak === 'number' &&
-      typeof parsed.lastPracticeDate === 'string'
+      typeof parsed.streakCount === 'number' &&
+      typeof parsed.streakLastDay === 'string'
     ) {
-      return { streak: parsed.streak, lastPracticeDate: parsed.lastPracticeDate }
+      return { streakCount: parsed.streakCount, streakLastDay: parsed.streakLastDay }
     }
-    return { streak: 0, lastPracticeDate: '' }
+    return { streakCount: 0, streakLastDay: '' }
   } catch {
-    return { streak: 0, lastPracticeDate: '' }
+    return { streakCount: 0, streakLastDay: '' }
   }
 }
 
-function writeRaw(record: StreakRecord): void {
+function writeCache(c: StreakCache): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(record))
+    localStorage.setItem(CACHE_KEY, JSON.stringify(c))
   } catch {
     // ignore quota / private mode
   }
 }
 
 /**
- * Returns the streak that should be displayed right now.
- *  - If the last practice was today: stored streak.
- *  - If it was yesterday: stored streak (still alive — practice today to
- *    extend it).
- *  - Anything older or missing: 0 (broken streak).
+ * The streak value to render right now. Applies the today/yesterday rule
+ * locally against the cached server values so we don't need a network call
+ * to know whether to show 0 (broken) or N (still alive).
  */
 export function currentStreak(): number {
-  const { streak, lastPracticeDate } = readRaw()
-  if (!lastPracticeDate) return 0
-  const today = todayLocal()
-  const yesterday = yesterdayLocal()
-  if (lastPracticeDate === today || lastPracticeDate === yesterday) {
-    return streak
+  const { streakCount, streakLastDay } = readCache()
+  if (!streakLastDay) return 0
+  if (streakLastDay === todayLocal() || streakLastDay === yesterdayLocal()) {
+    return streakCount
   }
   return 0
 }
 
 /**
- * Records a completed practice session for today, advancing the streak.
- * No-op if today already counted. Resets to 1 if the streak had lapsed.
+ * Update the cache from a server response. Call this on every payload that
+ * carries fresh streak fields — mintSession (/api/session) and heartbeat
+ * (/api/heartbeat) both return them.
+ */
+export function applyServerStreak(streakCount: number, streakLastDay: string | null): void {
+  writeCache({
+    streakCount: Number.isFinite(streakCount) ? Math.max(0, Math.floor(streakCount)) : 0,
+    streakLastDay: streakLastDay ?? '',
+  })
+}
+
+/** Local-date string in the shape the server expects (YYYY-MM-DD, local TZ). */
+export function todayLocalDate(): string {
+  return todayLocal()
+}
+
+/**
+ * Deprecated — server ticks the streak via the heartbeat. Kept as a no-op
+ * for back-compat with any caller we haven't migrated yet.
  */
 export function recordPractice(): void {
-  const today = todayLocal()
-  const yesterday = yesterdayLocal()
-  const { streak, lastPracticeDate } = readRaw()
-  if (lastPracticeDate === today) return
-  const newStreak = lastPracticeDate === yesterday ? streak + 1 : 1
-  writeRaw({ streak: newStreak, lastPracticeDate: today })
+  // No-op. The server is now the source of truth; streak advancement
+  // happens via /api/heartbeat once the session crosses 60s.
 }
 
 export function clearStreak(): void {
   try {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(CACHE_KEY)
   } catch {
     // ignore
   }

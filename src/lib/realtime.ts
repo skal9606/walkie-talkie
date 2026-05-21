@@ -56,6 +56,8 @@ export class RealtimeTutor {
       recentMistakes?: Array<{ original: string; corrected: string; explanation: string; recordedAt?: string }>
       recentMemory?: string[]
       nextFocus?: string | null
+      streakCount?: number
+      streakLastDay?: string | null
     }
     if (!tokenRes.ok) {
       const err = new Error(tokenData.error ?? `Session token request failed (${tokenRes.status})`)
@@ -67,6 +69,12 @@ export class RealtimeTutor {
     const ephemeralKey = tokenData?.client_secret?.value
     if (!ephemeralKey) {
       throw new Error(`Malformed session response: ${JSON.stringify(tokenData)}`)
+    }
+    // Refresh the streak cache so the home / stats / lessons headers show
+    // the latest cross-platform value next time they read currentStreak().
+    if (typeof tokenData.streakCount === 'number') {
+      const { applyServerStreak } = await import('./streak.js')
+      applyServerStreak(tokenData.streakCount, tokenData.streakLastDay ?? null)
     }
     return {
       ephemeralKey,

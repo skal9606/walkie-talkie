@@ -569,6 +569,90 @@ function capCaseInsensitive(items: string[], max: number): string[] {
   return out
 }
 
+// -- Streak (consecutive practice days) -------------------------------------
+
+/// Server-side daily-practice streak. A day "counts" when the learner has a
+/// conversation of >= 60s that day. The server is the single source of truth
+/// so iOS and web share the same number — talking on web today and iOS
+/// tomorrow extends one continuous streak.
+///
+/// `streak_last_day` is stored as a DATE in the learner's local timezone
+/// (the client sends YYYY-MM-DD with each tick). Server is timezone-
+/// agnostic on purpose: it just compares strings.
+export type StreakState = {
+  streakCount: number
+  /** YYYY-MM-DD in the learner's local timezone, or null if no streak yet. */
+  streakLastDay: string | null
+}
+
+export async function loadStreak(userId: string): Promise<StreakState> {
+  const { supabaseAdmin } = await import('./supabase-admin.js')
+  const { data, error } = await supabaseAdmin()
+    .from('profiles')
+    .select('streak_count, streak_last_day')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error || !data) {
+    return { streakCount: 0, streakLastDay: null }
+  }
+  return {
+    streakCount: typeof data.streak_count === 'number' ? data.streak_count : 0,
+    streakLastDay: typeof data.streak_last_day === 'string' ? data.streak_last_day : null,
+  }
+}
+
+/// Increments the streak for `localDate` if it hasn't already been counted
+/// today. Idempotent — calling multiple times on the same date is a no-op,
+/// so the heartbeat can fire this on every tick once the session has crossed
+/// the 60s threshold.
+///
+/// Rules:
+///   - already counted today (last_day === localDate) → no change
+///   - last_day === yesterday(localDate) → streak_count + 1
+///   - older or null                     → streak_count = 1 (fresh start)
+export async function tickStreak(userId: string, localDate: string): Promise<StreakState> {
+  if (!isYyyyMmDd(localDate)) {
+    return loadStreak(userId)
+  }
+  const current = await loadStreak(userId)
+  if (current.streakLastDay === localDate) {
+    return current
+  }
+  const yesterday = yyyyMmDdMinusOne(localDate)
+  const nextCount = current.streakLastDay === yesterday ? current.streakCount + 1 : 1
+  const { supabaseAdmin } = await import('./supabase-admin.js')
+  const { error } = await supabaseAdmin()
+    .from('profiles')
+    .upsert(
+      {
+        user_id: userId,
+        streak_count: nextCount,
+        streak_last_day: localDate,
+      },
+      { onConflict: 'user_id' },
+    )
+  if (error) {
+    console.error('[streak] tick failed:', error.message)
+    return current
+  }
+  return { streakCount: nextCount, streakLastDay: localDate }
+}
+
+function isYyyyMmDd(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)
+}
+
+function yyyyMmDdMinusOne(s: string): string {
+  // Construct as UTC to avoid DST edge cases — we just want N-1 calendar day.
+  const [y, m, d] = s.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  dt.setUTCDate(dt.getUTCDate() - 1)
+  const yy = dt.getUTCFullYear()
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getUTCDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
 // -- Post-session review ----------------------------------------------------
 
 export type TranscriptEntry = { role: 'user' | 'tutor'; text: string }
