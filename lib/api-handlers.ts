@@ -36,14 +36,15 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
     const reqBody = {
       session: {
         type: 'realtime',
-        // Reverted from gpt-realtime-2 after a second-conversation bug
-        // appeared on iOS: Natalia speaks English, repeats her opener,
-        // and doesn't hold the conversational thread on the second
-        // session after ending the first. Could be v2's documented
-        // mid-session language switching regression, or could be iOS
-        // state hygiene that v2's stricter behavior surfaces. Reverting
-        // to v1 isolates the variable.
-        model: 'gpt-realtime',
+        // Retrying gpt-realtime-2 (2026-05-21). Earlier v2 attempt was
+        // reverted when the second conversation showed an opener-loop +
+        // English regression on iOS. We've since shipped the mic-gate
+        // fix (mute mic while Natalia speaks → kills the echo-driven
+        // phantom turns that triggered the loop) and the audio-session
+        // disconnect fix (prewarmed 2nd convo audio now works). With
+        // those baselines in place, the earlier "v2 regression" may
+        // actually have been echo-driven. Worth re-testing.
+        model: 'gpt-realtime-2',
         audio: {
           input: {
             turn_detection: {
