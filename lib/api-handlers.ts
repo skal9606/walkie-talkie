@@ -36,7 +36,12 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
     const reqBody = {
       session: {
         type: 'realtime',
-        model: 'gpt-realtime',
+        // Hail-mary on a session that connects but never responds. v2 was
+        // launched alongside the GA API and is what OpenAI's own docs
+        // example uses — possible that gpt-realtime (v1) lost some setup
+        // path that v2 picks up automatically. Voice 'coral' stays the
+        // same — supported on both v1 and v2.
+        model: 'gpt-realtime-2',
         audio: {
           input: {
             turn_detection: {
