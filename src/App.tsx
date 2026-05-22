@@ -10,6 +10,7 @@ import Stats from './pages/Stats'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import AdNeymarDM from './pages/Ad'
+import Admin from './pages/Admin'
 import { trackPage } from './lib/tiktok'
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/ad/neymar-dm" element={<AdNeymarDM />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </BrowserRouter>
   )

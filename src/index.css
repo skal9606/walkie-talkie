@@ -1034,6 +1034,177 @@ a {
 }
 
 
+/* --- Internal admin dashboard ------------------------------------------ */
+
+.admin {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    48px
+    max(24px, env(safe-area-inset-left));
+  color: var(--fg);
+}
+
+.admin-empty {
+  margin-top: 80px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.admin-header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.admin-header p {
+  margin: 0 0 32px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 800px) {
+  .admin-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.admin-kpi {
+  padding: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.admin-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.admin-kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+}
+
+.admin-kpi-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.admin-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 720px) {
+  .admin-two-col { grid-template-columns: 1fr; }
+}
+
+.admin-panel {
+  padding: 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 16px;
+}
+
+.admin-panel h2 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+.admin-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-list li:last-child {
+  border-bottom: 0;
+}
+
+.admin-list-key {
+  font-size: 14px;
+  color: var(--fg);
+}
+
+.admin-list-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-table thead th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-muted {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.admin-empty-inline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 /* --- Landing page (Option B retro walkie-talkie) --- */
 
 /* Force the warm Option B palette on the landing route, regardless of the

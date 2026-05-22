@@ -890,6 +890,131 @@ export async function createCheckoutSession(
 import { supabaseAdmin } from './supabase-admin.js'
 import { FREE_TIER_SECONDS } from './constants.js'
 
+// -- Admin dashboard stats ------------------------------------------------
+
+export type AdminStats = {
+  /** Total auth users (incl. anonymous). */
+  totalUsers: number
+  /** Auth users created in the last 7 / 30 days. */
+  newUsers7d: number
+  newUsers30d: number
+  /** Auth users with last_sign_in_at in the last 7 / 30 days. */
+  activeUsers7d: number
+  activeUsers30d: number
+  /** Subscribers currently in any active state. */
+  activeSubscribers: number
+  /** Active subscribers broken down by source (stripe vs apple). */
+  subscribersBySource: Record<string, number>
+  /** Cumulative trial seconds consumed across all free users (sum of `usage`). */
+  totalTrialSeconds: number
+  /** Profiles grouped by target_language ('pt-BR' etc.). */
+  usersByLanguage: Record<string, number>
+  /** 10 most recent signups. Email is null for anonymous accounts. */
+  recentSignups: Array<{
+    id: string
+    email: string | null
+    name: string | null
+    createdAt: string
+    isAnonymous: boolean
+  }>
+}
+
+/**
+ * Aggregate snapshot for the internal dashboard. One round-trip per
+ * table — small payload, fine for sub-1000-user MVP scale. If the
+ * project grows past that, swap to a SQL view + single RPC.
+ */
+export async function getAdminStats(): Promise<AdminStats> {
+  const db = supabaseAdmin()
+  const now = Date.now()
+  const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000)
+  const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000)
+
+  // Fetch up to 1000 auth users. Past that, paginate or add a SQL
+  // count(). The MVP dashboard is for early-stage usage signal.
+  const { data: authData, error: authErr } = await db.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  })
+  if (authErr) {
+    throw new Error(`auth.admin.listUsers failed: ${authErr.message}`)
+  }
+  const users = authData?.users ?? []
+
+  const totalUsers = users.length
+  const newUsers7d = users.filter((u) => new Date(u.created_at) > sevenDaysAgo).length
+  const newUsers30d = users.filter((u) => new Date(u.created_at) > thirtyDaysAgo).length
+  const activeUsers7d = users.filter(
+    (u) => u.last_sign_in_at && new Date(u.last_sign_in_at) > sevenDaysAgo,
+  ).length
+  const activeUsers30d = users.filter(
+    (u) => u.last_sign_in_at && new Date(u.last_sign_in_at) > thirtyDaysAgo,
+  ).length
+
+  // Active subscriptions + source breakdown.
+  const { data: subs } = await db
+    .from('subscriptions')
+    .select('source, status')
+    .in('status', ['active', 'trialing', 'in_grace_period'])
+  const activeSubscribers = subs?.length ?? 0
+  const subscribersBySource: Record<string, number> = {}
+  for (const row of subs ?? []) {
+    const src = (row.source as string) ?? 'unknown'
+    subscribersBySource[src] = (subscribersBySource[src] ?? 0) + 1
+  }
+
+  // Total trial seconds burned (free users only — subscribed users
+  // don't increment this counter).
+  const { data: usageRows } = await db.from('usage').select('seconds_used')
+  const totalTrialSeconds = (usageRows ?? []).reduce(
+    (acc, row) => acc + ((row.seconds_used as number | undefined) ?? 0),
+    0,
+  )
+
+  // Profiles by language. profiles.user_id is also the join key into
+  // auth.users for recentSignups; we read name + target_language here.
+  const { data: profileRows } = await db
+    .from('profiles')
+    .select('user_id, name, target_language')
+  const usersByLanguage: Record<string, number> = {}
+  const profileByUserId = new Map<string, { name: string | null }>()
+  for (const row of profileRows ?? []) {
+    const lang = (row.target_language as string) ?? 'unknown'
+    usersByLanguage[lang] = (usersByLanguage[lang] ?? 0) + 1
+    profileByUserId.set(row.user_id as string, {
+      name: (row.name as string | null) ?? null,
+    })
+  }
+
+  // Recent signups: newest 10 from the auth.users list, with their
+  // profile name joined in. Email is null for anonymous accounts
+  // (Supabase represents anon users with email = '').
+  const recentSignups = users
+    .slice()
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 10)
+    .map((u) => ({
+      id: u.id,
+      email: u.email && u.email.length > 0 ? u.email : null,
+      name: profileByUserId.get(u.id)?.name ?? null,
+      createdAt: u.created_at,
+      isAnonymous: Boolean(u.is_anonymous),
+    }))
+
+  return {
+    totalUsers,
+    newUsers7d,
+    newUsers30d,
+    activeUsers7d,
+    activeUsers30d,
+    activeSubscribers,
+    subscribersBySource,
+    totalTrialSeconds,
+    usersByLanguage,
+    recentSignups,
+  }
+}
+
 export async function getSubscriptionDetail(
   userId: string,
   _stripeSecretKey: string | undefined,

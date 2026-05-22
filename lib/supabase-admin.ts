@@ -26,6 +26,17 @@ export function supabaseAdmin(): SupabaseClient {
 export async function getUserIdFromAuthHeader(
   authHeader: string | string[] | null | undefined,
 ): Promise<string | null> {
+  const user = await getUserFromAuthHeader(authHeader)
+  return user?.id ?? null
+}
+
+/**
+ * Like getUserIdFromAuthHeader but returns id + email. Used by the admin
+ * dashboard gate (which compares email against ADMIN_EMAIL env var).
+ */
+export async function getUserFromAuthHeader(
+  authHeader: string | string[] | null | undefined,
+): Promise<{ id: string; email: string | null } | null> {
   const header = Array.isArray(authHeader) ? authHeader[0] : authHeader
   if (!header) return null
   const match = /^Bearer\s+(.+)$/i.exec(header)
@@ -33,5 +44,5 @@ export async function getUserIdFromAuthHeader(
   const jwt = match[1]
   const { data, error } = await supabaseAdmin().auth.getUser(jwt)
   if (error || !data?.user) return null
-  return data.user.id
+  return { id: data.user.id, email: data.user.email ?? null }
 }
