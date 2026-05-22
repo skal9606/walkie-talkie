@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
 
 /// Mirrors the backend shape in lib/api-handlers.ts. Inlined here rather
@@ -154,7 +154,6 @@ export default function Tutor() {
     state: 'completed' | 'in_progress'
   } | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
 
   // --- Complete-beginner visual cards ---
   // The card pinned in the lower-right while live. Cleared on session start,
@@ -345,7 +344,17 @@ export default function Tutor() {
     // default tutor (Natalia) starts speaking before they pick.
     if (!hasLanguageSelection(profile)) return
 
-    const memory = loadMemory(tutor.id)
+    const persistedMemory = loadMemory(tutor.id)
+    // First-session memory hook: persistedMemory is empty for brand-new
+    // users, but they just told us WHY they're learning during onboarding.
+    // Synthesize a memory bullet from profile.goals so memoryAwareFreeOpener
+    // can ground the very first conversation in something specific to them
+    // (e.g. "ouvi que você vai visitar o Brasil — quando é a viagem?")
+    // instead of a generic "tudo bem?" opener.
+    const memory =
+      persistedMemory.length === 0 && profile?.goals?.trim()
+        ? [`Learning ${tutor.languageLabel} because: ${profile.goals.trim()}`]
+        : persistedMemory
     const isFirstSession = !profile?.level
     const synthetic: Scenario = isFirstSession
       ? {
@@ -1121,30 +1130,12 @@ export default function Tutor() {
               level: picked.level,
               goals: picked.goals,
             })
-            // After onboarding, route to /lessons so cold users see the
-            // structured curriculum (catalog of 4 levels of lessons)
-            // before paying — competitor signal (ISSEN reviews) shows
-            // trials that surface the curriculum convert better than
-            // trials that drop the user straight into free conversation.
-            // Honor explicit intent params (?mode=, ?lesson=, ?checkout=)
-            // by staying on /chat; those mean the user wanted to talk.
-            const hasIntent =
-              searchParams.get('mode') ||
-              searchParams.get('lesson') ||
-              searchParams.get('checkout')
-            if (!hasIntent) {
-              // Suppress auto-start BEFORE the profile state change re-runs
-              // the auto-start effect. Otherwise the effect sees the populated
-              // profile, mints + connects a Realtime session, and only then
-              // does the navigate() unmount us — leaving orphaned audio
-              // playing on /lessons and skipping the heartbeat that records
-              // signup_ip_hash. (Bug observed 2026-05-21.)
-              setAutoStartAfterAuth(false)
-            }
+            // Stay on /chat so auto-start drops the new user straight
+            // into free conversation — minimize steps-to-value for the
+            // free trial. The opener references the goal they just
+            // entered via the synthetic memory bullet built in the
+            // auto-start effect below.
             setProfile(merged)
-            if (!hasIntent) {
-              navigate('/lessons', { replace: true })
-            }
           }}
         />
       </div>
