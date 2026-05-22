@@ -1089,6 +1089,19 @@ body:has(.landing) {
   gap: 24px;
 }
 
+/* Mobile nav — hide the in-page anchors so Login + Chat Now stay on
+   the same row as the wordmark and align right (the wider nav-right
+   group otherwise wraps to a second line). Anchors are still
+   accessible via the Pricing tier in the body + the FAQ section. */
+@media (max-width: 640px) {
+  .landing-nav-right .landing-nav-link[href^="#"] {
+    display: none;
+  }
+  .landing-nav-right {
+    gap: 16px;
+  }
+}
+
 .landing-nav-link {
   color: var(--landing-text-secondary);
   text-decoration: none;
