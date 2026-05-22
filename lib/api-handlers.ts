@@ -1017,11 +1017,12 @@ export async function getAdminStats(): Promise<AdminStats> {
   // join key into auth.users for recentSignups; we read name +
   // target_language + total_practice_seconds + total_conversations here.
   // profiles.name doesn't exist — name lives in auth.users.user_metadata
-  // (sourced below from the listUsers result). Selecting it here used to
-  // silently fail the entire SELECT and zero out the dashboard.
+  // (sourced below from the listUsers result). The language column is
+  // cefr_language, not target_language. Selecting non-existent columns
+  // silently fails the entire SELECT and zeroes out the dashboard.
   const { data: profileRows, error: profileErr } = await db
     .from('profiles')
-    .select('user_id, target_language, total_practice_seconds, total_conversations, signup_ip_hash')
+    .select('user_id, cefr_language, total_practice_seconds, total_conversations, signup_ip_hash')
   // Without this log, a schema-cache mismatch (PostgREST not seeing a
   // newly-added column) silently returns null/empty and the dashboard
   // shows zeros everywhere instead of failing loudly. Vercel logs are
@@ -1038,7 +1039,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   let totalPracticeSeconds = 0
   let totalConversations = 0
   for (const row of profileRows ?? []) {
-    const lang = (row.target_language as string) ?? 'unknown'
+    const lang = (row.cefr_language as string) ?? 'unknown'
     usersByLanguage[lang] = (usersByLanguage[lang] ?? 0) + 1
     const ipHash = (row.signup_ip_hash as string | null) ?? null
     profileByUserId.set(row.user_id as string, { ipHash })
