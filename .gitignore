@@ -5,3 +5,6 @@ dist
 .env.*.local
 .DS_Store
 *.tsbuildinfo
+
+# Eval suite outputs (per-run transcripts, scores, etc.)
+evals/results/
