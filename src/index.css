@@ -1205,6 +1205,26 @@ a {
   font-size: 13px;
 }
 
+.admin-ip-hash {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.admin-ip-dup {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #d4351c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
 /* --- Landing page (Option B retro walkie-talkie) --- */
 
 /* Force the warm Option B palette on the landing route, regardless of the

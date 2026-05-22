@@ -929,6 +929,10 @@ export type AdminStats = {
     name: string | null
     createdAt: string
     isAnonymous: boolean
+    /** First 8 chars of the SHA-256 IP hash. Null if not yet recorded. */
+    ipHashShort: string | null
+    /** How many profiles share this IP hash. 1 = unique, >1 = duplicate. */
+    ipHashCount: number
   }>
 }
 
@@ -1014,17 +1018,26 @@ export async function getAdminStats(): Promise<AdminStats> {
   // target_language + total_practice_seconds + total_conversations here.
   const { data: profileRows } = await db
     .from('profiles')
-    .select('user_id, name, target_language, total_practice_seconds, total_conversations')
+    .select('user_id, name, target_language, total_practice_seconds, total_conversations, signup_ip_hash')
   const usersByLanguage: Record<string, number> = {}
-  const profileByUserId = new Map<string, { name: string | null }>()
+  const profileByUserId = new Map<string, { name: string | null; ipHash: string | null }>()
+  // Count how many profiles share each IP hash so we can flag duplicates
+  // in the dashboard. Hashes that haven't been recorded yet (null) are
+  // skipped — they don't count toward duplicate detection.
+  const ipHashCounts = new Map<string, number>()
   let totalPracticeSeconds = 0
   let totalConversations = 0
   for (const row of profileRows ?? []) {
     const lang = (row.target_language as string) ?? 'unknown'
     usersByLanguage[lang] = (usersByLanguage[lang] ?? 0) + 1
+    const ipHash = (row.signup_ip_hash as string | null) ?? null
     profileByUserId.set(row.user_id as string, {
       name: (row.name as string | null) ?? null,
+      ipHash,
     })
+    if (ipHash) {
+      ipHashCounts.set(ipHash, (ipHashCounts.get(ipHash) ?? 0) + 1)
+    }
     totalPracticeSeconds += (row.total_practice_seconds as number | undefined) ?? 0
     totalConversations += (row.total_conversations as number | undefined) ?? 0
   }
@@ -1038,13 +1051,19 @@ export async function getAdminStats(): Promise<AdminStats> {
     .slice()
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 10)
-    .map((u) => ({
-      id: u.id,
-      email: u.email && u.email.length > 0 ? u.email : null,
-      name: profileByUserId.get(u.id)?.name ?? null,
-      createdAt: u.created_at,
-      isAnonymous: Boolean(u.is_anonymous),
-    }))
+    .map((u) => {
+      const profile = profileByUserId.get(u.id)
+      const ipHash = profile?.ipHash ?? null
+      return {
+        id: u.id,
+        email: u.email && u.email.length > 0 ? u.email : null,
+        name: profile?.name ?? null,
+        createdAt: u.created_at,
+        isAnonymous: Boolean(u.is_anonymous),
+        ipHashShort: ipHash ? ipHash.slice(0, 8) : null,
+        ipHashCount: ipHash ? (ipHashCounts.get(ipHash) ?? 1) : 0,
+      }
+    })
 
   return {
     totalUsers,

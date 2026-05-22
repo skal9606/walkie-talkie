@@ -130,6 +130,23 @@ export async function addPracticeSeconds(userId: string, seconds: number): Promi
 }
 
 /**
+ * Records the IP hash of the user's first heartbeat — and only the
+ * first, via `signup_ip_hash IS NULL` in the WHERE clause. Used by the
+ * admin dashboard to spot duplicate-IP signups (sock-puppet accounts).
+ * Best-effort: any failure logs and continues.
+ */
+export async function setSignupIpHashIfMissing(userId: string, ipHash: string): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from('profiles')
+    .update({ signup_ip_hash: ipHash })
+    .eq('user_id', userId)
+    .is('signup_ip_hash', null)
+  if (error) {
+    console.error('[admin-counters] setSignupIpHashIfMissing failed:', error.message)
+  }
+}
+
+/**
  * Atomic +1 on profiles.total_conversations. Called once per /api/session
  * mint. Best-effort: failures don't block session minting.
  */

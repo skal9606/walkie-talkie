@@ -30,6 +30,8 @@ type AdminStats = {
     name: string | null
     createdAt: string
     isAnonymous: boolean
+    ipHashShort: string | null
+    ipHashCount: number
   }>
 }
 
@@ -195,6 +197,7 @@ export default function Admin() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Type</th>
+                <th>IP</th>
               </tr>
             </thead>
             <tbody>
@@ -204,6 +207,20 @@ export default function Admin() {
                   <td>{u.name ?? '—'}</td>
                   <td>{u.email ?? <span className="admin-muted">(anonymous)</span>}</td>
                   <td>{u.isAnonymous ? 'Anon' : 'Signed in'}</td>
+                  <td>
+                    {u.ipHashShort ? (
+                      <span className="admin-ip-hash">
+                        <code>{u.ipHashShort}</code>
+                        {u.ipHashCount > 1 && (
+                          <span className="admin-ip-dup" title={`${u.ipHashCount} accounts share this IP`}>
+                            ×{u.ipHashCount}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="admin-muted">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

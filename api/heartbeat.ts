@@ -5,6 +5,7 @@ import {
   addUsageSeconds,
   checkSessionAccess,
   clientIpHash,
+  setSignupIpHashIfMissing,
 } from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 import { loadStreak, tickStreak } from '../lib/api-handlers.js'
@@ -61,6 +62,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await addIpUsageSeconds(ipHash, seconds)
     }
     await addPracticeSeconds(userId, practiceSeconds)
+    if (ipHash) {
+      await setSignupIpHashIfMissing(userId, ipHash)
+    }
   } catch (err) {
     return res.status(500).json({ error: String(err) })
   }
