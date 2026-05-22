@@ -1016,9 +1016,16 @@ export async function getAdminStats(): Promise<AdminStats> {
   // Profiles by language + total counters. profiles.user_id is also the
   // join key into auth.users for recentSignups; we read name +
   // target_language + total_practice_seconds + total_conversations here.
-  const { data: profileRows } = await db
+  const { data: profileRows, error: profileErr } = await db
     .from('profiles')
     .select('user_id, name, target_language, total_practice_seconds, total_conversations, signup_ip_hash')
+  // Without this log, a schema-cache mismatch (PostgREST not seeing a
+  // newly-added column) silently returns null/empty and the dashboard
+  // shows zeros everywhere instead of failing loudly. Vercel logs are
+  // where to look when totals look wrong.
+  if (profileErr) {
+    console.error('[admin-stats] profiles SELECT failed:', profileErr.message)
+  }
   const usersByLanguage: Record<string, number> = {}
   const profileByUserId = new Map<string, { name: string | null; ipHash: string | null }>()
   // Count how many profiles share each IP hash so we can flag duplicates
