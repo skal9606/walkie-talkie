@@ -1121,7 +1121,6 @@ export default function Tutor() {
               level: picked.level,
               goals: picked.goals,
             })
-            setProfile(merged)
             // After onboarding, route to /lessons so cold users see the
             // structured curriculum (catalog of 4 levels of lessons)
             // before paying — competitor signal (ISSEN reviews) shows
@@ -1133,6 +1132,16 @@ export default function Tutor() {
               searchParams.get('mode') ||
               searchParams.get('lesson') ||
               searchParams.get('checkout')
+            if (!hasIntent) {
+              // Suppress auto-start BEFORE the profile state change re-runs
+              // the auto-start effect. Otherwise the effect sees the populated
+              // profile, mints + connects a Realtime session, and only then
+              // does the navigate() unmount us — leaving orphaned audio
+              // playing on /lessons and skipping the heartbeat that records
+              // signup_ip_hash. (Bug observed 2026-05-21.)
+              setAutoStartAfterAuth(false)
+            }
+            setProfile(merged)
             if (!hasIntent) {
               navigate('/lessons', { replace: true })
             }
