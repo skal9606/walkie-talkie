@@ -909,6 +909,19 @@ export type AdminStats = {
   totalTrialSeconds: number
   /** Profiles grouped by target_language ('pt-BR' etc.). */
   usersByLanguage: Record<string, number>
+  /** Total conversations started across all users (one count per /api/session mint). */
+  totalConversations: number
+  /** Total practice seconds across all users (subscribers + free). */
+  totalPracticeSeconds: number
+  /** Average session length in seconds. 0 when totalConversations === 0. */
+  avgSessionSeconds: number
+  /** Subs that already cancelled (status='canceled'). */
+  cancelledSubs: number
+  /** Active subs set to cancel at period end — pending churn. */
+  pendingCancellations: number
+  /** Monthly Recurring Revenue in USD (sum of monthly equivalents for
+   *  every active sub). Yearly plans count at price / 12. */
+  mrrUsd: number
   /** 10 most recent signups. Email is null for anonymous accounts. */
   recentSignups: Array<{
     id: string
@@ -917,6 +930,20 @@ export type AdminStats = {
     createdAt: string
     isAnonymous: boolean
   }>
+}
+
+/// Per-plan monthly $ value used in the MRR sum. Stripe price IDs come
+/// from env vars (so they match whatever's configured in production);
+/// Apple-side product IDs are matched on substring since the productId
+/// space is namespaced and stable ("...monthly", "...yearly").
+function monthlyValueForPlan(productId: string | null | undefined): number {
+  if (!productId) return 0
+  if (productId === process.env.STRIPE_MONTHLY_PRICE_ID) return 14.99
+  if (productId === process.env.STRIPE_YEARLY_PRICE_ID) return 149.99 / 12
+  const lower = productId.toLowerCase()
+  if (lower.includes('monthly')) return 14.99
+  if (lower.includes('yearly') || lower.includes('annual')) return 149.99 / 12
+  return 0
 }
 
 /**
@@ -951,17 +978,28 @@ export async function getAdminStats(): Promise<AdminStats> {
     (u) => u.last_sign_in_at && new Date(u.last_sign_in_at) > thirtyDaysAgo,
   ).length
 
-  // Active subscriptions + source breakdown.
+  // Active subscriptions + source breakdown + MRR + pending churn.
   const { data: subs } = await db
     .from('subscriptions')
-    .select('source, status')
+    .select('source, status, product_id, cancel_at_period_end')
     .in('status', ['active', 'trialing', 'in_grace_period'])
   const activeSubscribers = subs?.length ?? 0
   const subscribersBySource: Record<string, number> = {}
+  let mrrUsd = 0
+  let pendingCancellations = 0
   for (const row of subs ?? []) {
     const src = (row.source as string) ?? 'unknown'
     subscribersBySource[src] = (subscribersBySource[src] ?? 0) + 1
+    mrrUsd += monthlyValueForPlan(row.product_id as string | null | undefined)
+    if (row.cancel_at_period_end === true) pendingCancellations += 1
   }
+
+  // Already-cancelled subs — separate count, not subtracted from active.
+  const { count: cancelledCount } = await db
+    .from('subscriptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'canceled')
+  const cancelledSubs = cancelledCount ?? 0
 
   // Total trial seconds burned (free users only — subscribed users
   // don't increment this counter).
@@ -971,20 +1009,27 @@ export async function getAdminStats(): Promise<AdminStats> {
     0,
   )
 
-  // Profiles by language. profiles.user_id is also the join key into
-  // auth.users for recentSignups; we read name + target_language here.
+  // Profiles by language + total counters. profiles.user_id is also the
+  // join key into auth.users for recentSignups; we read name +
+  // target_language + total_practice_seconds + total_conversations here.
   const { data: profileRows } = await db
     .from('profiles')
-    .select('user_id, name, target_language')
+    .select('user_id, name, target_language, total_practice_seconds, total_conversations')
   const usersByLanguage: Record<string, number> = {}
   const profileByUserId = new Map<string, { name: string | null }>()
+  let totalPracticeSeconds = 0
+  let totalConversations = 0
   for (const row of profileRows ?? []) {
     const lang = (row.target_language as string) ?? 'unknown'
     usersByLanguage[lang] = (usersByLanguage[lang] ?? 0) + 1
     profileByUserId.set(row.user_id as string, {
       name: (row.name as string | null) ?? null,
     })
+    totalPracticeSeconds += (row.total_practice_seconds as number | undefined) ?? 0
+    totalConversations += (row.total_conversations as number | undefined) ?? 0
   }
+  const avgSessionSeconds =
+    totalConversations > 0 ? Math.round(totalPracticeSeconds / totalConversations) : 0
 
   // Recent signups: newest 10 from the auth.users list, with their
   // profile name joined in. Email is null for anonymous accounts
@@ -1011,6 +1056,12 @@ export async function getAdminStats(): Promise<AdminStats> {
     subscribersBySource,
     totalTrialSeconds,
     usersByLanguage,
+    totalConversations,
+    totalPracticeSeconds,
+    avgSessionSeconds,
+    cancelledSubs,
+    pendingCancellations,
+    mrrUsd,
     recentSignups,
   }
 }

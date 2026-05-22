@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   addIpUsageSeconds,
+  addPracticeSeconds,
   addUsageSeconds,
   checkSessionAccess,
   clientIpHash,
@@ -46,11 +47,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // device" rule. Best-effort; if the migration hasn't been run yet
   // it logs and continues with the per-user cap only.
   const ipHash = clientIpHash(req.headers)
+  // Practice-seconds counter for the admin dashboard. The client sends
+  // seconds=0 for subscribed users (so they don't burn the trial cap)
+  // but we still want their total practice time visible. Default to
+  // the heartbeat interval (10s) when seconds=0 — slightly inaccurate
+  // on the last partial heartbeat of a session, but fine signal for
+  // a usage dashboard.
+  const HEARTBEAT_INTERVAL_SECONDS = 10
+  const practiceSeconds = seconds > 0 ? seconds : HEARTBEAT_INTERVAL_SECONDS
   try {
     await addUsageSeconds(userId, seconds)
     if (ipHash && seconds > 0) {
       await addIpUsageSeconds(ipHash, seconds)
     }
+    await addPracticeSeconds(userId, practiceSeconds)
   } catch (err) {
     return res.status(500).json({ error: String(err) })
   }

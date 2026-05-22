@@ -110,6 +110,39 @@ export async function addUsageSeconds(userId: string, seconds: number): Promise<
 }
 
 /**
+ * Atomic increment of profiles.total_practice_seconds. Called from
+ * /api/heartbeat for EVERY user — subscribed + free — so the dashboard
+ * can show total minutes across all users. (The legacy `usage` table
+ * only tracks trial-budget seconds, which hides paid usage entirely.)
+ *
+ * Best-effort: if the migration hasn't been run yet, log + continue.
+ */
+export async function addPracticeSeconds(userId: string, seconds: number): Promise<void> {
+  const clamped = Math.max(0, Math.floor(seconds))
+  if (clamped === 0) return
+  const { error } = await supabaseAdmin().rpc('increment_practice', {
+    p_user_id: userId,
+    p_seconds: clamped,
+  })
+  if (error) {
+    console.error('[admin-counters] increment_practice failed:', error.message)
+  }
+}
+
+/**
+ * Atomic +1 on profiles.total_conversations. Called once per /api/session
+ * mint. Best-effort: failures don't block session minting.
+ */
+export async function bumpConversationCount(userId: string): Promise<void> {
+  const { error } = await supabaseAdmin().rpc('increment_conversations', {
+    p_user_id: userId,
+  })
+  if (error) {
+    console.error('[admin-counters] increment_conversations failed:', error.message)
+  }
+}
+
+/**
  * Atomic increment of per-IP usage via increment_ip_usage() (see the
  * 2026-05-21-ip-trial-gate migration). Same usage pattern as addUsageSeconds
  * but keyed by hashed IP rather than user_id. Hash is SHA-256 so we never
@@ -228,6 +261,11 @@ export async function mintGatedSession(
   }
   const mint = await mintSessionToken(openAiKey)
   if (mint.status !== 200) return mint
+  // Successful mint = one conversation start (or prewarm). Best-effort
+  // counter for the admin dashboard; iOS prewarm slightly over-counts
+  // because the prewarmed connection 1:1 with a real session in the
+  // common path, but app-opens-without-use show up as a false +1.
+  await bumpConversationCount(userId)
   const body = mint.body && typeof mint.body === 'object' ? (mint.body as object) : {}
 
   // Load learner state for the requested language. Skipped when no language

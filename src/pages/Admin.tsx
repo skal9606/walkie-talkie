@@ -18,6 +18,12 @@ type AdminStats = {
   subscribersBySource: Record<string, number>
   totalTrialSeconds: number
   usersByLanguage: Record<string, number>
+  totalConversations: number
+  totalPracticeSeconds: number
+  avgSessionSeconds: number
+  cancelledSubs: number
+  pendingCancellations: number
+  mrrUsd: number
   recentSignups: Array<{
     id: string
     email: string | null
@@ -105,19 +111,39 @@ export default function Admin() {
       <section className="admin-kpi-grid">
         <KPI label="Total users" value={stats.totalUsers} />
         <KPI label="Active subscribers" value={stats.activeSubscribers} />
-        <KPI label="New (7d)" value={stats.newUsers7d} />
-        <KPI label="New (30d)" value={stats.newUsers30d} />
-        <KPI label="Active (7d)" value={stats.activeUsers7d} />
-        <KPI label="Active (30d)" value={stats.activeUsers30d} />
         <KPI
-          label="Trial minutes used"
-          value={Math.round(stats.totalTrialSeconds / 60)}
-          subtitle={`${stats.totalTrialSeconds.toLocaleString()} seconds total`}
+          label="MRR"
+          value={`$${stats.mrrUsd.toFixed(2)}`}
+          subtitle={`${stats.activeSubscribers} active subs`}
         />
         <KPI
           label="Free → Paid"
           value={`${conversionPct(stats)}%`}
           subtitle={`${stats.activeSubscribers} / ${stats.totalUsers}`}
+        />
+        <KPI label="New (7d)" value={stats.newUsers7d} />
+        <KPI label="New (30d)" value={stats.newUsers30d} />
+        <KPI label="Active (7d)" value={stats.activeUsers7d} />
+        <KPI label="Active (30d)" value={stats.activeUsers30d} />
+        <KPI
+          label="Conversations"
+          value={stats.totalConversations.toLocaleString()}
+          subtitle="total sessions started"
+        />
+        <KPI
+          label="Total minutes"
+          value={Math.round(stats.totalPracticeSeconds / 60).toLocaleString()}
+          subtitle="all users, all time"
+        />
+        <KPI
+          label="Avg session"
+          value={formatSessionDuration(stats.avgSessionSeconds)}
+          subtitle="per conversation"
+        />
+        <KPI
+          label="Churn"
+          value={stats.cancelledSubs + stats.pendingCancellations}
+          subtitle={`${stats.cancelledSubs} done · ${stats.pendingCancellations} pending`}
         />
       </section>
 
@@ -228,6 +254,17 @@ function labelLanguage(code: string): string {
     case 'de-DE': return '🇩🇪 German'
     default: return code
   }
+}
+
+/// "M:SS" for short sessions, "M min" for longer. Hide seconds past a
+/// minute since "12:34 min per session" is more noise than signal.
+function formatSessionDuration(totalSeconds: number): string {
+  if (totalSeconds <= 0) return '—'
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  if (m === 0) return `${s}s`
+  if (m < 10) return `${m}:${s.toString().padStart(2, '0')}`
+  return `${m} min`
 }
 
 function relativeTime(iso: string): string {
