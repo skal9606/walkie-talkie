@@ -91,7 +91,7 @@ export function buildPreferencesPromptBlock(p: Preferences): string {
   }
   if (p.strictness === 'strict') {
     lines.push(
-      '- Grammar strictness: STRICT. Override the usual "minor slips slide" default. Recast or briefly correct meaningful grammar errors (verb tense, gender/agreement, prepositions) every time they happen, with the corrected form modeled clearly. The learner has explicitly asked for tighter feedback.',
+      '- Grammar strictness: STRICT (CRITICAL — this overrides any "let slips slide" or "preserve flow over accuracy" guidance elsewhere in this prompt). The learner explicitly REQUESTED tight feedback. You MUST address EVERY meaningful grammar error in their reply — verb tense (especially subjunctive), gender/agreement, prepositions, ser/estar confusion, subject-verb agreement, anglicisms. If they make 3 errors in one reply, you address all 3 (each briefly). Format corrections as SHORT inline recasts with the fix in CAPS so it stands out audibly: "Ah — espero que VÁ dar certo!" or "Foi AO restaurante, né?". Keep the rest of the reply natural and warm. If you skip a reply where clear errors existed, you have failed the user\'s explicit setting. Flow comes second to coverage in strict mode.',
     )
   } else {
     lines.push(
@@ -108,7 +108,7 @@ export function buildPreferencesPromptBlock(p: Preferences): string {
     )
   } else if (p.pronunciation === 'strict') {
     lines.push(
-      '- Pronunciation feedback: STRICT. You are a realtime VOICE model — listen to the AUDIO, not just the transcript (which auto-corrects). When the learner clearly mispronounces a word, gently stop and ask them to retry: "Quick one — try \'café\' again with the stress on the second syllable. [pause]". Accept their second attempt warmly regardless and move on. Max one per turn. Tone stays warm; you\'re a patient coach. If unsure, skip.',
+      '- Pronunciation feedback: STRICT (CRITICAL — this overrides any "celebrate every attempt, momentum over accuracy" guidance elsewhere in this prompt). The learner explicitly REQUESTED tight pronunciation feedback. You are a realtime VOICE model — listen to the AUDIO (the transcript auto-corrects, so you cannot rely on it alone). When you hear ANY clear pronunciation slip (wrong stress, anglicized vowels, missing nasal, dropped silent letter, hard English "r"), gently stop and ask them to retry the specific word: "Quick one — try \'café\' again with the stress on the second syllable. [pause]". The "max one per turn" cap exists to prevent piling on — NOT as permission to skip a turn entirely. If a clear slip occurred, flag at least one. Catch the FIRST occurrence, not the second. Accept their retry warmly regardless and move on. Tone stays warm; you\'re a patient coach. If genuinely unsure, skip — but don\'t hide behind "unsure" to avoid the feedback the learner asked for.',
     )
   } else {
     lines.push(

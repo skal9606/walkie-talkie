@@ -148,6 +148,108 @@ export const RUBRICS: Record<RubricId, Rubric> = {
       ...PERSONA_DIMENSIONS,
     ],
   },
+  'grammar-strict-adherence': {
+    id: 'grammar-strict-adherence',
+    intent: 'The learner explicitly set Grammar Strictness = STRICT. Did the tutor honor that setting and correct grammar mistakes every time, not just selectively?',
+    dimensions: [
+      {
+        key: 'correction_coverage',
+        question: 'Did the tutor correct AT LEAST ONE meaningful grammar error in EVERY tutor turn where the learner made one? (Strict mode requires per-turn correction, not selective.)',
+        lowAnchor: 'Mostly let mistakes slide — same lax behavior as default',
+        highAnchor: 'Caught and corrected a mistake on essentially every turn',
+      },
+      {
+        key: 'correction_form',
+        question: 'When correcting, did the tutor MODEL the corrected form clearly (e.g. "Ah, você FOI AO restaurante!") rather than just hinting?',
+        lowAnchor: 'Vague hints or no corrected form shown',
+        highAnchor: 'Always models the right form explicitly',
+      },
+      {
+        key: 'flow_preservation',
+        question: 'Even with strict correction, did the tutor preserve conversational flow (recasts within natural replies) rather than lecturing?',
+        lowAnchor: 'Stop-and-explain that killed the conversation',
+        highAnchor: 'Frequent corrections folded inside otherwise-natural replies',
+      },
+    ],
+  },
+  'grammar-lax-adherence': {
+    id: 'grammar-lax-adherence',
+    intent: 'The learner explicitly set Grammar Strictness = LAX. Did the tutor honor that and let minor slips slide, correcting only when meaning was at risk?',
+    dimensions: [
+      {
+        key: 'restraint',
+        question: 'Did the tutor RESTRAIN itself — letting small grammar slips pass without correction when meaning was clear?',
+        lowAnchor: 'Corrected most or all mistakes anyway (ignored the setting)',
+        highAnchor: 'Visibly held back; corrections rare and reserved for meaning breakdowns',
+      },
+      {
+        key: 'meaning_threshold',
+        question: 'When the tutor DID correct, was it because a Brazilian listener would have actually been confused — not just because the form was wrong?',
+        lowAnchor: 'Corrected purely on form, not on communicative impact',
+        highAnchor: 'Corrections were tied to genuine clarity issues',
+      },
+    ],
+  },
+  'pronunciation-strict-adherence': {
+    id: 'pronunciation-strict-adherence',
+    intent: 'The learner set Pronunciation Feedback = STRICT. The simulated learner is typing deliberately mis-pronounced phonetic spellings (kasa, muyto, etc.) as a text-mode proxy for audio mispronunciation. Did the tutor identify those AND ask the learner to retry the word?',
+    dimensions: [
+      {
+        key: 'detected_mispronunciations',
+        question: 'Did the tutor identify the phonetic mis-spellings as pronunciation issues (not grammar / not vocabulary)?',
+        lowAnchor: 'Treated them as typos or ignored them entirely',
+        highAnchor: 'Explicitly flagged them as pronunciation issues',
+      },
+      {
+        key: 'retry_prompts',
+        question: 'When flagging, did the tutor explicitly ask the learner to TRY THE WORD AGAIN (per the strict-mode directive: "gently stop and ask them to retry")?',
+        lowAnchor: 'Just modeled the right form, no retry prompt',
+        highAnchor: 'Consistently asked for a retry attempt',
+      },
+      {
+        key: 'warmth_preserved',
+        question: 'Did pronunciation correction stay warm and patient, not nitpicky or condescending?',
+        lowAnchor: 'Felt like a drill sergeant',
+        highAnchor: 'Patient coach tone preserved throughout',
+      },
+    ],
+  },
+  'pronunciation-honest-adherence': {
+    id: 'pronunciation-honest-adherence',
+    intent: 'Pronunciation Feedback = HONEST (middle setting). Tutor should model the correct pronunciation as a quick aside, then continue — NOT ask for retry.',
+    dimensions: [
+      {
+        key: 'aside_corrections',
+        question: 'Did the tutor model the correct pronunciation as a brief aside in its reply (and then continue the conversation)?',
+        lowAnchor: 'Ignored mis-pronunciations OR did a full retry stop',
+        highAnchor: 'Quick inline asides that named the right form',
+      },
+      {
+        key: 'no_retry_stops',
+        question: 'Did the tutor AVOID stopping the conversation to demand a retry (that\'s STRICT-mode behavior, not HONEST)?',
+        lowAnchor: 'Repeatedly stopped to demand retry',
+        highAnchor: 'Smooth — modeled and moved on every time',
+      },
+    ],
+  },
+  'pronunciation-forgiving-adherence': {
+    id: 'pronunciation-forgiving-adherence',
+    intent: 'Pronunciation Feedback = FORGIVING (default). Tutor should celebrate any recognizable attempt and NOT call out pronunciation slips at all.',
+    dimensions: [
+      {
+        key: 'silence_on_pronunciation',
+        question: 'Did the tutor STAY SILENT on pronunciation slips, not flagging them?',
+        lowAnchor: 'Called out mispronunciations anyway (ignored the setting)',
+        highAnchor: 'Made zero unsolicited pronunciation corrections',
+      },
+      {
+        key: 'celebrates_attempts',
+        question: 'Did the tutor warmly affirm recognizable attempts even when off?',
+        lowAnchor: 'Neutral or corrective',
+        highAnchor: 'Visibly celebratory of attempts',
+      },
+    ],
+  },
   'adaptive-difficulty': {
     id: 'adaptive-difficulty',
     intent: 'When the learner\'s level shifted mid-conversation (up or down), did the tutor adapt?',

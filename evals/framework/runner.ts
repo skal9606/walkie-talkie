@@ -45,6 +45,7 @@ export async function runOne(spec: TestSpec): Promise<TestResult> {
     name: spec.learnerName ?? 'Alex',
     nativeLanguage: 'English' as const,
     goals: spec.learnerGoal,
+    preferences: spec.preferences,
   }
 
   const transcript: TranscriptTurn[] = []

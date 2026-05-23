@@ -9,6 +9,7 @@ import { momentumSpecs } from './categories/momentum'
 import { repetitionSpecs } from './categories/repetition'
 import { codeSwitchingSpecs } from './categories/code-switching'
 import { adaptiveDifficultySpecs } from './categories/adaptive-difficulty'
+import { settingsAdherenceSpecs } from './categories/settings-adherence'
 import { join } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 
@@ -75,6 +76,7 @@ function buildAllSpecs(opts: { smoke: boolean }): TestSpec[] {
     ...repetitionSpecs(),
     ...codeSwitchingSpecs(),
     ...adaptiveDifficultySpecs(),
+    ...settingsAdherenceSpecs(),
   ]
 }
 

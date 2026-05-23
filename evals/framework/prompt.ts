@@ -2,6 +2,11 @@ import { TUTORS } from '../../src/lib/tutors/index'
 import type { Tutor } from '../../src/lib/tutors/types'
 import type { LanguageCode, Level } from './types'
 import { buildLearnerContextBlock, type NativeLanguage } from '../../src/lib/profile'
+import {
+  buildPreferencesPromptBlock,
+  DEFAULT_PREFERENCES,
+  type Preferences,
+} from '../../src/lib/preferences'
 
 /**
  * Builds the exact instruction string production sends to OpenAI for a
@@ -23,6 +28,14 @@ export type PromptInputs = {
   nativeLanguage?: NativeLanguage
   /** Goal/motivation block — populated for new users post-onboarding. */
   goals?: string
+  /**
+   * Learner-controlled tutor preferences (grammar strictness, pronunciation
+   * feedback, formality, theme). Defaults to DEFAULT_PREFERENCES when
+   * omitted, matching production behavior for a fresh user. Tests that
+   * exercise specific settings (strict grammar, strict pronunciation,
+   * etc.) override.
+   */
+  preferences?: Preferences
 }
 
 function tutorFor(language: LanguageCode): Tutor {
@@ -58,10 +71,19 @@ export function buildPrompt(inputs: PromptInputs): string {
     goals: inputs.goals,
   })
 
+  // Preferences block was previously missing from the eval prompt — that
+  // meant settings tests (grammar strictness, pronunciation feedback) had
+  // no chance of producing meaningful results because the system prompt
+  // didn't include the directives the settings control. Now mirrors the
+  // production assembly in Tutor.tsx exactly.
+  const preferences = inputs.preferences ?? DEFAULT_PREFERENCES
+  const preferencesBlock = buildPreferencesPromptBlock(preferences)
+
   return [
     tutor.buildSystemInstructions({ nativeLanguage }),
     addon,
     learnerContext,
+    preferencesBlock,
   ]
     .filter(Boolean)
     .join('\n\n')

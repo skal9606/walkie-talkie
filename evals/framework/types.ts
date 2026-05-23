@@ -1,7 +1,8 @@
 import type { LanguageCode } from '../../src/lib/tutors/types'
 import type { Level } from '../../src/lib/scenarios'
+import type { Preferences } from '../../src/lib/preferences'
 
-export type { LanguageCode, Level }
+export type { LanguageCode, Level, Preferences }
 
 export type TranscriptTurn = {
   role: 'tutor' | 'learner'
@@ -30,6 +31,13 @@ export type TestSpec = {
    * "I don't understand" verbatim.
    */
   scriptedTurns?: Record<number, string>
+  /**
+   * Override tutor preferences (grammar strictness, pronunciation feedback,
+   * formality, theme). Defaults to DEFAULT_PREFERENCES — matches a fresh
+   * user. Settings-adherence tests use this to verify the tutor actually
+   * honors a given setting.
+   */
+  preferences?: Preferences
 }
 
 export type TestCategory =
@@ -40,6 +48,7 @@ export type TestCategory =
   | 'repetition'
   | 'code-switching'
   | 'adaptive-difficulty'
+  | 'settings-adherence'
 
 export type RubricId =
   | 'level-calibration'
@@ -49,6 +58,11 @@ export type RubricId =
   | 'repetition'
   | 'code-switching'
   | 'adaptive-difficulty'
+  | 'grammar-strict-adherence'
+  | 'grammar-lax-adherence'
+  | 'pronunciation-strict-adherence'
+  | 'pronunciation-honest-adherence'
+  | 'pronunciation-forgiving-adherence'
 
 export type RubricDimension = {
   key: string
