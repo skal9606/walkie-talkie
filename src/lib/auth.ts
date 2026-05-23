@@ -110,8 +110,61 @@ export async function signOut(): Promise<void> {
     // session is cleared either way; supabase will revoke server-side
     // on its next reachable call.
   }
+  clearLocalUserDataOnSignOut()
   if (typeof window !== 'undefined') {
     window.location.replace('/')
+  }
+}
+
+/**
+ * Wipes localStorage entries that contain user-scoped data (profile,
+ * streak, memory bullets, vocab, focus areas, lesson progress,
+ * preferences). Tokens are already gone — Supabase's signOut clears
+ * the session — but a second user on a shared device would otherwise
+ * see the previous user's name, streak, etc. before signing in.
+ *
+ * Per-tutor scoped keys (e.g. `walkie_memory_v1.pt-br-natalia`) are
+ * caught by a prefix sweep so we don't need to enumerate tutors.
+ *
+ * NOT cleared (intentional):
+ *   - walkie.justSignedOut (the bounce-protection flag we just set)
+ *   - walkie.tracked.* (TikTok pixel dedup keys — clearing them would
+ *     double-count conversions for the next user; analytics ≠ PII)
+ */
+function clearLocalUserDataOnSignOut(): void {
+  if (typeof window === 'undefined') return
+  const EXACT_KEYS = [
+    'walkie_preferences_v1',
+    'walkie_profile_v1',
+    'walkie_streak_v1',
+    'walkie_streak_v2',
+    'walkietalkie.lessonProgress.v1',
+  ]
+  const PREFIX_KEYS = [
+    // These libs use `walkie_memory_v1.<tutorId>` etc. — the prefix
+    // sweep also catches legacy unscoped keys at the same prefix.
+    'walkie_memory_v1',
+    'walkie_focus_v1',
+    'walkie_vocab_v1',
+  ]
+  try {
+    for (const k of EXACT_KEYS) localStorage.removeItem(k)
+    // Iterate a snapshot of keys because removeItem mutates the live list.
+    const allKeys: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k) allKeys.push(k)
+    }
+    for (const key of allKeys) {
+      for (const prefix of PREFIX_KEYS) {
+        if (key === prefix || key.startsWith(prefix + '.')) {
+          localStorage.removeItem(key)
+          break
+        }
+      }
+    }
+  } catch {
+    // localStorage can throw in private-mode Safari etc. Best-effort.
   }
 }
 
