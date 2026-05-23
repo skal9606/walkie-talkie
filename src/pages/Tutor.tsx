@@ -787,7 +787,10 @@ export default function Tutor() {
       nativeLanguage,
     })
     const learnerContext = buildLearnerContextBlock(profile)
-    const preferencesBlock = buildPreferencesPromptBlock(loadPreferences())
+    const preferencesBlock = buildPreferencesPromptBlock(
+      loadPreferences(),
+      tutor.language,
+    )
     // Vocab + focus blocks only make sense for free conversation. In a
     // roleplay (barista, in-laws) the tutor is in character and asking
     // them to weave in unrelated vocab from prior sessions would be jarring.

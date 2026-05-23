@@ -77,7 +77,7 @@ export function buildPrompt(inputs: PromptInputs): string {
   // didn't include the directives the settings control. Now mirrors the
   // production assembly in Tutor.tsx exactly.
   const preferences = inputs.preferences ?? DEFAULT_PREFERENCES
-  const preferencesBlock = buildPreferencesPromptBlock(preferences)
+  const preferencesBlock = buildPreferencesPromptBlock(preferences, inputs.language)
 
   return [
     tutor.buildSystemInstructions({ nativeLanguage }),
