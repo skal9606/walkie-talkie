@@ -1225,882 +1225,1152 @@ a {
   font-family: inherit;
 }
 
-/* --- Landing page (Option B retro walkie-talkie) --- */
+/* --- Landing page (Variant E: Late-night radio / Amber CRT) --- */
 
-/* Force the warm Option B palette on the landing route, regardless of the
-   user's theme preference. The marketing page leans into the aesthetic;
-   light mode would look like a different brand. */
+/* Scoped under .landing so the rest of the app keeps its dark/light theme.
+   All custom props prefixed with --landing- to avoid polluting global tokens. */
 .landing {
-  --landing-bg: #12130F;
-  --landing-bg-elevated: #1B1F16;
-  --landing-border: #25281E;
-  --landing-text: #F2E9DB;
-  --landing-text-secondary: #A3A68C;
-  --landing-text-tertiary: #6B6E5C;
-  --landing-accent: #FFB26B;
-  --landing-on-accent: #12130F;
+  --landing-bg: #14100a;
+  --landing-bg-panel: #1c160e;
+  --landing-bg-card: #251c12;
+  --landing-amber: #f6b04a;
+  --landing-amber-bright: #ffc870;
+  --landing-amber-dim: #a87a32;
+  --landing-cream: #f3e7c6;
+  --landing-cream-mute: #b8a87a;
+  --landing-green: #6ad27e;
+  --landing-red: #e15a3a;
+  --landing-rule: rgba(246, 176, 74, 0.18);
 
-  max-width: 1180px;
-  margin: 0 auto;
-  padding:
-    max(24px, env(safe-area-inset-top))
-    max(24px, env(safe-area-inset-right))
-    24px
-    max(24px, env(safe-area-inset-left));
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  color: var(--landing-cream);
   background: var(--landing-bg);
-  color: var(--landing-text);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 3px),
+    radial-gradient(ellipse at center, rgba(246, 176, 74, 0.04) 0%, transparent 60%),
+    linear-gradient(180deg, #1a140c 0%, #0e0a05 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
-/* Page background takes the warm bg too — landing is full-bleed. */
+/* Body needs the dark background too so the page doesn't show app chrome
+   bleeding around the landing edges. */
 :root:has(.landing) body,
 body:has(.landing) {
-  background: #12130F;
+  background: var(--landing-bg, #14100a);
 }
 
+.landing-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
+}
+
+@keyframes landing-pulse {
+  50% { opacity: 0.5; }
+}
+
+/* NAV ----- */
+
 .landing-nav {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--landing-amber-dim);
+  background: linear-gradient(180deg, rgba(28, 22, 14, 0.95), rgba(20, 16, 10, 0.95));
+  backdrop-filter: blur(6px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.landing-nav-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 8px 32px;
-  gap: 16px;
-  flex-wrap: wrap;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
 }
 
 .landing-logo {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--landing-text);
-  letter-spacing: 0.2px;
+  font-family: 'Fraunces', serif;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.5px;
+  color: var(--landing-amber);
+  text-shadow: 0 0 12px rgba(246, 176, 74, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.landing-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--landing-green);
+  box-shadow: 0 0 8px var(--landing-green), 0 0 16px var(--landing-green);
+  animation: landing-pulse 2s ease-in-out infinite;
 }
 
 .landing-nav-right {
+  list-style: none;
   display: flex;
+  gap: 28px;
   align-items: center;
-  gap: 24px;
+  margin: 0;
+  padding: 0;
 }
 
-/* Mobile nav — hide the in-page anchors so Login + Chat Now stay on
-   the same row as the wordmark and align right (the wider nav-right
-   group otherwise wraps to a second line). Anchors are still
-   accessible via the Pricing tier in the body + the FAQ section. */
-@media (max-width: 640px) {
-  .landing-nav-right .landing-nav-link[href^="#"] {
-    display: none;
-  }
-  .landing-nav-right {
-    gap: 16px;
-  }
-}
+.landing-nav-right li { list-style: none; }
 
 .landing-nav-link {
-  color: var(--landing-text-secondary);
-  text-decoration: none;
-  font-size: 14px;
+  font-family: 'IBM Plex Mono', monospace;
   font-weight: 500;
-  transition: color 0.15s ease;
+  font-size: 12.5px;
+  color: var(--landing-cream-mute);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-decoration: none;
+  transition: color 0.15s ease, text-shadow 0.15s ease;
 }
 
 .landing-nav-link:hover {
-  color: var(--landing-text);
+  color: var(--landing-amber-bright);
+  text-shadow: 0 0 8px rgba(255, 200, 112, 0.5);
+}
+
+.landing-nav-link.login-pill {
+  padding: 8px 16px;
+  border: 1px solid var(--landing-amber-dim);
+  color: var(--landing-cream);
 }
 
 .landing-cta {
-  background: var(--landing-accent);
-  color: var(--landing-on-accent);
-  padding: 10px 18px;
-  border-radius: 999px;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  background: var(--landing-amber);
+  color: var(--landing-bg);
+  font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
   text-decoration: none;
-  transition: transform 0.1s ease, box-shadow 0.15s ease;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25) inset, 0 6px 18px rgba(255, 178, 107, 0.18);
+  border: 1px solid var(--landing-amber);
+  box-shadow: 0 0 12px rgba(246, 176, 74, 0.4);
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .landing-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25) inset, 0 8px 22px rgba(255, 178, 107, 0.28);
+  background: var(--landing-amber-bright);
+  box-shadow: 0 0 20px rgba(255, 200, 112, 0.6);
+  color: var(--landing-bg);
 }
 
 .landing-cta-large {
-  padding: 14px 26px;
-  font-size: 16px;
+  padding: 15px 28px;
+  font-size: 13px;
 }
 
-/* Disabled state — used for "Download App" until the iOS build hits
-   the App Store. Still reads as the primary CTA shape so the hero
-   layout doesn't shift, but visibly de-emphasized. */
 .landing-cta-disabled {
-  opacity: 0.55;
+  background: rgba(168, 122, 50, 0.15);
+  color: var(--landing-cream-mute);
+  border-color: var(--landing-cream-mute);
   cursor: not-allowed;
-  pointer-events: none;
+  opacity: 0.7;
   box-shadow: none;
-  border: 0;
-  font-family: inherit;
+  position: relative;
 }
+
+.landing-cta-disabled::after {
+  content: "▶ inbound";
+  position: absolute;
+  top: -10px;
+  right: -12px;
+  background: var(--landing-bg);
+  color: var(--landing-green);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  border: 1px solid var(--landing-green);
+}
+
 .landing-cta-disabled:hover { transform: none; box-shadow: none; }
 
 .landing-cta-outline {
   display: inline-flex;
   align-items: center;
-  padding: 14px 26px;
-  border-radius: 999px;
-  font-size: 16px;
+  gap: 10px;
+  padding: 15px 28px;
+  font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;
-  color: var(--landing-text);
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
   background: transparent;
-  border: 1px solid var(--landing-border);
+  color: var(--landing-amber);
+  border: 1px solid var(--landing-amber-dim);
   text-decoration: none;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .landing-cta-outline:hover {
-  background: var(--landing-bg-elevated);
-  border-color: var(--landing-text-tertiary);
+  background: rgba(246, 176, 74, 0.08);
+  color: var(--landing-amber-bright);
 }
 
-/* Hero */
+/* HERO ----- */
+
 .hero {
+  padding: 80px 0 160px;
+  position: relative;
+}
+
+.hero-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 48px;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 56px;
   align-items: center;
-  padding: 32px 8px 88px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
 }
 
-@media (max-width: 920px) {
-  .hero {
-    grid-template-columns: 1fr;
-    text-align: center;
-    padding-bottom: 56px;
-  }
-}
-
-.hero-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
 
 .hero-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  align-self: flex-start;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: var(--landing-bg-elevated);
-  color: var(--landing-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--landing-border);
-}
-
-@media (max-width: 920px) {
-  .hero-eyebrow {
-    align-self: center;
-  }
+  gap: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--landing-amber);
+  margin-bottom: 30px;
+  border: 1px solid var(--landing-amber-dim);
+  padding: 8px 16px;
+  background: rgba(246, 176, 74, 0.05);
 }
 
 .hero-eyebrow-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--landing-accent);
-  box-shadow: 0 0 8px var(--landing-accent);
+  color: var(--landing-red);
+  animation: landing-pulse 1.4s ease-in-out infinite;
 }
 
 .hero-headline {
-  font-size: 56px;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  font-weight: 800;
-  color: var(--landing-text);
+  font-family: 'Fraunces', serif;
+  font-size: 96px;
+  line-height: 0.96;
+  font-weight: 600;
+  letter-spacing: -3.5px;
+  color: var(--landing-cream);
   margin: 0;
 }
 
-@media (max-width: 920px) {
-  .hero-headline {
-    font-size: 42px;
-  }
+.hero-headline em {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--landing-amber);
+  text-shadow: 0 0 20px rgba(246, 176, 74, 0.4);
 }
 
 .hero-subtext {
-  font-size: 17px;
-  line-height: 1.55;
-  color: var(--landing-text-secondary);
-  margin: 0;
-  max-width: 540px;
-}
-
-@media (max-width: 920px) {
-  .hero-subtext {
-    margin: 0 auto;
-  }
+  margin-top: 28px;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--landing-cream-mute);
+  max-width: 500px;
 }
 
 .hero-cta-group {
+  margin-top: 36px;
   display: flex;
+  gap: 14px;
   align-items: center;
-  gap: 12px;
   flex-wrap: wrap;
 }
 
-@media (max-width: 920px) {
-  .hero-cta-group {
-    justify-content: center;
-  }
-}
-
 .hero-footnote {
-  font-size: 13px;
-  color: var(--landing-text-tertiary);
+  margin-top: 24px;
+  color: var(--landing-cream-mute);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
-.hero-image-wrap {
+.hero-footnote::before {
+  content: "→ ";
+  color: var(--landing-amber);
+}
+
+/* RADIO CONSOLE (wraps hero image) ----- */
+
+.hero-console {
+  background: var(--landing-bg-panel);
+  border: 1px solid var(--landing-amber-dim);
+  padding: 20px;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 420px;
+  box-shadow: 0 0 32px rgba(246, 176, 74, 0.08),
+              inset 0 0 0 1px rgba(246, 176, 74, 0.05);
 }
 
-.hero-image-glow {
+.hero-console::before {
+  content: "WT-470 · TRANSCEIVER · CH 11";
   position: absolute;
-  width: 70%;
-  aspect-ratio: 1;
-  background: radial-gradient(circle, rgba(255, 178, 107, 0.32) 0%, rgba(255, 178, 107, 0) 65%);
-  filter: blur(6px);
-  z-index: 0;
+  top: -10px;
+  left: 18px;
+  background: var(--landing-bg);
+  padding: 0 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--landing-amber);
+  letter-spacing: 2px;
 }
+
+.hero-console-screen {
+  background: linear-gradient(180deg, #2a2114 0%, #1c150b 100%);
+  border: 1px solid var(--landing-amber-dim);
+  padding: 14px;
+  margin-bottom: 14px;
+  color: var(--landing-amber);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  text-shadow: 0 0 6px rgba(246, 176, 74, 0.4);
+}
+
+.hero-console-screen-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.hero-console-screen-row.glow {
+  color: var(--landing-amber-bright);
+  font-weight: 600;
+}
+
+.hero-console-screen-row .online { color: var(--landing-green); }
 
 .hero-image {
+  width: auto;
+  max-width: 100%;
+  max-height: 360px;
+  display: block;
+  margin: 0 auto;
+  filter: sepia(0.3) brightness(0.95);
+}
+
+.hero-console-dials {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--landing-amber-dim);
+}
+
+.hero-dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-dial-knob {
+  width: 36px;
+  height: 36px;
+  background: radial-gradient(circle at 30% 30%, #3a2d18, #1c150b);
+  border-radius: 50%;
+  border: 1px solid var(--landing-amber-dim);
   position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 460px;
-  height: auto;
-  /* The PNG has its own dark background; feather the edges so the
-     rectangle seam doesn't show against the warm landing bg. Same
-     trick as on iOS. */
-  -webkit-mask-image:
-    radial-gradient(circle at center, #000 35%, rgba(0, 0, 0, 0.4) 60%, transparent 78%);
-  mask-image:
-    radial-gradient(circle at center, #000 35%, rgba(0, 0, 0, 0.4) 60%, transparent 78%);
 }
 
-/* Section titles */
+.hero-dial-knob::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 2px;
+  height: 8px;
+  background: var(--landing-amber);
+  transform: translateX(-50%);
+  box-shadow: 0 0 4px var(--landing-amber);
+}
+
+.hero-dial-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--landing-cream-mute);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* SECTION TITLES (shared) ----- */
+
 .section-title {
-  font-size: 36px;
-  line-height: 1.15;
-  letter-spacing: -0.015em;
-  font-weight: 800;
-  color: var(--landing-text);
+  font-family: 'Fraunces', serif;
+  font-size: 60px;
+  line-height: 1.0;
+  font-weight: 600;
+  letter-spacing: -2px;
   text-align: center;
-  margin: 0 0 12px;
+  margin-bottom: 14px;
+  color: var(--landing-cream);
 }
 
-@media (max-width: 920px) {
-  .section-title {
-    font-size: 28px;
-  }
+.section-title em {
+  font-style: italic;
+  color: var(--landing-amber);
 }
 
 .section-subtitle {
-  font-size: 16px;
-  color: var(--landing-text-secondary);
   text-align: center;
-  margin: 0 auto 40px;
-  max-width: 560px;
-}
-
-/* Features — editorial magazine-style row. Each feature is a floating
-   emoji + thin peach divider + serif title + body. No surrounding card
-   or circle (the brass-rim treatment is reserved for the language
-   medals below — using it here too was repetitive and read as "iOS
-   app buttons" rather than "vintage magazine spread"). */
-.features {
-  padding: 48px 8px 56px;
-}
-
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  column-gap: 32px;
-  row-gap: 48px;
-}
-
-@media (max-width: 720px) {
-  .feature-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-.feature {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 0 8px;
-}
-
-/* Free-floating emoji — no background container. The element keeps
-   the old .feature-medal class name so existing JSX doesn't change. */
-.feature-medal {
-  font-size: 40px;
-  line-height: 1;
-  /* Soft warm halo behind the emoji so it doesn't look like it's
-     glued onto the bg. Same effect as iOS welcome screen, dialed
-     way down. */
-  filter: drop-shadow(0 0 14px rgba(255, 178, 107, 0.22));
-  margin-bottom: 4px;
-}
-
-/* Thin peach divider under each emoji — the "small section header in
-   a printed magazine" cue. */
-.feature::after {
-  display: none;
-}
-
-.feature-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--landing-text);
-  margin: 0;
-  font-family: 'New York', 'Charter', Georgia, serif;
-  letter-spacing: 0.1px;
-  position: relative;
-  padding-top: 12px;
-}
-
-/* The thin divider sits above the title so spacing is locked to the
-   title block instead of floating between emoji and title. */
-.feature-title::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 28px;
-  height: 1px;
-  background: var(--landing-accent);
-  opacity: 0.7;
-}
-
-.feature-body {
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--landing-text-secondary);
-  margin: 0;
-  max-width: 200px;
-}
-
-/* Chat preview — vintage typewritten paper on a leather mat. The
-   "paper" sits in a wider warm-leather frame to feel inset. */
-.chat-preview {
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 56px;
-  align-items: center;
-  padding: 56px 8px;
-}
-
-@media (max-width: 920px) {
-  .chat-preview {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-}
-
-.chat-preview-text .section-title,
-.chat-preview-text .section-subtitle {
-  text-align: left;
-  margin-left: 0;
-}
-
-@media (max-width: 920px) {
-  .chat-preview-text .section-title,
-  .chat-preview-text .section-subtitle {
-    text-align: center;
-    margin-left: auto;
-  }
-}
-
-/* Outer leather/wood frame. */
-.chat-preview-paper {
-  background:
-    radial-gradient(ellipse at 20% 10%, rgba(255, 178, 107, 0.06), transparent 60%),
-    linear-gradient(135deg, #2A2018 0%, #1B1F16 100%);
-  border: 1px solid var(--landing-border);
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 1px rgba(255, 178, 107, 0.06);
-}
-
-/* Inner aged-paper card. Off-white with subtle ribbed grain via
-   repeating gradient — sells the "typewritten on aged stock" feel. */
-.chat-preview-paper-inner {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.015) 0px,
-      rgba(0, 0, 0, 0.015) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    linear-gradient(135deg, #F4E6C8 0%, #E8D5A8 100%);
-  color: #2A1F12;
-  border-radius: 10px;
-  padding: 22px 24px;
-  font-family: 'Courier New', Courier, monospace;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
-}
-
-.chat-line {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.chat-line-speaker {
-  font-weight: 700;
-  color: #6B4A25;
-  letter-spacing: 0.3px;
-  min-width: 56px;
-  font-size: 11px;
+  color: var(--landing-cream-mute);
+  margin-bottom: 56px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 2.5px;
   text-transform: uppercase;
-  flex-shrink: 0;
-  padding-top: 2px;
 }
 
-.chat-line-user .chat-line-speaker {
-  color: #8B5A20;
-}
+/* LANGUAGES ----- */
 
-.chat-line-text {
-  color: #2A1F12;
-}
-
-.chat-typing {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 66px;
-}
-
-.chat-typing span {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #6B4A25;
-  animation: chat-dot 1.2s infinite ease-in-out;
-}
-
-.chat-typing span:nth-child(2) { animation-delay: 0.2s; }
-.chat-typing span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes chat-dot {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-3px); opacity: 1; }
-}
-
-/* Languages — medal-style brass-rimmed flag discs. */
 .languages {
-  padding: 72px 8px 56px;
-  text-align: center;
+  padding: 90px 0;
+  border-top: 1px solid var(--landing-amber-dim);
+  border-bottom: 1px solid var(--landing-amber-dim);
+  background: rgba(28, 22, 14, 0.4);
+}
+
+.languages-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
 }
 
 .language-medals {
   display: flex;
-  justify-content: center;
-  gap: 36px;
   flex-wrap: wrap;
-  margin-top: 28px;
+  gap: 40px;
+  justify-content: center;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 .language-medal {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-/* Same brass-rim treatment as feature medals, just bigger so the
-   flag emoji reads at a distance. */
 .language-medal-disc {
-  width: 76px;
-  height: 76px;
+  width: 84px;
+  height: 84px;
+  background: var(--landing-bg-panel);
+  border: 1px solid var(--landing-amber-dim);
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 30% 25%, rgba(255, 178, 107, 0.18), rgba(0, 0, 0, 0.35) 75%),
-    var(--landing-bg-elevated);
-  border: 1px solid var(--landing-accent);
-  box-shadow:
-    0 0 0 5px var(--landing-bg),
-    0 0 0 6px var(--landing-border),
-    inset 0 1px 0 rgba(255, 178, 107, 0.35),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 8px 20px rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 38px;
-  line-height: 1;
+  font-size: 36px;
+  position: relative;
+  box-shadow: 0 0 0 4px rgba(246, 176, 74, 0.08),
+              inset 0 0 16px rgba(246, 176, 74, 0.08);
+  transition: box-shadow 0.3s ease;
+}
+
+.language-medal-disc:hover {
+  box-shadow: 0 0 0 4px rgba(246, 176, 74, 0.2),
+              inset 0 0 16px rgba(246, 176, 74, 0.15),
+              0 0 24px rgba(246, 176, 74, 0.3);
+}
+
+.language-medal-disc::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border: 1px dashed var(--landing-amber-dim);
+  border-radius: 50%;
+  opacity: 0.5;
 }
 
 .language-medal-name {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--landing-cream-mute);
   text-transform: uppercase;
-  color: var(--landing-text-secondary);
-  font-family: 'New York', 'Charter', Georgia, serif;
+  letter-spacing: 2px;
 }
 
-/* Testimonials — aged-parchment cards on the dark page. Each one
-   reads as a card pulled from an old leather review book. */
+/* CHAT PREVIEW ----- */
+
+.chat-preview {
+  padding: 100px 0;
+}
+
+.chat-preview-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 72px;
+  align-items: center;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
+}
+
+.chat-preview-text .section-title {
+  text-align: left;
+  font-size: 64px;
+  margin-bottom: 0;
+}
+
+.chat-preview-text .section-subtitle {
+  text-align: left;
+  margin-top: 24px;
+  margin-bottom: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--landing-cream-mute);
+  max-width: 420px;
+}
+
+.chat-preview-status {
+  margin-top: 32px;
+  padding: 14px 18px;
+  border: 1px solid var(--landing-amber-dim);
+  background: rgba(246, 176, 74, 0.04);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--landing-amber);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.chat-preview-status::before {
+  content: "◉ ";
+  color: var(--landing-red);
+  animation: landing-pulse 1.4s ease-in-out infinite;
+}
+
+.chat-window {
+  background: var(--landing-bg-panel);
+  border: 1px solid var(--landing-amber-dim);
+  overflow: hidden;
+  box-shadow: 0 0 32px rgba(246, 176, 74, 0.08);
+}
+
+.chat-window-header {
+  background: var(--landing-bg-card);
+  color: var(--landing-amber);
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--landing-amber-dim);
+}
+
+.chat-window-header-freq { color: var(--landing-green); }
+
+.chat-window-body {
+  padding: 28px;
+  /* Reserve the height of the full 4-message conversation so the box
+     doesn't grow as messages stream in. Empty space appears below the
+     last visible line during the early frames of each loop — that's
+     intentional and reads as room for "more incoming". */
+  min-height: 460px;
+  background: linear-gradient(180deg, #1f180d 0%, #18120a 100%);
+}
+
+.chat-line {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+  animation: landing-chat-line-in 0.35s ease-out both;
+}
+
+@keyframes landing-chat-line-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chat-line-user { align-items: flex-end; }
+
+.chat-line-speaker {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--landing-cream-mute);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.chat-line-user .chat-line-speaker { color: var(--landing-amber); }
+.chat-line-tutor .chat-line-speaker { color: var(--landing-green); }
+
+.chat-line-text {
+  max-width: 80%;
+  padding: 12px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14.5px;
+  line-height: 1.5;
+  border: 1px solid var(--landing-amber-dim);
+  color: var(--landing-cream);
+}
+
+.chat-line-user .chat-line-text {
+  background: rgba(246, 176, 74, 0.12);
+  border-color: var(--landing-amber);
+  border-bottom-right-radius: 0;
+}
+
+.chat-line-tutor .chat-line-text {
+  background: rgba(106, 210, 126, 0.06);
+  border-color: var(--landing-green);
+  border-bottom-left-radius: 0;
+}
+
+.chat-typing {
+  display: inline-flex;
+  gap: 5px;
+  padding: 14px 16px;
+  border: 1px solid var(--landing-green);
+  background: rgba(106, 210, 126, 0.06);
+}
+
+.chat-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--landing-green);
+  box-shadow: 0 0 6px var(--landing-green);
+  animation: landing-pulse 1.2s ease-in-out infinite;
+}
+
+.chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+.chat-window-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--landing-amber-dim);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--landing-bg-card);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--landing-amber);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.chat-window-mic-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--landing-red);
+  box-shadow: 0 0 8px var(--landing-red), 0 0 0 4px rgba(225, 90, 58, 0.2);
+}
+
+/* FEATURES ----- */
+
+.features { padding: 100px 0; }
+
+.features-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.feature {
+  background: var(--landing-bg-panel);
+  padding: 30px 24px;
+  border: 1px solid var(--landing-amber-dim);
+  text-align: center;
+  position: relative;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature:hover {
+  border-color: var(--landing-amber);
+  box-shadow: 0 0 24px rgba(246, 176, 74, 0.2);
+}
+
+.feature::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 1px;
+  background: var(--landing-amber);
+}
+
+.feature-medal {
+  font-size: 30px;
+  margin-bottom: 16px;
+  display: block;
+  filter: sepia(0.4) hue-rotate(-10deg) saturate(1.4);
+}
+
+.feature-title {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--landing-amber);
+}
+
+.feature-body {
+  color: var(--landing-cream-mute);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* TESTIMONIALS ----- */
+
 .testimonials {
-  padding: 56px 8px 72px;
+  padding: 100px 0;
+  border-top: 1px solid var(--landing-amber-dim);
+}
+
+.testimonials-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
 }
 
 .testimonial-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-
-@media (max-width: 860px) {
-  .testimonial-grid { grid-template-columns: 1fr; }
+  gap: 22px;
 }
 
 .testimonial {
+  background: var(--landing-bg-panel);
+  padding: 30px 26px;
+  border: 1px solid var(--landing-amber-dim);
   position: relative;
-  padding: 24px 22px 22px;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.012) 0px,
-      rgba(0, 0, 0, 0.012) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    linear-gradient(180deg, #F4E6C8 0%, #E8D5A8 100%);
-  color: #2A1F12;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.4) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.08) inset,
-    0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.testimonial[data-tx-id]::before {
+  content: "TX-" attr(data-tx-id);
+  position: absolute;
+  top: -8px;
+  right: 16px;
+  background: var(--landing-bg);
+  color: var(--landing-amber);
+  padding: 0 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+.testimonial-stars {
+  color: var(--landing-amber);
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin-bottom: 14px;
+  text-shadow: 0 0 6px rgba(246, 176, 74, 0.4);
+}
+
+.testimonial-quote {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--landing-cream);
+  margin-bottom: 22px;
 }
 
 .testimonial-header {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--landing-amber-dim);
 }
 
 .testimonial-portrait {
   width: 42px;
   height: 42px;
+  background: var(--landing-amber);
+  color: var(--landing-bg);
   border-radius: 50%;
-  background: rgba(107, 74, 37, 0.12);
-  border: 1px solid rgba(107, 74, 37, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  flex-shrink: 0;
+  font-size: 20px;
+  box-shadow: 0 0 12px rgba(246, 176, 74, 0.3);
 }
 
 .testimonial-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
 .testimonial-name {
   font-size: 14px;
-  font-weight: 700;
-  color: #2A1F12;
-  font-family: 'New York', 'Charter', Georgia, serif;
+  font-weight: 600;
+  color: var(--landing-cream);
+  font-family: 'Inter', sans-serif;
 }
 
 .testimonial-role {
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
-  color: #6B4A25;
-  letter-spacing: 0.2px;
+  color: var(--landing-cream-mute);
+  margin-top: 3px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
-.testimonial-stars {
-  color: #C2772A;
-  font-size: 13px;
-  letter-spacing: 3px;
-}
+/* PRICING ----- */
 
-.testimonial-quote {
-  font-size: 14px;
-  line-height: 1.55;
-  color: #3A2A18;
-  margin: 0;
-  font-family: 'New York', 'Charter', Georgia, serif;
-  font-style: italic;
-}
-
-.testimonial-quote::before {
-  content: '\201C';
-  font-size: 32px;
-  line-height: 0;
-  vertical-align: -8px;
-  color: #B8841F;
-  margin-right: 2px;
-}
-
-.testimonial-quote::after {
-  content: '\201D';
-  font-size: 32px;
-  line-height: 0;
-  vertical-align: -8px;
-  color: #B8841F;
-  margin-left: 2px;
-}
-
-/* Pricing */
 .pricing {
-  padding: 72px 8px;
+  padding: 100px 0 70px;
+  border-top: 1px solid var(--landing-amber-dim);
+  border-bottom: 1px solid var(--landing-amber-dim);
+  background: rgba(28, 22, 14, 0.3);
+}
+
+.pricing-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
 }
 
 .price-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  max-width: 960px;
+  gap: 22px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
-@media (max-width: 860px) {
-  .price-cards { grid-template-columns: 1fr; }
-}
-
 .price-card {
-  background: var(--landing-bg-elevated);
-  border: 1px solid var(--landing-border);
-  border-radius: 18px;
-  padding: 28px 24px;
+  background: var(--landing-bg-panel);
+  padding: 34px 28px;
+  border: 1px solid var(--landing-amber-dim);
+  color: var(--landing-cream);
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  position: relative;
 }
 
 .price-card.highlighted {
-  border-color: var(--landing-accent);
-  box-shadow: 0 12px 40px rgba(255, 178, 107, 0.12);
+  background: linear-gradient(180deg, rgba(246, 176, 74, 0.12), rgba(246, 176, 74, 0.04));
+  border-color: var(--landing-amber);
+  box-shadow: 0 0 24px rgba(246, 176, 74, 0.18);
 }
 
 .price-badge {
   position: absolute;
   top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--landing-accent);
-  color: var(--landing-on-accent);
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
+  left: 22px;
+  background: var(--landing-amber);
+  color: var(--landing-bg);
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 5px 12px;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 600;
 }
 
 .price-title {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  margin-bottom: 16px;
+  color: var(--landing-amber);
+  letter-spacing: 3px;
   text-transform: uppercase;
-  color: var(--landing-text-secondary);
 }
 
 .price-amount-row {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  margin-bottom: 10px;
 }
 
 .price-amount {
-  font-size: 40px;
-  font-weight: 800;
-  color: var(--landing-text);
-  letter-spacing: -0.02em;
+  font-family: 'Fraunces', serif;
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -2.5px;
+  color: var(--landing-cream);
 }
 
 .price-period {
-  font-size: 14px;
-  color: var(--landing-text-tertiary);
+  font-size: 13px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--landing-cream-mute);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .price-desc {
-  font-size: 13px;
-  color: var(--landing-text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  margin-bottom: 24px;
+  color: var(--landing-cream-mute);
 }
 
 .price-features {
   list-style: none;
-  padding: 0;
-  margin: 4px 0 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin: 0 0 28px 0;
+  padding: 18px 0 0 0;
+  flex: 1;
+  border-top: 1px dashed var(--landing-amber-dim);
 }
 
 .price-features li {
-  font-size: 13px;
-  color: var(--landing-text-secondary);
-  padding-left: 22px;
-  position: relative;
+  padding: 7px 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  display: flex;
+  gap: 10px;
+  color: var(--landing-cream);
 }
 
 .price-features li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  color: var(--landing-accent);
-  font-weight: 700;
+  content: "▸";
+  color: var(--landing-amber);
 }
 
 .price-cta {
-  margin-top: auto;
-  background: var(--landing-accent);
-  color: var(--landing-on-accent);
-  border: none;
-  border-radius: 12px;
-  padding: 12px 18px;
-  font-size: 15px;
+  width: 100%;
+  padding: 14px 22px;
+  font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;
+  font-size: 12px;
   cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.15s ease;
+  border: 1px solid var(--landing-amber-dim);
+  background: transparent;
+  color: var(--landing-amber);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
 }
 
 .price-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(255, 178, 107, 0.25);
+  background: rgba(246, 176, 74, 0.1);
+  border-color: var(--landing-amber);
+  box-shadow: 0 0 12px rgba(246, 176, 74, 0.3);
+  color: var(--landing-amber-bright);
 }
 
-.price-card:not(.highlighted) .price-cta {
-  background: transparent;
-  color: var(--landing-text);
-  border: 1px solid var(--landing-border);
+.price-card.highlighted .price-cta {
+  background: var(--landing-amber);
+  color: var(--landing-bg);
+  border-color: var(--landing-amber);
 }
 
-.price-card:not(.highlighted) .price-cta:hover {
-  border-color: var(--landing-accent);
-  color: var(--landing-accent);
-  box-shadow: none;
+.price-card.highlighted .price-cta:hover {
+  background: var(--landing-amber-bright);
+  color: var(--landing-bg);
 }
 
-/* Bottom CTA strip */
+/* CTA STRIP ----- */
+
+.cta-strip-wrap { padding: 100px 0; }
+
 .cta-strip {
-  margin: 56px 0;
-  padding: 48px 24px;
-  background: var(--landing-bg-elevated);
-  border: 1px solid var(--landing-border);
-  border-radius: 24px;
-  text-align: center;
+  padding: 56px;
+  background: var(--landing-bg-panel);
+  border: 1px solid var(--landing-amber);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  gap: 30px;
+  position: relative;
+  box-shadow: 0 0 40px rgba(246, 176, 74, 0.15);
+}
+
+.cta-strip::before {
+  content: "▼ INCOMING ▼";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--landing-bg);
+  color: var(--landing-amber);
+  padding: 0 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
 }
 
 .cta-strip-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--landing-text);
-  margin: 0 0 8px;
-  letter-spacing: -0.015em;
+  font-family: 'Fraunces', serif;
+  font-size: 44px;
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -1.5px;
+  margin: 0;
+  color: var(--landing-cream);
+}
+
+.cta-strip-title em {
+  font-style: italic;
+  color: var(--landing-amber);
 }
 
 .cta-strip-subtitle {
-  font-size: 15px;
-  color: var(--landing-text-secondary);
-  margin: 0 0 24px;
+  color: var(--landing-cream-mute);
+  margin-top: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 
-/* FAQ */
+/* FAQ ----- */
+
 .faq {
-  padding: 72px 8px;
+  padding: 100px 0 120px;
+  border-top: 1px solid var(--landing-amber-dim);
+}
+
+.faq-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
+}
+
+.faq-list {
   max-width: 760px;
   margin: 0 auto;
 }
 
-.faq-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.faq-item {
+  background: var(--landing-bg-panel);
+  border: 1px solid var(--landing-amber-dim);
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
 }
 
-.faq-item {
-  background: var(--landing-bg-elevated);
-  border: 1px solid var(--landing-border);
-  border-radius: 14px;
-  padding: 18px 22px;
-}
+.faq-item[open] { border-color: var(--landing-amber); }
 
 .faq-item summary {
-  cursor: pointer;
-  font-size: 15px;
+  padding: 20px 24px;
+  font-family: 'Fraunces', serif;
   font-weight: 600;
-  color: var(--landing-text);
+  font-size: 17px;
+  cursor: pointer;
   list-style: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  letter-spacing: -0.3px;
+  color: var(--landing-cream);
 }
 
 .faq-item summary::-webkit-details-marker { display: none; }
 
 .faq-item summary::after {
-  content: '+';
-  font-size: 20px;
-  color: var(--landing-text-secondary);
+  content: "+";
+  color: var(--landing-amber);
+  font-size: 24px;
   font-weight: 400;
-  transition: transform 0.15s ease;
+  transition: transform 0.2s ease, color 0.2s ease, text-shadow 0.2s ease;
+  line-height: 1;
 }
 
 .faq-item[open] summary::after {
-  content: '−';
+  transform: rotate(45deg);
+  color: var(--landing-amber-bright);
+  text-shadow: 0 0 8px var(--landing-amber);
 }
 
 .faq-item p {
-  margin: 12px 0 0;
-  font-size: 14px;
+  padding: 0 24px 22px;
+  color: var(--landing-cream-mute);
   line-height: 1.6;
-  color: var(--landing-text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
 }
 
-/* Footer */
+/* FOOTER ----- */
+
 .landing-footer {
-  padding: 40px 0 24px;
-  border-top: 1px solid var(--landing-border);
-  margin-top: 24px;
+  padding: 50px 0 36px;
+  border-top: 1px solid var(--landing-amber-dim);
+  color: var(--landing-cream-mute);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
   text-align: center;
 }
 
 .landing-footer-logo {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--landing-text);
-  margin-bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Fraunces', serif;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.5px;
+  color: var(--landing-amber);
+  text-shadow: 0 0 12px rgba(246, 176, 74, 0.5);
+  text-transform: none;
+  margin-bottom: 14px;
 }
 
 .landing-footer-tagline {
-  font-size: 13px;
-  color: var(--landing-text-tertiary);
+  font-size: 12px;
+  color: var(--landing-cream-mute);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.landing-footer-copy {
+  color: rgba(184, 168, 122, 0.5);
+  font-size: 11px;
+  margin-top: 12px;
+}
+
+/* RESPONSIVE ----- */
+
+@media (max-width: 900px) {
+  .hero-grid, .chat-preview-grid { grid-template-columns: 1fr; }
+  .testimonial-grid, .price-cards { grid-template-columns: 1fr; }
+  .feature-grid { grid-template-columns: repeat(2, 1fr); }
+  .hero-headline { font-size: 56px; letter-spacing: -2px; }
+  .section-title { font-size: 42px; }
+  .chat-preview-text .section-title { font-size: 42px; }
+  .cta-strip { flex-direction: column; align-items: flex-start; }
+  .landing-nav-right { gap: 16px; }
+  .landing-nav-right .landing-nav-link[href^="#"] { display: none; }
 }
 
 /* --- Onboarding --- */
