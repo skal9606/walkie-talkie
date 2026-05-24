@@ -143,6 +143,12 @@ export default function Lessons() {
     })
     saveProfile(merged)
     setProfile(merged)
+    // Drop the brand-new learner straight into a free conversation so
+    // steps-to-value = 1. Tutor.tsx's auto-start effect picks up the
+    // saved profile and launches the first session. Without this nav
+    // the user lands back on the Lessons home instead — the bug we
+    // saw 2026-05-24 where newly onboarded users were stranded.
+    navigate('/chat')
   }
 
   if (authLoading || !user) {
