@@ -81,8 +81,13 @@ a {
 
 .header h1 {
   margin: 0;
-  font-size: 28px;
-  letter-spacing: -0.02em;
+  font-size: 32px;
+  letter-spacing: -0.03em;
+  /* Unify with landing: serif headline ties the marketing page and the
+     in-app pages visually. Falls back gracefully if Fraunces fails to
+     load (it's preloaded in index.html). */
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
 }
 
 .subtitle {
@@ -3786,8 +3791,10 @@ body:has(.landing) {
 
 .lessons-header h1 {
   margin: 0 0 4px;
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-family: 'Fraunces', Georgia, serif;
 }
 
 .lessons-subtitle {
@@ -3804,9 +3811,13 @@ body:has(.landing) {
 
 .lessons-section-label {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.18em;
   color: var(--muted);
+  /* Mono labels echo the landing's terminal/transceiver UI chrome —
+     "RECOMMENDED FOR YOU" reads like a frequency band marker. */
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  text-transform: uppercase;
 }
 
 .lessons-rows {
@@ -4808,11 +4819,12 @@ body:has(.landing) {
   background: var(--accent);
   color: #12130F;
   font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  padding: 3px 7px;
+  padding: 3px 8px;
   border-radius: 999px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 .lessons-unit-accordion-right {
