@@ -2468,25 +2468,16 @@ body:has(.landing) {
   .hero-grid { gap: 40px; }
   .hero-content { min-height: calc(100vh - 200px); }
 
-  /* Download App + Chat on Web side by side, equal width. The CTAs
-     have to shrink padding so both fit on a 390px iPhone. */
+  /* Download App stacked above Chat on Web. Each button takes the full
+     row so they have equal visual weight side-by-side vertically. */
   .hero-cta-group {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
   .hero-cta-group .landing-cta-large,
   .hero-cta-group .landing-cta-outline {
-    padding: 14px 14px;
-    font-size: 11.5px;
-    letter-spacing: 1.5px;
     width: 100%;
-  }
-  /* "Soon" badge on the disabled button collides with the right edge
-     of the now-narrower button — pull it in. */
-  .landing-cta-disabled::after {
-    right: -6px;
-    top: -8px;
   }
 
   .chat-preview { display: none; }
