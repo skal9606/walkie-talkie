@@ -45,10 +45,23 @@ export default function Privacy() {
             the free trial limit.
           </li>
           <li>
-            <strong>Session content:</strong> audio is streamed to OpenAI for
-            real-time transcription and response generation. We don't keep
-            audio after a session ends. Transcripts are sent to OpenAI to
-            generate your post-session review and then discarded.
+            <strong>Session content:</strong> audio from your microphone is
+            streamed in real time to OpenAI so the AI tutor can hear and
+            respond to you. Transcripts of what you say are also sent to
+            OpenAI so the tutor can correct you and remember the
+            conversation across sessions. We don't keep audio after a
+            session ends. OpenAI processes this data under privacy
+            protections equivalent to ours (OpenAI's API tier does not
+            use customer data to train models); see{' '}
+            <a
+              href="https://openai.com/policies/privacy-policy"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              OpenAI's privacy policy
+            </a>
+            . You're asked to acknowledge this before your first session
+            in the iOS app, and you can read the same disclosure here.
           </li>
         </ul>
         <h2>What we don't do</h2>
@@ -71,7 +84,9 @@ export default function Privacy() {
         </p>
         <ul>
           <li>
-            <strong>OpenAI</strong> — AI voice processing and transcription.
+            <strong>OpenAI</strong> — AI voice processing and
+            transcription. Subject to OpenAI's privacy commitments;
+            API-tier customer data is not used to train models.
           </li>
           <li>
             <strong>Supabase</strong> — authentication and database.
