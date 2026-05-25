@@ -2364,6 +2364,73 @@ body:has(.landing) {
   margin-top: 12px;
 }
 
+/* MOBILE HAMBURGER ----- */
+
+/* Desktop hides the hamburger; mobile shows it (and hides the inline nav). */
+.landing-nav-hamburger {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--landing-amber-dim);
+  cursor: pointer;
+  padding: 8px;
+  width: 40px;
+  height: 36px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  align-items: center;
+}
+
+.landing-nav-hamburger-bar {
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  background: var(--landing-amber);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.landing-nav-hamburger-bar.open:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+}
+.landing-nav-hamburger-bar.open:nth-child(2) {
+  opacity: 0;
+}
+.landing-nav-hamburger-bar.open:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
+}
+
+.landing-nav-mobile-menu {
+  display: flex;
+  flex-direction: column;
+  background: var(--landing-bg-panel);
+  border-top: 1px solid var(--landing-amber-dim);
+  border-bottom: 1px solid var(--landing-amber-dim);
+  padding: 12px 24px 16px;
+  gap: 4px;
+}
+
+.landing-nav-mobile-link {
+  display: block;
+  padding: 14px 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--landing-cream);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(168, 122, 50, 0.18);
+}
+
+.landing-nav-mobile-link:last-child {
+  border-bottom: none;
+}
+
+.landing-nav-mobile-link-cta {
+  color: var(--landing-amber);
+  font-weight: 600;
+}
+
 /* RESPONSIVE ----- */
 
 @media (max-width: 900px) {
@@ -2374,8 +2441,22 @@ body:has(.landing) {
   .section-title { font-size: 42px; }
   .chat-preview-text .section-title { font-size: 42px; }
   .cta-strip { flex-direction: column; align-items: flex-start; }
-  .landing-nav-right { gap: 16px; }
-  .landing-nav-right .landing-nav-link[href^="#"] { display: none; }
+}
+
+/* Mobile-specific: hide inline nav links + show hamburger. Also remove
+   the hero eyebrow (it ate vertical real estate above the headline)
+   and the entire "Like texting, but for speaking" section (the
+   walkie-talkie console is the hero on desktop, redundant on mobile
+   where the chat window is already the hero visual). */
+@media (max-width: 720px) {
+  .landing-nav-right { display: none; }
+  .landing-nav-hamburger { display: flex; }
+
+  .hero { padding: 24px 0 60px; }
+  .hero-eyebrow { display: none; }
+  .hero-headline { font-size: 44px; letter-spacing: -1.5px; }
+
+  .chat-preview { display: none; }
 }
 
 /* --- Onboarding --- */

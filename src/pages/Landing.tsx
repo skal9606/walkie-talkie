@@ -6,6 +6,8 @@ import { JUST_SIGNED_OUT_FLAG, decideLandingAction, useAuth } from '../lib/auth'
 export default function Landing() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const closeMobileMenu = () => setMobileMenuOpen(false)
 
   // Signed-in users skip the marketing page entirely. See decideLandingAction
   // for the auth-resolution race we have to wait through before deciding.
@@ -41,7 +43,26 @@ export default function Landing() {
             <li><Link to="/login" className="landing-nav-link login-pill">Login</Link></li>
             <li><Link to="/chat" className="landing-cta">Chat Now</Link></li>
           </ul>
+          <button
+            type="button"
+            className="landing-nav-hamburger"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((v) => !v)}
+          >
+            <span className={`landing-nav-hamburger-bar ${mobileMenuOpen ? 'open' : ''}`} />
+            <span className={`landing-nav-hamburger-bar ${mobileMenuOpen ? 'open' : ''}`} />
+            <span className={`landing-nav-hamburger-bar ${mobileMenuOpen ? 'open' : ''}`} />
+          </button>
         </div>
+        {mobileMenuOpen && (
+          <div className="landing-nav-mobile-menu">
+            <a href="#pricing" className="landing-nav-mobile-link" onClick={closeMobileMenu}>Pricing</a>
+            <a href="#faq" className="landing-nav-mobile-link" onClick={closeMobileMenu}>FAQ</a>
+            <Link to="/login" className="landing-nav-mobile-link" onClick={closeMobileMenu}>Login</Link>
+            <Link to="/chat" className="landing-nav-mobile-link landing-nav-mobile-link-cta" onClick={closeMobileMenu}>Chat Now →</Link>
+          </div>
+        )}
       </nav>
 
       <section className="hero">
