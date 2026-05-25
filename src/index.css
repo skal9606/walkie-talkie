@@ -2468,16 +2468,12 @@ body:has(.landing) {
   .hero-grid { gap: 40px; }
   .hero-content { min-height: calc(100vh - 200px); }
 
-  /* Download App stacked above Chat on Web. Each button takes the full
-     row so they have equal visual weight side-by-side vertically. */
+  /* Download App stacked above Chat on Web. Buttons sit at their
+     natural content width (left-aligned), not stretched edge-to-edge. */
   .hero-cta-group {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
     gap: 12px;
-  }
-  .hero-cta-group .landing-cta-large,
-  .hero-cta-group .landing-cta-outline {
-    width: 100%;
   }
 
   .chat-preview { display: none; }
