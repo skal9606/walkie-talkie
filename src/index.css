@@ -1407,9 +1407,14 @@ body:has(.landing) {
 
 .landing-cta-disabled:hover { transform: none; box-shadow: none; }
 
+/* Primary action CTA in the hero CTA group. Was originally an outline
+   button to look secondary, but Download App is the *secondary* (and
+   currently disabled) option — Chat on Web is the active conversion
+   path, so it earns the filled amber treatment. */
 .landing-cta-outline {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding: 15px 28px;
   font-family: 'IBM Plex Mono', monospace;
@@ -1418,16 +1423,18 @@ body:has(.landing) {
   letter-spacing: 2px;
   text-transform: uppercase;
   cursor: pointer;
-  background: transparent;
-  color: var(--landing-amber);
-  border: 1px solid var(--landing-amber-dim);
+  background: var(--landing-amber);
+  color: var(--landing-bg);
+  border: 1px solid var(--landing-amber);
   text-decoration: none;
   transition: all 0.2s ease;
+  box-shadow: 0 0 12px rgba(246, 176, 74, 0.4);
 }
 
 .landing-cta-outline:hover {
-  background: rgba(246, 176, 74, 0.08);
-  color: var(--landing-amber-bright);
+  background: var(--landing-amber-bright);
+  color: var(--landing-bg);
+  box-shadow: 0 0 20px rgba(255, 200, 112, 0.6);
 }
 
 /* HERO ----- */
@@ -2452,9 +2459,35 @@ body:has(.landing) {
   .landing-nav-right { display: none; }
   .landing-nav-hamburger { display: flex; }
 
-  .hero { padding: 24px 0 60px; }
+  /* Hero: more breathing room above the headline; force the chat
+     window below the fold by giving the hero-content full viewport
+     height (minus nav + padding). */
+  .hero { padding: 60px 0 40px; }
   .hero-eyebrow { display: none; }
   .hero-headline { font-size: 44px; letter-spacing: -1.5px; }
+  .hero-grid { gap: 40px; }
+  .hero-content { min-height: calc(100vh - 200px); }
+
+  /* Download App + Chat on Web side by side, equal width. The CTAs
+     have to shrink padding so both fit on a 390px iPhone. */
+  .hero-cta-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .hero-cta-group .landing-cta-large,
+  .hero-cta-group .landing-cta-outline {
+    padding: 14px 14px;
+    font-size: 11.5px;
+    letter-spacing: 1.5px;
+    width: 100%;
+  }
+  /* "Soon" badge on the disabled button collides with the right edge
+     of the now-narrower button — pull it in. */
+  .landing-cta-disabled::after {
+    right: -6px;
+    top: -8px;
+  }
 
   .chat-preview { display: none; }
 }
