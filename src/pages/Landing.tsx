@@ -93,7 +93,7 @@ export default function Landing() {
               >
                 Download App
               </button>
-              <Link to="/chat" className="landing-cta-outline">Chat on web</Link>
+              <Link to="/chat" className="landing-cta-outline">Chat on Web</Link>
             </div>
             <div className="hero-footnote">First 10 minutes free · $14.99/month after</div>
           </div>

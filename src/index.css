@@ -2468,11 +2468,13 @@ body:has(.landing) {
   .hero-grid { gap: 40px; }
   .hero-content { min-height: calc(100vh - 200px); }
 
-  /* Download App stacked above Chat on Web. Buttons sit at their
-     natural content width (left-aligned), not stretched edge-to-edge. */
+  /* Download App stacked above Chat on Web. Grid with a single
+     max-content column makes both buttons share the width of the
+     widest one — equal width, sized to content rather than viewport. */
   .hero-cta-group {
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: max-content;
+    justify-content: start;
     gap: 12px;
   }
 
