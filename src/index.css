@@ -1407,10 +1407,12 @@ body:has(.landing) {
 
 .landing-cta-disabled:hover { transform: none; box-shadow: none; }
 
-/* Primary action CTA in the hero CTA group. Was originally an outline
-   button to look secondary, but Download App is the *secondary* (and
-   currently disabled) option — Chat on Web is the active conversion
-   path, so it earns the filled amber treatment. */
+/* Primary action CTA in the hero CTA group. Brighter amber +
+   pulsing glow so it reads as the obvious tap target on mobile —
+   inspired by the lime "Get started" button on robinhood.com/crypto.
+   Was originally an outline button; promoted to filled because
+   Download App is currently disabled and Chat on Web is the active
+   conversion path. */
 .landing-cta-outline {
   display: inline-flex;
   align-items: center;
@@ -1418,23 +1420,39 @@ body:has(.landing) {
   gap: 10px;
   padding: 15px 28px;
   font-family: 'IBM Plex Mono', monospace;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
   letter-spacing: 2px;
   text-transform: uppercase;
   cursor: pointer;
-  background: var(--landing-amber);
+  background: var(--landing-amber-bright);
   color: var(--landing-bg);
-  border: 1px solid var(--landing-amber);
+  border: 1px solid var(--landing-amber-bright);
   text-decoration: none;
-  transition: all 0.2s ease;
-  box-shadow: 0 0 12px rgba(246, 176, 74, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 0 18px rgba(255, 200, 112, 0.55),
+              0 0 36px rgba(255, 200, 112, 0.25);
+  animation: landing-cta-pulse 2.6s ease-in-out infinite;
 }
 
 .landing-cta-outline:hover {
-  background: var(--landing-amber-bright);
+  background: #ffd388;
   color: var(--landing-bg);
-  box-shadow: 0 0 20px rgba(255, 200, 112, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(255, 211, 136, 0.7),
+              0 0 48px rgba(255, 211, 136, 0.35);
+  animation: none;
+}
+
+@keyframes landing-cta-pulse {
+  0%, 100% {
+    box-shadow: 0 0 18px rgba(255, 200, 112, 0.55),
+                0 0 36px rgba(255, 200, 112, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(255, 200, 112, 0.75),
+                0 0 56px rgba(255, 200, 112, 0.4);
+  }
 }
 
 /* HERO ----- */
@@ -2461,20 +2479,26 @@ body:has(.landing) {
 
   /* Hero: more breathing room above the headline; force the chat
      window below the fold by giving the hero-content full viewport
-     height (minus nav + padding). */
+     height (minus nav + padding). Center-aligned to match the
+     editorial polish of marketing-first apps (Robinhood, Linear, etc.). */
   .hero { padding: 60px 0 40px; }
   .hero-eyebrow { display: none; }
   .hero-headline { font-size: 44px; letter-spacing: -1.5px; }
   .hero-grid { gap: 40px; }
-  .hero-content { min-height: calc(100vh - 200px); }
+  .hero-content {
+    min-height: calc(100vh - 200px);
+    text-align: center;
+  }
+  .hero-subtext { margin-left: auto; margin-right: auto; }
 
   /* Download App stacked above Chat on Web. Grid with a single
      max-content column makes both buttons share the width of the
-     widest one — equal width, sized to content rather than viewport. */
+     widest one — equal width, sized to content rather than viewport.
+     justify-content: center now horizontally centers the stack. */
   .hero-cta-group {
     display: grid;
     grid-template-columns: max-content;
-    justify-content: start;
+    justify-content: center;
     gap: 12px;
   }
 
