@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { HandlerResult } from './api-handlers.js'
 import { supabaseAdmin } from './supabase-admin.js'
+import { maybeSendWelcomeEmail } from './email.js'
 
 // ---------------------------------------------------------------------------
 // Verifier construction (cached per process)
@@ -270,6 +271,13 @@ export async function upsertAppleSubscription(opts: {
     { onConflict: 'source,external_id' },
   )
   if (subErr) throw subErr
+
+  // Welcome email — fire on the first sync that lands the user in an
+  // active state. Apple webhook payloads don't include the email, so the
+  // helper falls back to auth.users via supabase admin lookup.
+  if (status === 'active') {
+    await maybeSendWelcomeEmail({ userId: opts.userId, plan: productId })
+  }
 
   return { status, productId, externalId }
 }

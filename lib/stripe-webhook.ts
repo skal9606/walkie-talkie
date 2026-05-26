@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import { supabaseAdmin } from './supabase-admin.js'
+import { maybeSendWelcomeEmail } from './email.js'
 import type { HandlerResult } from './api-handlers.js'
 
 type ProductId = 'monthly' | 'yearly'
@@ -125,15 +126,24 @@ async function syncFromSubscription(
     stripeCustomerId: customerId,
     email,
   })
+  const status = statusFromStripe(sub.status)
   await upsertSubscription({
     user_id: userId,
     source: 'stripe',
     external_id: sub.id,
     product_id: productId,
-    status: statusFromStripe(sub.status),
+    status,
     current_period_end: periodEndIso(sub),
     cancel_at_period_end: sub.cancel_at_period_end ?? false,
   })
+
+  // Welcome email — fire on the first sync that lands the user in an
+  // active state. maybeSendWelcomeEmail is idempotent (dedupes via
+  // profiles.welcome_email_sent_at) so re-fires on later subscription
+  // events are no-ops.
+  if (status === 'active') {
+    await maybeSendWelcomeEmail({ userId, plan: productId, emailHint: email })
+  }
 }
 
 async function processEvent(stripe: Stripe, event: Stripe.Event): Promise<void> {
