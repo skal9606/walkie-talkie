@@ -85,7 +85,7 @@ export default function Landing() {
                 href="https://apps.apple.com/app/walkie-talkie-ai-tutor/id6767578891"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="landing-cta landing-cta-large"
+                className="landing-cta-secondary"
               >
                 Download App
               </a>
