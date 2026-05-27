@@ -905,6 +905,10 @@ export type AdminStats = {
   activeSubscribers: number
   /** Active subscribers broken down by source (stripe vs apple). */
   subscribersBySource: Record<string, number>
+  /** All users broken down by auth provider — best proxy we have for
+   *  web vs iOS signup origin. Apple/Google can be either platform
+   *  but in practice Apple skews iOS, email/anonymous skew web. */
+  usersByProvider: Record<string, number>
   /** Cumulative trial seconds consumed across all free users (sum of `usage`). */
   totalTrialSeconds: number
   /** Profiles grouped by target_language ('pt-BR' etc.). */
@@ -981,6 +985,22 @@ export async function getAdminStats(): Promise<AdminStats> {
   const activeUsers30d = users.filter(
     (u) => u.last_sign_in_at && new Date(u.last_sign_in_at) > thirtyDaysAgo,
   ).length
+
+  // Provider breakdown. Anonymous users have is_anonymous=true and no
+  // provider entry; bucket them explicitly. Otherwise use the first
+  // identity's provider ("apple", "google", "email", etc.).
+  const usersByProvider: Record<string, number> = {}
+  for (const u of users) {
+    let provider: string
+    if (u.is_anonymous) {
+      provider = 'anonymous'
+    } else {
+      const identityProvider = u.identities?.[0]?.provider
+      const appMetaProvider = (u.app_metadata as { provider?: string } | null)?.provider
+      provider = identityProvider ?? appMetaProvider ?? 'unknown'
+    }
+    usersByProvider[provider] = (usersByProvider[provider] ?? 0) + 1
+  }
 
   // Active subscriptions + source breakdown + MRR + pending churn.
   const { data: subs } = await db
@@ -1087,6 +1107,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     activeUsers30d,
     activeSubscribers,
     subscribersBySource,
+    usersByProvider,
     totalTrialSeconds,
     usersByLanguage,
     totalConversations,

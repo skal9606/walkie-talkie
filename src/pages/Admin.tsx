@@ -16,6 +16,7 @@ type AdminStats = {
   activeUsers30d: number
   activeSubscribers: number
   subscribersBySource: Record<string, number>
+  usersByProvider: Record<string, number>
   totalTrialSeconds: number
   usersByLanguage: Record<string, number>
   totalConversations: number
@@ -186,6 +187,28 @@ export default function Admin() {
       </div>
 
       <section className="admin-panel">
+        <h2>Users by sign-in provider</h2>
+        <p className="admin-panel-sub">
+          Best proxy for web vs iOS origin. Apple users skew iOS; email
+          and anonymous skew web.
+        </p>
+        {Object.keys(stats.usersByProvider).length === 0 ? (
+          <p className="admin-empty-inline">No users yet.</p>
+        ) : (
+          <ul className="admin-list">
+            {Object.entries(stats.usersByProvider)
+              .sort(([, a], [, b]) => b - a)
+              .map(([provider, count]) => (
+                <li key={provider}>
+                  <span className="admin-list-key">{labelProvider(provider)}</span>
+                  <span className="admin-list-value">{count}</span>
+                </li>
+              ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="admin-panel">
         <h2>Recent signups</h2>
         {stats.recentSignups.length === 0 ? (
           <p className="admin-empty-inline">No signups yet.</p>
@@ -259,6 +282,17 @@ function labelSource(source: string): string {
     case 'stripe': return 'Stripe (web)'
     case 'apple': return 'Apple (iOS)'
     default: return source
+  }
+}
+
+function labelProvider(provider: string): string {
+  switch (provider) {
+    case 'apple': return '🍎 Apple Sign-In (skews iOS)'
+    case 'google': return '🔍 Google Sign-In'
+    case 'email': return '✉️ Email / magic link (web)'
+    case 'anonymous': return '👤 Anonymous (web trial)'
+    case 'unknown': return '❓ Unknown'
+    default: return provider
   }
 }
 
