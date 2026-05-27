@@ -1,9 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
+  addDeviceUsageSeconds,
   addIpUsageSeconds,
   addPracticeSeconds,
   addUsageSeconds,
   checkSessionAccess,
+  clientDeviceId,
   clientIpHash,
   setSignupIpHashIfMissing,
 } from '../lib/gating.js'
@@ -48,6 +50,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // device" rule. Best-effort; if the migration hasn't been run yet
   // it logs and continues with the per-user cap only.
   const ipHash = clientIpHash(req.headers)
+  // Per-device trial gating via Keychain UUID from iOS (header set by
+  // Build 27+; see DeviceTrialId.swift). Null for web traffic and older
+  // iOS builds — those just skip the device gate.
+  const deviceId = clientDeviceId(req.headers)
   // Practice-seconds counter for the admin dashboard. The client sends
   // seconds=0 for subscribed users (so they don't burn the trial cap)
   // but we still want their total practice time visible. Default to
@@ -60,6 +66,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await addUsageSeconds(userId, seconds)
     if (ipHash && seconds > 0) {
       await addIpUsageSeconds(ipHash, seconds)
+    }
+    if (deviceId && seconds > 0) {
+      await addDeviceUsageSeconds(deviceId, seconds)
     }
     await addPracticeSeconds(userId, practiceSeconds)
     if (ipHash) {
@@ -79,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     streak = await tickStreak(userId, body.localDate)
   }
 
-  const access = await checkSessionAccess(userId, ipHash ?? undefined)
+  const access = await checkSessionAccess(userId, ipHash ?? undefined, deviceId ?? undefined)
   return res.status(200).json({
     subscribed: access.subscribed,
     secondsRemaining: access.secondsRemaining,

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { checkRateLimit, clientIpHash, mintGatedSession } from '../lib/gating.js'
+import { checkRateLimit, clientDeviceId, clientIpHash, mintGatedSession } from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 
 // Tunables — picked to be generous for real users and tight enough to
@@ -39,6 +39,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Null in local dev (no x-forwarded-for header) — gating falls back to
   // per-user only when ipHash is null.
   const ipHash = clientIpHash(req.headers) ?? undefined
-  const result = await mintGatedSession(userId, process.env.OPENAI_API_KEY, language, ipHash)
+  // iOS Keychain-backed device identifier for the per-device trial cap
+  // (see 2026-05-27 migration). Web clients don't send it (no Keychain
+  // equivalent in browsers); pre-Build-27 iOS clients don't either. In
+  // both cases the device gate is a no-op — per-user + per-IP still apply.
+  const deviceId = clientDeviceId(req.headers) ?? undefined
+  const result = await mintGatedSession(
+    userId,
+    process.env.OPENAI_API_KEY,
+    language,
+    ipHash,
+    deviceId,
+  )
   res.status(result.status).json(result.body)
 }

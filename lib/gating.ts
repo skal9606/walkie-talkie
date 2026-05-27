@@ -25,10 +25,18 @@ const ACTIVE_STATUSES = ['active', 'trialing', 'in_grace_period'] as const
  * per-user cap applies (back-compat for callers that don't know the IP).
  * IP gating exists to stop the "create a new anonymous account → fresh
  * 10 minutes" loop on the same device.
+ *
+ * Pass `deviceId` to also enforce per-device trial caps. This is the iOS
+ * Keychain-backed UUID that survives app uninstall, so the abuse path
+ * "delete app → reinstall → new account = fresh trial" is blocked even
+ * when the user is on cellular (where the IP gate breaks). Web callers
+ * don't pass it; iOS clients pre-Build-27 don't either — both fall back
+ * to user + IP gating, which is fine.
  */
 export async function checkSessionAccess(
   userId: string,
   ipHash?: string,
+  deviceId?: string,
 ): Promise<GateResult> {
   // Local dev bypass — set DEV_BYPASS_GATING=true in .env.local to grant
   // unlimited access without touching the subscriptions table. STRUCTURAL
@@ -48,7 +56,7 @@ export async function checkSessionAccess(
   // A user can have multiple subscription rows (one Stripe + one Apple at
   // most). They're entitled to access if ANY of those rows is in an active
   // state. `.limit(1)` short-circuits — we don't need the full set.
-  const [subResult, usageResult, ipUsageResult] = await Promise.all([
+  const [subResult, usageResult, ipUsageResult, deviceUsageResult] = await Promise.all([
     db
       .from('subscriptions')
       .select('id')
@@ -60,6 +68,9 @@ export async function checkSessionAccess(
     ipHash
       ? db.from('ip_usage').select('seconds_used').eq('ip_hash', ipHash).maybeSingle()
       : Promise.resolve({ data: null as { seconds_used?: number } | null }),
+    deviceId
+      ? db.from('device_usage').select('seconds_used').eq('device_id', deviceId).maybeSingle()
+      : Promise.resolve({ data: null as { seconds_used?: number } | null }),
   ])
 
   // Subscribed users bypass every cap.
@@ -69,10 +80,13 @@ export async function checkSessionAccess(
 
   const userUsed = usageResult.data?.seconds_used ?? 0
   const ipUsed = ipUsageResult.data?.seconds_used ?? 0
-  // The effective trial budget is bounded by BOTH the user's own usage
-  // and the IP's aggregate usage. A new anonymous account on the same
-  // device inherits whatever quota has already been burned through IP.
-  const used = Math.max(userUsed, ipUsed)
+  const deviceUsed = deviceUsageResult.data?.seconds_used ?? 0
+  // The effective trial budget is bounded by the user's own usage AND the
+  // IP's aggregate usage AND the device's aggregate usage. Each guards a
+  // different abuse path (new account, new account on same IP, new
+  // account on reinstalled app). Whichever has burned through the most
+  // wins.
+  const used = Math.max(userUsed, ipUsed, deviceUsed)
   const remaining = Math.max(0, FREE_TIER_SECONDS - used)
 
   if (remaining <= 0) {
@@ -189,6 +203,56 @@ export async function addIpUsageSeconds(ipHash: string, seconds: number): Promis
 }
 
 /**
+ * Atomic increment of per-device usage via increment_device_usage() (see
+ * 2026-05-27-device-trial-gate migration). Mirrors addIpUsageSeconds but
+ * keyed by the iOS Keychain UUID. Best-effort — if the migration hasn't
+ * been applied or the RPC fails, log + continue. The per-user and per-IP
+ * caps still apply as defense in depth.
+ */
+export async function addDeviceUsageSeconds(deviceId: string, seconds: number): Promise<number> {
+  const clamped = Math.max(0, Math.floor(seconds))
+  if (clamped === 0) {
+    const { data } = await supabaseAdmin()
+      .from('device_usage')
+      .select('seconds_used')
+      .eq('device_id', deviceId)
+      .maybeSingle()
+    return (data?.seconds_used as number | undefined) ?? 0
+  }
+  const { data, error } = await supabaseAdmin().rpc('increment_device_usage', {
+    p_device_id: deviceId,
+    p_seconds: clamped,
+  })
+  if (error) {
+    console.error('[device-gate] increment failed:', error.message)
+    return 0
+  }
+  return (data as number) ?? 0
+}
+
+/**
+ * Read + sanitize the X-Walkie-Device-Id header sent by iOS clients. The
+ * header is a UUID written to Keychain on first launch (see
+ * DeviceTrialId.swift). We accept anything that looks like a reasonable
+ * opaque identifier — UUID format on the happy path, but tolerant of
+ * future client changes. Length-capped at 64 chars to prevent a
+ * malicious client from stuffing the device_usage table with massive
+ * keys. Returns null if missing or invalid, which makes the device gate
+ * a no-op (per-user + per-IP caps still apply).
+ */
+export function clientDeviceId(headers: Record<string, string | string[] | undefined>): string | null {
+  const raw = headers['x-walkie-device-id']
+  if (!raw) return null
+  const value = String(Array.isArray(raw) ? raw[0] : raw).trim()
+  if (!value) return null
+  if (value.length > 64) return null
+  // Allow only printable ASCII so the value can't smuggle control chars
+  // or split a log line. UUIDs satisfy this trivially.
+  if (!/^[\x21-\x7e]+$/.test(value)) return null
+  return value
+}
+
+/**
  * Per-user fixed-window rate limit. Returns true if the request is
  * allowed; false if the user has exceeded the cap for this bucket in
  * the current window. Atomic via the check_and_bump_rate_limit Postgres
@@ -264,8 +328,9 @@ export async function mintGatedSession(
   openAiKey: string | undefined,
   language?: string,
   ipHash?: string,
+  deviceId?: string,
 ): Promise<HandlerResult> {
-  const access = await checkSessionAccess(userId, ipHash)
+  const access = await checkSessionAccess(userId, ipHash, deviceId)
   if (!access.allowed) {
     return {
       status: 402,
