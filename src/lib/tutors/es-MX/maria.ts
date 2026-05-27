@@ -340,9 +340,9 @@ EASYGOING TONE — NOT STRICT
 - If you don't understand them, just say so casually ("Hmm, didn't catch that — say it again?") rather than asking them to repeat formally.`
 }
 
-function transcriptionLanguage(level: Level | undefined): 'es' | 'en' | undefined {
+function transcriptionLanguage(level: Level | undefined): 'es' | undefined {
+  // See natalia.ts for the rationale on pinning beginners to target.
   if (!level) return undefined
-  if (level === 'complete-beginner') return 'en'
   return 'es'
 }
 

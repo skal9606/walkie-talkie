@@ -337,12 +337,9 @@ EASYGOING TONE — NOT STRICT
 - If you don't understand them, just say so casually ("Hmm, didn't catch that — say it again?") rather than asking them to repeat formally.`
 }
 
-function transcriptionLanguage(level: Level | undefined): 'it' | 'en' | undefined {
-  // Discover (level unknown) → undefined → no pin, let the model auto-detect.
-  // complete-beginner replies are mostly English; pinning EN keeps the YOU
-  // bubble readable. Other levels pin to IT.
+function transcriptionLanguage(level: Level | undefined): 'it' | undefined {
+  // See natalia.ts for the rationale on pinning beginners to target.
   if (!level) return undefined
-  if (level === 'complete-beginner') return 'en'
   return 'it'
 }
 

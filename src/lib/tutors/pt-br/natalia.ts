@@ -336,14 +336,15 @@ EASYGOING TONE — NOT STRICT
 - If you don't understand them, just say so casually ("Hmm, didn't catch that — say it again?") rather than asking them to repeat formally.`
 }
 
-function transcriptionLanguage(level: Level | undefined): 'pt' | 'en' | undefined {
+function transcriptionLanguage(level: Level | undefined): 'pt' | undefined {
   // Discover (level unknown) → undefined → no pin, let the model auto-detect.
-  // complete-beginner replies are mostly English with a sprinkle of PT;
-  // pinning EN keeps the YOU bubble readable. Other levels pin to PT — paying
-  // users practicing PT; the occasional English aside transcribed poorly is
-  // the right trade.
+  // All known levels pin to PT — including complete-beginner. Earlier we
+  // pinned beginners to EN on the theory that their replies were mostly
+  // English; in practice, beginners attempt target-language phrases and
+  // the EN pin decodes them as English-sounding gibberish ("Con mi esposa"
+  // → "Onni es kota"). Pinning to the target language fails more gracefully
+  // on the rare English aside than the reverse.
   if (!level) return undefined
-  if (level === 'complete-beginner') return 'en'
   return 'pt'
 }
 

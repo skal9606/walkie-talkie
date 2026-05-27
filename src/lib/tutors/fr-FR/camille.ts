@@ -337,9 +337,9 @@ EASYGOING TONE — NOT STRICT
 - If you don't understand them, just say so casually ("Hmm, j'ai pas saisi — répète?") rather than asking them to repeat formally.`
 }
 
-function transcriptionLanguage(level: Level | undefined): 'fr' | 'en' | undefined {
+function transcriptionLanguage(level: Level | undefined): 'fr' | undefined {
+  // See natalia.ts for the rationale on pinning beginners to target.
   if (!level) return undefined
-  if (level === 'complete-beginner') return 'en'
   return 'fr'
 }
 
