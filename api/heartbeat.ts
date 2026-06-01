@@ -7,7 +7,9 @@ import {
   checkSessionAccess,
   clientDeviceId,
   clientIpHash,
+  clientPlatform,
   setSignupIpHashIfMissing,
+  setSignupPlatformIfMissing,
 } from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 import { loadStreak, tickStreak } from '../lib/api-handlers.js'
@@ -54,6 +56,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Build 27+; see DeviceTrialId.swift). Null for web traffic and older
   // iOS builds — those just skip the device gate.
   const deviceId = clientDeviceId(req.headers)
+  // Client platform (ios vs web) for the admin dashboard. Recorded once,
+  // on the first heartbeat — same write-once pattern as the IP hash.
+  const platform = clientPlatform(req.headers)
   // Practice-seconds counter for the admin dashboard. The client sends
   // seconds=0 for subscribed users (so they don't burn the trial cap)
   // but we still want their total practice time visible. Default to
@@ -73,6 +78,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await addPracticeSeconds(userId, practiceSeconds)
     if (ipHash) {
       await setSignupIpHashIfMissing(userId, ipHash)
+    }
+    if (platform) {
+      await setSignupPlatformIfMissing(userId, platform)
     }
   } catch (err) {
     return res.status(500).json({ error: String(err) })

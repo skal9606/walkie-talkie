@@ -31,6 +31,7 @@ type AdminStats = {
     name: string | null
     createdAt: string
     isAnonymous: boolean
+    platform: 'ios' | 'web' | null
     ipHashShort: string | null
     ipHashCount: number
   }>
@@ -219,6 +220,7 @@ export default function Admin() {
                 <th>When</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Platform</th>
                 <th>Type</th>
                 <th>IP</th>
               </tr>
@@ -229,6 +231,13 @@ export default function Admin() {
                   <td>{relativeTime(u.createdAt)}</td>
                   <td>{u.name ?? '—'}</td>
                   <td>{u.email ?? <span className="admin-muted">(anonymous)</span>}</td>
+                  <td>
+                    {u.platform ? (
+                      labelPlatform(u.platform)
+                    ) : (
+                      <span className="admin-muted">—</span>
+                    )}
+                  </td>
                   <td>{u.isAnonymous ? 'Anon' : 'Signed in'}</td>
                   <td>
                     {u.ipHashShort ? (
@@ -294,6 +303,10 @@ function labelProvider(provider: string): string {
     case 'unknown': return '❓ Unknown'
     default: return provider
   }
+}
+
+function labelPlatform(platform: 'ios' | 'web'): string {
+  return platform === 'ios' ? '📱 iOS' : '🌐 Web'
 }
 
 function labelLanguage(code: string): string {

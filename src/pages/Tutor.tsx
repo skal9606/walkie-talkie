@@ -518,6 +518,11 @@ export default function Tutor() {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${fresh}`,
+            // Platform signal for the admin dashboard. This is the web
+            // bundle, so always 'web'. The iOS app sends 'ios' on its own
+            // heartbeat. Server records it once, on the first heartbeat
+            // (lib/gating.ts:setSignupPlatformIfMissing).
+            'x-walkie-platform': 'web',
           },
           // Subscribed users don't consume the trial budget, so seconds=0
           // for them. The server treats sessionSeconds + localDate as the

@@ -933,6 +933,9 @@ export type AdminStats = {
     name: string | null
     createdAt: string
     isAnonymous: boolean
+    /** Captured client platform at first interaction. Null = unknown
+     *  (pre-migration accounts, or a user who never started a session). */
+    platform: 'ios' | 'web' | null
     /** First 8 chars of the SHA-256 IP hash. Null if not yet recorded. */
     ipHashShort: string | null
     /** How many profiles share this IP hash. 1 = unique, >1 = duplicate. */
@@ -1042,7 +1045,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   // silently fails the entire SELECT and zeroes out the dashboard.
   const { data: profileRows, error: profileErr } = await db
     .from('profiles')
-    .select('user_id, cefr_language, total_practice_seconds, total_conversations, signup_ip_hash')
+    .select('user_id, cefr_language, total_practice_seconds, total_conversations, signup_ip_hash, signup_platform')
   // Without this log, a schema-cache mismatch (PostgREST not seeing a
   // newly-added column) silently returns null/empty and the dashboard
   // shows zeros everywhere instead of failing loudly. Vercel logs are
@@ -1051,7 +1054,10 @@ export async function getAdminStats(): Promise<AdminStats> {
     console.error('[admin-stats] profiles SELECT failed:', profileErr.message)
   }
   const usersByLanguage: Record<string, number> = {}
-  const profileByUserId = new Map<string, { ipHash: string | null }>()
+  const profileByUserId = new Map<
+    string,
+    { ipHash: string | null; platform: 'ios' | 'web' | null }
+  >()
   // Count how many profiles share each IP hash so we can flag duplicates
   // in the dashboard. Hashes that haven't been recorded yet (null) are
   // skipped — they don't count toward duplicate detection.
@@ -1062,7 +1068,10 @@ export async function getAdminStats(): Promise<AdminStats> {
     const lang = (row.cefr_language as string) ?? 'unknown'
     usersByLanguage[lang] = (usersByLanguage[lang] ?? 0) + 1
     const ipHash = (row.signup_ip_hash as string | null) ?? null
-    profileByUserId.set(row.user_id as string, { ipHash })
+    const rawPlatform = (row.signup_platform as string | null) ?? null
+    const platform =
+      rawPlatform === 'ios' || rawPlatform === 'web' ? rawPlatform : null
+    profileByUserId.set(row.user_id as string, { ipHash, platform })
     if (ipHash) {
       ipHashCounts.set(ipHash, (ipHashCounts.get(ipHash) ?? 0) + 1)
     }
@@ -1082,6 +1091,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     .map((u) => {
       const profile = profileByUserId.get(u.id)
       const ipHash = profile?.ipHash ?? null
+      const platform = profile?.platform ?? null
       // Names live in auth.users.user_metadata, populated by Google
       // sign-in (full_name) or magic-link signup (name). Anonymous
       // users have no metadata so name stays null.
@@ -1094,6 +1104,7 @@ export async function getAdminStats(): Promise<AdminStats> {
         name: displayName,
         createdAt: u.created_at,
         isAnonymous: Boolean(u.is_anonymous),
+        platform,
         ipHashShort: ipHash ? ipHash.slice(0, 8) : null,
         ipHashCount: ipHash ? (ipHashCounts.get(ipHash) ?? 1) : 0,
       }

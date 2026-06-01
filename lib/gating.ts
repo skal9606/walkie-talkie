@@ -161,6 +161,48 @@ export async function setSignupIpHashIfMissing(userId: string, ipHash: string): 
 }
 
 /**
+ * Resolves the client platform of a request. Primary signal is the
+ * explicit `x-walkie-platform` header ('ios' | 'web') the clients send.
+ * Falls back to 'ios' when the iOS Keychain device-id header is present
+ * (Build 27+ sends it but older builds may not yet send x-walkie-platform).
+ * Returns null when nothing identifies the platform — the column then
+ * stays NULL and the dashboard renders "—" rather than guessing.
+ */
+export function clientPlatform(
+  headers: Record<string, string | string[] | undefined>,
+): 'ios' | 'web' | null {
+  const raw = headers['x-walkie-platform']
+  const value = String(Array.isArray(raw) ? raw[0] : raw ?? '')
+    .trim()
+    .toLowerCase()
+  if (value === 'ios' || value === 'web') return value
+  // Fallback: any request carrying the iOS device-id header is iOS.
+  if (clientDeviceId(headers)) return 'ios'
+  return null
+}
+
+/**
+ * Records the platform of the user's first heartbeat — and only the
+ * first, via `signup_platform IS NULL` in the WHERE clause (same
+ * write-once pattern as setSignupIpHashIfMissing). Surfaced in the admin
+ * dashboard's Recent Signups table. Best-effort: any failure logs and
+ * continues.
+ */
+export async function setSignupPlatformIfMissing(
+  userId: string,
+  platform: 'ios' | 'web',
+): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from('profiles')
+    .update({ signup_platform: platform })
+    .eq('user_id', userId)
+    .is('signup_platform', null)
+  if (error) {
+    console.error('[admin-counters] setSignupPlatformIfMissing failed:', error.message)
+  }
+}
+
+/**
  * Atomic +1 on profiles.total_conversations. Called once per /api/session
  * mint. Best-effort: failures don't block session minting.
  */
