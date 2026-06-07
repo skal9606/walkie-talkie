@@ -12,7 +12,12 @@ import {
   setSignupPlatformIfMissing,
 } from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
-import { loadStreak, tickStreak } from '../lib/api-handlers.js'
+import {
+  loadStreak,
+  tickStreak,
+  upsertLearnerProfile,
+  type ServerLearnerProfile,
+} from '../lib/api-handlers.js'
 
 /**
  * Called ~every 10s while a session is live. Two jobs:
@@ -45,6 +50,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     sessionSeconds?: number
     /** YYYY-MM-DD in the learner's local timezone. */
     localDate?: string
+    /**
+     * Learner onboarding profile to persist server-side. Sent right after
+     * the initial onboarding completes (and harmless to resend on later
+     * heartbeats — upsertLearnerProfile only fills set fields). This is how
+     * the account, not the browser, becomes the source of truth for whether
+     * onboarding is done. Piggybacked here to stay under Vercel Hobby's
+     * 12-function limit.
+     */
+    profile?: ServerLearnerProfile
   }
   const seconds = Math.min(Math.max(0, Math.floor(body.seconds ?? 0)), 60)
   // Mirror trial usage into the per-IP bucket too — that's what
@@ -81,6 +95,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (platform) {
       await setSignupPlatformIfMissing(userId, platform)
+    }
+    // Persist the onboarding profile if the client supplied one. Best-
+    // effort inside upsertLearnerProfile (logs on failure) — keep it from
+    // breaking the heartbeat's primary usage/streak job.
+    if (body.profile && typeof body.profile === 'object') {
+      await upsertLearnerProfile(userId, body.profile)
     }
   } catch (err) {
     return res.status(500).json({ error: String(err) })

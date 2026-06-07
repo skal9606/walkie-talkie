@@ -185,6 +185,27 @@ export function hasLanguageSelection(profile: LearnerProfile | null): boolean {
 }
 
 /**
+ * Decides whether to show the initial onboarding flow. The user's ACCOUNT —
+ * not the browser — is the source of truth: a returning user whose profile
+ * lives on the server must NOT be re-onboarded just because localStorage is
+ * empty (fresh browser, different device, or post-sign-out wipe).
+ *
+ * Returns false (skip onboarding) if EITHER the local cache OR the server
+ * profile already has a complete language selection (targetLanguage +
+ * tutorId, per hasLanguageSelection). Returns true (onboard) only when
+ * neither side has a complete selection — a genuinely new user, or one whose
+ * server profile is partial/incomplete.
+ */
+export function shouldShowOnboarding(args: {
+  localProfile: LearnerProfile | null
+  serverProfile: LearnerProfile | null
+}): boolean {
+  if (hasLanguageSelection(args.localProfile)) return false
+  if (hasLanguageSelection(args.serverProfile)) return false
+  return true
+}
+
+/**
  * Renders the learner's profile as a prompt block for the tutor. Returns an
  * empty string if there's nothing useful to say.
  *
@@ -227,5 +248,104 @@ export function clearProfile(): void {
     localStorage.removeItem(STORAGE_KEY)
   } catch {
     // ignore
+  }
+}
+
+// -- Server sync (account is the source of truth) ---------------------------
+//
+// The learner profile is persisted server-side (keyed by the user's account)
+// and mirrored into localStorage as a cache. This is what lets a returning
+// user skip onboarding on a fresh browser / different device / after sign-out
+// wiped localStorage — see shouldShowOnboarding.
+
+/**
+ * Shape of the `learnerProfile` field returned by /api/subscription-status
+ * (lib/api-handlers.ts:ServerLearnerProfile). Field names match the client
+ * LearnerProfile so the merge below is a straight copy with light validation.
+ */
+type RawServerProfile = {
+  name?: unknown
+  nativeLanguage?: unknown
+  targetLanguage?: unknown
+  tutorId?: unknown
+  level?: unknown
+  goals?: unknown
+  questionnaireCompleted?: unknown
+}
+
+/**
+ * Coerces the raw server payload into a LearnerProfile, dropping fields that
+ * aren't well-formed. Returns null if nothing usable came back (new user).
+ */
+export function serverProfileToLearnerProfile(
+  raw: RawServerProfile | null | undefined,
+): LearnerProfile | null {
+  if (!raw || typeof raw !== 'object') return null
+  const profile: LearnerProfile = {}
+  if (typeof raw.name === 'string' && raw.name.trim()) profile.name = raw.name.trim()
+  if (isLevel(raw.level)) profile.level = raw.level
+  if (isNativeLanguage(raw.nativeLanguage)) profile.nativeLanguage = raw.nativeLanguage
+  if (typeof raw.goals === 'string' && raw.goals.trim()) profile.goals = raw.goals.trim()
+  if (raw.questionnaireCompleted === true) profile.questionnaireCompleted = true
+  if (typeof raw.targetLanguage === 'string' && raw.targetLanguage.length > 0) {
+    profile.targetLanguage = raw.targetLanguage as LanguageCode
+  }
+  if (typeof raw.tutorId === 'string' && raw.tutorId.length > 0) {
+    profile.tutorId = raw.tutorId
+  }
+  return Object.keys(profile).length > 0 ? profile : null
+}
+
+/**
+ * Merges the server profile into the local cache and persists the result.
+ * The SERVER is the source of truth, so any field present on the server
+ * overwrites the local value; local-only fields (not yet synced) are kept.
+ * Returns the merged profile (or the unchanged local profile if the server
+ * had nothing).
+ */
+export function mergeServerProfileIntoLocal(
+  serverProfile: LearnerProfile | null,
+): LearnerProfile | null {
+  const local = loadProfile()
+  if (!serverProfile) return local
+  const merged: LearnerProfile = { ...(local ?? {}), ...serverProfile }
+  saveProfile(merged)
+  return merged
+}
+
+/**
+ * Fires the onboarding profile to the server. Piggybacks /api/heartbeat with
+ * seconds=0 (so no trial usage is consumed) and a `profile` payload — the
+ * server upserts it via upsertLearnerProfile. Best-effort: a failed write
+ * leaves localStorage as the cache and the next heartbeat / load reconciles.
+ */
+export async function saveProfileToServer(
+  accessToken: string,
+  profile: LearnerProfile,
+): Promise<void> {
+  try {
+    await fetch('/api/heartbeat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'x-walkie-platform': 'web',
+      },
+      body: JSON.stringify({
+        seconds: 0,
+        profile: {
+          name: profile.name,
+          nativeLanguage: profile.nativeLanguage,
+          targetLanguage: profile.targetLanguage,
+          tutorId: profile.tutorId,
+          level: profile.level,
+          goals: profile.goals,
+          questionnaireCompleted: profile.questionnaireCompleted,
+        },
+      }),
+    })
+  } catch {
+    // Best-effort. localStorage still holds the profile; the next
+    // heartbeat during a session will re-send and reconcile.
   }
 }

@@ -425,6 +425,108 @@ export async function persistCefrAssessment(
   }
 }
 
+// -- Learner profile (onboarding source of truth) --------------------------
+
+/// The learner's onboarding profile, mirrored server-side so the ACCOUNT —
+/// not the browser's localStorage — decides whether onboarding has been
+/// completed. Field names match the client-side LearnerProfile shape
+/// (src/lib/profile.ts) so the client can merge it straight into its cache.
+/// All fields optional: a partial profile (e.g. targetLanguage but no
+/// tutorId) is treated as incomplete by shouldShowOnboarding on the client.
+export type ServerLearnerProfile = {
+  name?: string
+  nativeLanguage?: string
+  targetLanguage?: string
+  tutorId?: string
+  level?: string
+  goals?: string
+  questionnaireCompleted?: boolean
+}
+
+/// Reads the learner profile columns for a user. Returns null when the row
+/// doesn't exist OR when no profile field has ever been set (so the client
+/// sees `serverProfile: null` and treats the user as new). Best-effort: a
+/// failed read returns null rather than throwing, so it never blocks the
+/// load-time subscription-status response.
+export async function loadLearnerProfile(
+  userId: string,
+): Promise<ServerLearnerProfile | null> {
+  const { data, error } = await supabaseAdmin()
+    .from('profiles')
+    .select(
+      'learner_name, native_language, target_language, tutor_id, self_level, goals, questionnaire_completed',
+    )
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error || !data) return null
+  const profile: ServerLearnerProfile = {}
+  if (typeof data.learner_name === 'string' && data.learner_name.trim()) {
+    profile.name = data.learner_name.trim()
+  }
+  if (typeof data.native_language === 'string' && data.native_language) {
+    profile.nativeLanguage = data.native_language
+  }
+  if (typeof data.target_language === 'string' && data.target_language) {
+    profile.targetLanguage = data.target_language
+  }
+  if (typeof data.tutor_id === 'string' && data.tutor_id) {
+    profile.tutorId = data.tutor_id
+  }
+  if (typeof data.self_level === 'string' && data.self_level) {
+    profile.level = data.self_level
+  }
+  if (typeof data.goals === 'string' && data.goals.trim()) {
+    profile.goals = data.goals.trim()
+  }
+  if (data.questionnaire_completed === true) {
+    profile.questionnaireCompleted = true
+  }
+  // Nothing was ever set → treat as "no server profile" so the client
+  // onboards a genuinely new user.
+  return Object.keys(profile).length > 0 ? profile : null
+}
+
+/// Upserts the learner profile columns. Only writes fields that are present
+/// and non-empty in `profile`, so partial updates never blank out a value
+/// the user already confirmed. Keyed on the existing user_id. Best-effort:
+/// a failed write logs and returns rather than throwing, so it never breaks
+/// the heartbeat's primary job (usage + streak).
+export async function upsertLearnerProfile(
+  userId: string,
+  profile: ServerLearnerProfile,
+): Promise<void> {
+  const row: Record<string, unknown> = { user_id: userId }
+  if (typeof profile.name === 'string' && profile.name.trim()) {
+    row.learner_name = profile.name.trim()
+  }
+  if (typeof profile.nativeLanguage === 'string' && profile.nativeLanguage) {
+    row.native_language = profile.nativeLanguage
+  }
+  if (typeof profile.targetLanguage === 'string' && profile.targetLanguage) {
+    row.target_language = profile.targetLanguage
+  }
+  if (typeof profile.tutorId === 'string' && profile.tutorId) {
+    row.tutor_id = profile.tutorId
+  }
+  if (typeof profile.level === 'string' && profile.level) {
+    row.self_level = profile.level
+  }
+  if (typeof profile.goals === 'string' && profile.goals.trim()) {
+    row.goals = profile.goals.trim()
+  }
+  if (profile.questionnaireCompleted === true) {
+    row.questionnaire_completed = true
+  }
+  // Only user_id present → nothing to write.
+  if (Object.keys(row).length <= 1) return
+  const { error } = await supabaseAdmin()
+    .from('profiles')
+    .upsert(row, { onConflict: 'user_id' })
+  if (error) {
+    console.error('[learner-profile] upsert failed:', error.message)
+  }
+}
+
 // -- Learner state (mistakes, memory, focus) -------------------------------
 
 /// One persisted mistake the tutor should circle back to in future sessions.
@@ -1144,7 +1246,7 @@ export async function getSubscriptionDetail(
   // to render a "What you're working on" card from this data, and we're
   // at the Vercel Hobby 12-function limit — bundling it here avoids a
   // new endpoint. The payload is small (≤5 langs × ≤10 mistakes).
-  const [subRow, mistakesRow, usageRow] = await Promise.all([
+  const [subRow, mistakesRow, usageRow, learnerProfile] = await Promise.all([
     supabaseAdmin()
       .from('subscriptions')
       .select('source, product_id, status, current_period_end, cancel_at_period_end')
@@ -1165,6 +1267,10 @@ export async function getSubscriptionDetail(
       .select('seconds_used')
       .eq('user_id', userId)
       .maybeSingle(),
+    // Learner onboarding profile — piggybacked on this load-time call so
+    // the client can decide whether to skip onboarding (account, not
+    // browser, is the source of truth). Returns null for new users.
+    loadLearnerProfile(userId),
   ])
   const recentMistakes =
     (mistakesRow.data?.recent_mistakes ?? {}) as Record<string, PersistedMistake[]>
@@ -1181,6 +1287,7 @@ export async function getSubscriptionDetail(
         cancelAtPeriodEnd: false,
         recentMistakes,
         secondsRemaining,
+        learnerProfile,
       },
     }
   }
@@ -1194,6 +1301,7 @@ export async function getSubscriptionDetail(
       cancelAtPeriodEnd: row.cancel_at_period_end ?? false,
       recentMistakes,
       secondsRemaining,
+      learnerProfile,
     },
   }
 }

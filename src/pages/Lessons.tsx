@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { signOut, useAuth } from '../lib/auth'
 import {
-  hasLanguageSelection,
   loadProfile,
   mergeProfileBlanks,
+  mergeServerProfileIntoLocal,
   saveProfile,
+  saveProfileToServer,
+  serverProfileToLearnerProfile,
+  shouldShowOnboarding,
   type LearnerProfile,
 } from '../lib/profile'
 import { currentStreak } from '../lib/streak'
@@ -48,6 +51,15 @@ export default function Lessons() {
   /// network request just for the header.
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
   const [profile, setProfile] = useState<LearnerProfile | null>(() => loadProfile())
+  /// Whether we've reconciled the onboarding gate against the server profile
+  /// yet. Starts true only if the local cache already has a complete
+  /// selection (fast path — no need to wait on the network). Otherwise we
+  /// hold the "Loading…" state until /api/subscription-status returns, so a
+  /// returning user with empty localStorage doesn't briefly flash the
+  /// onboarding screen before their server profile hydrates.
+  const [serverProfileResolved, setServerProfileResolved] = useState<boolean>(
+    () => !shouldShowOnboarding({ localProfile: loadProfile(), serverProfile: null }),
+  )
   const [streak] = useState(() => currentStreak())
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [lessonForDetail, setLessonForDetail] = useState<Lesson | null>(null)
@@ -77,15 +89,33 @@ export default function Lessons() {
       })
       if (!r.ok) {
         setSubscribed(false)
+        // Network/auth failure: don't strand the user on a perpetual
+        // "Loading…". Fall back to the local cache for the onboarding gate.
+        setServerProfileResolved(true)
         return
       }
-      const body = (await r.json()) as { status?: string; secondsRemaining?: number }
+      const body = (await r.json()) as {
+        status?: string
+        secondsRemaining?: number
+        learnerProfile?: unknown
+      }
       setSubscribed(body.status === 'active' || body.status === 'trialing')
       if (typeof body.secondsRemaining === 'number') {
         setSecondsRemaining(body.secondsRemaining)
       }
+      // Server is the source of truth for the onboarding profile. Merge it
+      // into the localStorage cache so a returning user on a fresh browser
+      // skips onboarding. mergeServerProfileIntoLocal returns the merged
+      // profile (or the unchanged local one when the server had nothing).
+      const serverProfile = serverProfileToLearnerProfile(
+        body.learnerProfile as Parameters<typeof serverProfileToLearnerProfile>[0],
+      )
+      const merged = mergeServerProfileIntoLocal(serverProfile)
+      setProfile(merged)
+      setServerProfileResolved(true)
     } catch {
       setSubscribed(false)
+      setServerProfileResolved(true)
     }
   }, [user, accessToken])
 
@@ -143,6 +173,14 @@ export default function Lessons() {
     })
     saveProfile(merged)
     setProfile(merged)
+    // Persist to the SERVER so the account — not this browser — becomes the
+    // source of truth. Without this, signing out (which wipes localStorage)
+    // or moving to another device would force the user back through
+    // onboarding. Fire-and-forget: localStorage already holds the profile,
+    // and saveProfileToServer is best-effort.
+    if (accessToken) {
+      void saveProfileToServer(accessToken, merged)
+    }
     // Drop the brand-new learner straight into a free conversation so
     // steps-to-value = 1. Tutor.tsx's auto-start effect picks up the
     // saved profile and launches the first session. Without this nav
@@ -151,7 +189,12 @@ export default function Lessons() {
     navigate('/chat')
   }
 
-  if (authLoading || !user) {
+  // Hold the "Loading…" state until we've reconciled the onboarding gate
+  // against the server profile. Without this, a returning user with empty
+  // localStorage would flash the onboarding screen for one render before
+  // their server profile hydrates. (Fast path: serverProfileResolved is
+  // already true when the local cache has a complete selection.)
+  if (authLoading || !user || !serverProfileResolved) {
     return (
       <div className="app">
         <div className="empty" style={{ marginTop: 80 }}>Loading…</div>
@@ -159,12 +202,12 @@ export default function Lessons() {
     )
   }
 
-  // First gate: brand-new sign-in with no language/tutor picked yet.
-  // Show the full OnboardingFlow (name → native language → tutor →
-  // proficiency level). Mirrors the Tutor.tsx flow so any landing
-  // surface a new user hits gets them through the same first-run
-  // questionnaire before showing the app.
-  if (!hasLanguageSelection(profile)) {
+  // First gate: brand-new sign-in with no language/tutor picked yet — on
+  // EITHER the local cache or the (now-hydrated) server profile. Show the
+  // full OnboardingFlow (name → native language → tutor → proficiency
+  // level). The account, not the browser, is the source of truth here, so a
+  // returning user whose profile lives server-side lands straight on lessons.
+  if (shouldShowOnboarding({ localProfile: profile, serverProfile: null })) {
     return (
       <div className="app">
         <OnboardingFlow onComplete={handleInitialOnboarding} />
