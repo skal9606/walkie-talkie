@@ -424,6 +424,18 @@ export async function mintGatedSession(
     console.error('[session] loadStreak failed:', err)
   }
 
+  // Pull the server-backed learner profile so iOS (which reads /api/session
+  // on launch) can hydrate name/language/tutor/level/goals and skip onboarding
+  // for a returning account — same source of truth the web app reads from
+  // /api/subscription-status. Best-effort: null on any hiccup, never blocks.
+  let learnerProfile: unknown = null
+  try {
+    const { loadLearnerProfile } = await import('./api-handlers.js')
+    learnerProfile = await loadLearnerProfile(userId)
+  } catch (err) {
+    console.error('[session] loadLearnerProfile failed:', err)
+  }
+
   return {
     status: 200,
     body: {
@@ -435,6 +447,7 @@ export async function mintGatedSession(
       nextFocus: learnerState.nextFocus,
       streakCount: streak.streakCount,
       streakLastDay: streak.streakLastDay,
+      learnerProfile,
     },
   }
 }
