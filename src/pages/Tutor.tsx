@@ -39,6 +39,7 @@ import { getFreshAccessToken, signOut, useAuth } from '../lib/auth'
 import { startCheckout } from '../lib/checkout'
 import { supabase } from '../lib/supabase'
 import { trackInitiateCheckout, trackStartTrial, trackSubscribe } from '../lib/tiktok'
+import { track } from '../lib/analytics'
 import { DEFAULT_TUTOR_ID, TUTORS, getTutor } from '../lib/tutors'
 import { findBeginnerCardInText } from '../lib/tutors/beginner-cards'
 import type { BeginnerCard } from '../lib/tutors/types'
@@ -574,6 +575,8 @@ export default function Tutor() {
       setLiveScenario(null)
 
       const finalTurns = turns.filter((t) => t.text.trim())
+      const userTurnCount = finalTurns.filter((t) => t.role === 'user').length
+      const tutorTurnCount = finalTurns.filter((t) => t.role === 'tutor').length
 
       // Lesson completion gate. Mirrors iOS exactly: >= 60s + >= 3 user
       // turns marks .completed; >= 15s OR >= 1 user turn marks .in_progress.
@@ -581,7 +584,6 @@ export default function Tutor() {
       activeLessonIdRef.current = null
       if (lessonId) {
         const elapsedSeconds = startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0
-        const userTurnCount = finalTurns.filter((t) => t.role === 'user').length
         const outcome = markLessonAttempt(tutor.language, lessonId, { elapsedSeconds, userTurnCount })
         if (outcome === 'completed' || outcome === 'in_progress') {
           setLastLessonOutcome({ lessonId, state: outcome })
@@ -593,6 +595,20 @@ export default function Tutor() {
           void seedDeckForCompletedLesson(user.id, tutor.language, lessonId)
         }
       }
+
+      // PostHog: session ended. Duration is final here (disconnect already
+      // happened above). Metadata only — no transcript text.
+      track.conversationCompleted({
+        duration_seconds: startedAt ? Math.round((Date.now() - startedAt) / 1000) : 0,
+        user_turn_count: userTurnCount,
+        tutor_turn_count: tutorTurnCount,
+        scenario_id: scenario.id,
+        tutor_id: tutor.id,
+        reason: options.reason ?? 'user_ended',
+        qualified_for_streak: Boolean(
+          startedAt && Date.now() - startedAt >= PRACTICE_THRESHOLD_MS,
+        ),
+      })
 
       // Short/empty exhaust — no meaningful conversation, so no review or
       // CEFR to run. Drop straight to the paywall.
@@ -710,6 +726,10 @@ export default function Tutor() {
   /// phrases the learner could say next. Tailored by proficiency level.
   const requestHint = useCallback(() => {
     if (!tutorRef.current || !profile?.level) return
+    track.hintRequested({
+      user_level: profile.level,
+      tutor_language: tutor.languageLabel,
+    })
     setHintLoading(true)
     setHintLines(null)
     hintBufferRef.current = ''
@@ -968,6 +988,16 @@ export default function Tutor() {
       setSubscribed(minted.subscribed || info.subscribed)
       setSecondsRemaining(minted.secondsRemaining || info.secondsRemaining)
       sessionStartedAtRef.current = Date.now()
+      // PostHog: session connected. Non-sensitive metadata only — never the
+      // transcript or anything the learner said.
+      track.conversationStarted({
+        scenario_id: activeScenario.id,
+        tutor_id: tutor.id,
+        tutor_language: tutor.language,
+        user_level: profile?.level,
+        is_lesson: Boolean(activeLessonIdRef.current),
+        is_roleplay: tutor.scenarios.roleplays.some((s) => s.id === activeScenario.id),
+      })
       setStatus('live')
       // TikTok pixel: first-ever session start on this device. Helper is
       // localStorage-deduped so repeat sessions are no-ops.

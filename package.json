@@ -15,6 +15,7 @@
   "dependencies": {
     "@apple/app-store-server-library": "^3.1.0",
     "@supabase/supabase-js": "^2.104.1",
+    "posthog-js": "^1.383.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.14.2",

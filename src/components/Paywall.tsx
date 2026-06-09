@@ -1,10 +1,11 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { startCheckout } from '../lib/checkout'
 import { type Plan } from '../lib/subscription'
 import { supabase } from '../lib/supabase'
 import { getFreshAccessToken } from '../lib/auth'
 import { loadProfile } from '../lib/profile'
 import { getTutor, type Tutor } from '../lib/tutors'
+import { track } from '../lib/analytics'
 
 /// Backend-shaped result from /api/assess-cefr. Kept inline (not imported
 /// from the api-handlers lib) so the frontend bundle doesn't depend on
@@ -100,6 +101,19 @@ export function Paywall({
     cefr !== null &&
     cefr.language === tutor.language &&
     cefr.level !== 'INSUFFICIENT_DATA'
+
+  // PostHog: paywall shown. Metadata only — cefr_level is the level CODE
+  // (e.g. "B1"), never the CEFR note text. Fire once on mount.
+  useEffect(() => {
+    track.paywallViewed({
+      reason,
+      is_anonymous: isAnonymous,
+      cefr_level: showCefr && cefr ? cefr.level : undefined,
+      tutor_id: tutor.id,
+      tutor_language: tutor.language,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function subscribe(plan: Plan) {
     setError(null)

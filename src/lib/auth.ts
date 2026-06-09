@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { trackCompleteRegistration } from './tiktok'
+import { identifyUser, resetUser } from './analytics'
 
 /**
  * Tracks the current Supabase session. Returns { user, accessToken, loading }.
@@ -27,6 +28,7 @@ export function useAuth(): {
       // is localStorage-deduped so repeat tabs / re-logins don't pollute.
       if (data.session?.user && data.session.user.is_anonymous === false) {
         trackCompleteRegistration()
+        identifyUser(data.session.user.id, { email: data.session.user.email })
       }
     })
     const {
@@ -36,6 +38,7 @@ export function useAuth(): {
       setSession(next)
       if (next?.user && next.user.is_anonymous === false) {
         trackCompleteRegistration()
+        identifyUser(next.user.id, { email: next.user.email })
       }
     })
     return () => {
@@ -110,6 +113,8 @@ export async function signOut(): Promise<void> {
     // session is cleared either way; supabase will revoke server-side
     // on its next reachable call.
   }
+  // Clear PostHog identity so the next user on this device starts fresh.
+  resetUser()
   clearLocalUserDataOnSignOut()
   if (typeof window !== 'undefined') {
     window.location.replace('/')
