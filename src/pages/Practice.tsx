@@ -133,7 +133,10 @@ export default function Practice() {
       <header className="header">
         <h1>Choose any way to practice</h1>
         <p className="subtitle">
-          {profile?.name ? `Welcome back, ${profile.name}.` : 'Welcome back.'} Pick a mode below — or tap the phone for a free-flowing chat.
+          <span data-ph-mask>
+            {profile?.name ? `Welcome back, ${profile.name}.` : 'Welcome back.'}
+          </span>{' '}
+          Pick a mode below — or tap the phone for a free-flowing chat.
         </p>
       </header>
 

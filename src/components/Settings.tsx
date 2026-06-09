@@ -21,6 +21,7 @@ import {
 } from '../lib/preferences'
 import { TUTORS, getTutor } from '../lib/tutors'
 import type { TutorId } from '../lib/tutors/types'
+import { track } from '../lib/analytics'
 
 type SubscriptionDetail = {
   plan: 'monthly' | 'yearly' | null
@@ -284,6 +285,17 @@ function ProfileTab({
           onChange={(e) => {
             const nextId = e.target.value as TutorId
             const nextTutor = getTutor(nextId)
+            // PostHog: tutor/language switch. Metadata only (tutor ids +
+            // language codes) — no learner content. Only fire on a real change.
+            if (draft.tutorId !== nextId) {
+              const prevTutor = getTutor(draft.tutorId)
+              track.languageSwitched({
+                previous_tutor_id: draft.tutorId,
+                new_tutor_id: nextId,
+                previous_language: prevTutor.language,
+                new_language: nextTutor.language,
+              })
+            }
             // Switching tutor → drop the old level + name so the next
             // session goes through Discover for the new language.
             setDraft((d) => ({

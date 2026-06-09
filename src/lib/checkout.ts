@@ -1,4 +1,5 @@
 import type { Plan } from './subscription'
+import { track } from './analytics'
 
 /**
  * Creates a Stripe Checkout session and redirects to Stripe's hosted page.
@@ -23,5 +24,6 @@ export async function startCheckout(plan: Plan, accessToken: string): Promise<vo
   if (!res.ok || !data.url) {
     throw new Error(data.error ?? 'Could not start checkout')
   }
+  track.checkoutStarted({ plan })
   window.location.href = data.url
 }

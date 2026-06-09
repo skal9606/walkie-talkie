@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Plan } from '../lib/subscription'
 import { JUST_SIGNED_OUT_FLAG, decideLandingAction, useAuth } from '../lib/auth'
+import { track } from '../lib/analytics'
 
 export default function Landing() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const closeMobileMenu = () => setMobileMenuOpen(false)
+  // Fire landing_viewed at most once, and only for a visitor who actually
+  // stays on the marketing page (signed-in users get redirected to /lessons).
+  const landingTrackedRef = useRef(false)
 
   // Signed-in users skip the marketing page entirely. See decideLandingAction
   // for the auth-resolution race we have to wait through before deciding.
@@ -22,6 +26,12 @@ export default function Landing() {
     }
     if (action === 'redirect-to-lessons') {
       navigate('/lessons', { replace: true })
+      return
+    }
+    // Stayed on the landing page — count the view once.
+    if (!landingTrackedRef.current) {
+      landingTrackedRef.current = true
+      track.landingViewed()
     }
   }, [user, loading, navigate])
 

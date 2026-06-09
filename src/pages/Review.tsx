@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { loadProfile } from '../lib/profile'
 import { DEFAULT_TUTOR_ID, getTutor } from '../lib/tutors'
+import { track } from '../lib/analytics'
 import {
   allCards,
   dueCards,
@@ -76,6 +77,12 @@ export default function Review() {
     void loadCards()
     void loadMistakes()
   }, [authLoading, user, accessToken, navigate, loadCards, loadMistakes])
+
+  // PostHog: Review tab opened. Metadata only (language code) — no card text.
+  useEffect(() => {
+    track.reviewTabOpened({ language_code: languageCode })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const current = cards[index]
 

@@ -3,10 +3,14 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import { applyTheme, loadPreferences } from './lib/preferences'
+import { initAnalytics } from './lib/analytics'
 
 // Apply the saved theme before first paint to avoid a dark→light flash
 // on light-mode users.
 applyTheme(loadPreferences().theme)
+
+// Product analytics (PostHog). No-ops until VITE_POSTHOG_KEY is set.
+initAnalytics()
 
 // PWA cache-bust: vite-plugin-pwa registerType:'autoUpdate' installs a
 // new Service Worker silently when one is available, but doesn't force a

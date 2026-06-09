@@ -13,6 +13,7 @@ import {
 } from '../lib/profile'
 import { currentStreak } from '../lib/streak'
 import { trackSubscribe } from '../lib/tiktok'
+import { setUserProps, track } from '../lib/analytics'
 import { OnboardingFlow, type OnboardingResult } from '../components/OnboardingFlow'
 import { Settings } from '../components/Settings'
 import { LessonDetail } from '../components/LessonDetail'
@@ -129,6 +130,7 @@ export default function Lessons() {
     const plan = searchParams.get('subscribed')
     if (plan !== 'monthly' && plan !== 'yearly') return
     trackSubscribe(plan)
+    track.subscribed({ plan })
     refreshStatus()
     const t = setTimeout(refreshStatus, 2500)
     const next = new URLSearchParams(searchParams)
@@ -173,6 +175,21 @@ export default function Lessons() {
     })
     saveProfile(merged)
     setProfile(merged)
+    // PostHog: onboarding finished. Metadata only — has_goals is a BOOLEAN,
+    // never the free-text goals the learner typed.
+    track.onboardingCompleted({
+      target_language: result.targetLanguage,
+      native_language: result.nativeLanguage,
+      level: result.level,
+      tutor_id: result.tutorId,
+      has_goals: Boolean(result.goals),
+    })
+    setUserProps({
+      target_language: result.targetLanguage,
+      native_language: result.nativeLanguage,
+      level: result.level,
+      tutor_id: result.tutorId,
+    })
     // Persist to the SERVER so the account — not this browser — becomes the
     // source of truth. Without this, signing out (which wipes localStorage)
     // or moving to another device would force the user back through
@@ -374,7 +391,7 @@ function LessonsHome(props: LessonsHomeProps) {
       <div className="lessons-home">
         <header className="lessons-header">
           <div>
-            <h1>Hi, {profile.name || 'there'} 👋</h1>
+            <h1 data-ph-mask>Hi, {profile.name || 'there'} 👋</h1>
             <p className="lessons-subtitle">
               Keep going with {tutorName}. {tutorFlag} {tutorLanguageLabel}
             </p>
