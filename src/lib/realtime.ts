@@ -419,12 +419,16 @@ export class RealtimeTutor {
                       // Natalia always finishes her turn — which is also
                       // the right pedagogical default for a language
                       // tutor (learner needs to hear the correction
-                      // through). 1200ms silence_duration is kept as
-                      // belt-and-suspenders against fragmentation of
-                      // rapid attempts within a single thought.
+                      // through).
                       threshold: 0.82,
                       prefix_padding_ms: 300,
-                      silence_duration_ms: 1200,
+                      // Was 1200ms — that 1.2s of dead air after each learner
+                      // turn was the bulk of the "tutor is slow to respond"
+                      // feeling (kept in sync with iOS). 700ms is much snappier
+                      // and still tolerates a brief mid-thought pause. Raise if
+                      // learners get cut off; lower / move to semantic_vad if
+                      // still too slow.
+                      silence_duration_ms: 700,
                       create_response: true,
                       interrupt_response: false,
                     },
