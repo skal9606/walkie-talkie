@@ -298,6 +298,11 @@ export default function Landing() {
         <div className="landing-footer-tagline">
           Voice AI tutor for English speakers learning a second language.
         </div>
+        <div className="landing-footer-links">
+          <Link to="/blog">Blog</Link>
+          <Link to="/terms">Terms</Link>
+          <Link to="/privacy">Privacy</Link>
+        </div>
         <div className="landing-footer-copy">© 2026 · WT-470 · all freqs reserved</div>
       </footer>
     </div>

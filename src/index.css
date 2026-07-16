@@ -2413,6 +2413,25 @@ body:has(.landing) {
   margin: 0 auto;
 }
 
+.landing-footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.landing-footer-links a {
+  color: var(--landing-cream-mute);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.landing-footer-links a:hover {
+  color: var(--landing-amber);
+}
+
 .landing-footer-copy {
   color: rgba(184, 168, 122, 0.5);
   font-size: 11px;
