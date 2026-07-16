@@ -1,8 +1,80 @@
 import { Link } from 'react-router-dom'
+import Seo from '../src/components/Seo'
+
+const TITLE = 'How to Practice Speaking a Language Alone in 2026 | Walkie Talkie'
+const DESCRIPTION =
+  'Six practical ways to practice speaking a language by yourself — from self-talk and shadowing to AI voice tutors — plus how to build a solo routine that sticks.'
+const PATH = '/blog/how-to-practice-speaking-a-language-alone'
+const IMAGE = '/images/how-to-practice-speaking-a-language-alone.png'
+const PUBLISHED = '2026-07-16'
+
+// Single source of truth for the FAQ section: the visible markup and the
+// FAQPage structured data are both generated from this, so they can never
+// drift apart (Google requires the JSON-LD answers to match the page).
+const FAQS: { q: string; a: string }[] = [
+  {
+    q: 'Can I actually improve my speaking fluency by practicing alone?',
+    a: 'Yes. Speaking fluency improves through repetition and feedback, both of which you can get solo. Methods like self-talk, shadowing, and AI conversation practice give you the reps. Recording yourself provides a form of feedback. The main thing you miss without a human partner is unpredictability, which AI tutors increasingly replicate.',
+  },
+  {
+    q: 'How long does it take to notice improvement from solo speaking practice?',
+    a: 'Most learners notice a difference in confidence and retrieval speed within three to four weeks of consistent daily practice. Pronunciation and fluency improvements take longer — typically two to three months of regular effort.',
+  },
+  {
+    q: 'Is an AI voice tutor a replacement for a human tutor?',
+    a: 'Not a replacement, but a complement. Human tutors are valuable for milestone feedback, nuanced cultural context, and accountability. AI tutors are better for daily reps — they’re available at any time, there’s no scheduling friction, and there’s no social pressure. Most learners benefit from using both at different stages.',
+  },
+  {
+    q: 'What’s the best solo speaking method for beginners?',
+    a: 'Self-talk is the lowest barrier entry point. Narrating your day in the target language requires no setup and builds retrieval habits quickly. Shadowing is also effective early on because it trains your mouth to produce natural sounds before you have the vocabulary to generate original sentences.',
+  },
+  {
+    q: 'How do I stay motivated when practicing alone feels pointless?',
+    a: 'Track your sessions, not your fluency. Fluency is hard to measure day-to-day, but you can always count whether you practiced. Record yourself once a month and compare to the previous recording — the difference is usually more noticeable than you expect. Setting a concrete goal (a trip, a conversation with a family member, a specific milestone) also helps anchor the effort.',
+  },
+  {
+    q: 'Does Walkie Talkie work for complete beginners?',
+    a: 'Walkie Talkie is designed for learners who already have foundational knowledge and want to build speaking fluency. If you’re starting from zero, spend a few weeks on vocabulary and basic grammar first, then use the AI conversation practice to activate what you’ve learned.',
+  },
+  {
+    q: 'What languages does Walkie Talkie support?',
+    a: 'Walkie Talkie currently supports Brazilian Portuguese, Mexican Spanish, Italian, French, and German — all under one subscription.',
+  },
+]
+
+const JSON_LD = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: 'How to Practice Speaking a Language Alone in 2026 (Without Feeling Silly)',
+    description: DESCRIPTION,
+    image: `https://walkietalkie.so${IMAGE}`,
+    datePublished: PUBLISHED,
+    dateModified: PUBLISHED,
+    author: { '@type': 'Organization', name: 'Walkie Talkie', url: 'https://walkietalkie.so' },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Walkie Talkie',
+      url: 'https://walkietalkie.so',
+      logo: { '@type': 'ImageObject', url: 'https://walkietalkie.so/icon-512.png' },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `https://walkietalkie.so${PATH}` },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQS.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  },
+]
 
 export default function HowToPracticeSpeakingAlone() {
   return (
     <div className="app legal">
+      <Seo title={TITLE} description={DESCRIPTION} path={PATH} image={IMAGE} type="article" jsonLd={JSON_LD} />
       <nav className="tutor-nav">
         <Link to="/" className="tutor-nav-back">
           ← Back
@@ -57,7 +129,7 @@ export default function HowToPracticeSpeakingAlone() {
 
         <h2>6 Ways to Practice Speaking a Language Alone</h2>
 
-        <h2>1. Self-Talk Throughout Your Day</h2>
+        <h3>1. Self-Talk Throughout Your Day</h3>
         <p>
           This is the simplest method and one of the most underrated. Narrate what you're doing in
           your target language as you do it. Making coffee? Say "estoy preparando el café."
@@ -72,7 +144,7 @@ export default function HowToPracticeSpeakingAlone() {
           Start with five minutes a day. It feels strange at first. It stops feeling strange quickly.
         </p>
 
-        <h2>2. Shadowing</h2>
+        <h3>2. Shadowing</h3>
         <p>
           Shadowing means listening to a native speaker and repeating what they say as closely as
           possible — matching their rhythm, intonation, and pace. You're not translating. You're
@@ -89,7 +161,7 @@ export default function HowToPracticeSpeakingAlone() {
           Even 10 minutes a day builds noticeable results over weeks.
         </p>
 
-        <h2>3. Talk to Yourself in the Mirror</h2>
+        <h3>3. Talk to Yourself in the Mirror</h3>
         <p>
           It sounds strange, but it works. Speaking to your reflection forces you to maintain eye
           contact, which mimics the social pressure of a real conversation. It also lets you watch
@@ -101,7 +173,7 @@ export default function HowToPracticeSpeakingAlone() {
           comfortable with the discomfort of producing speech.
         </p>
 
-        <h2>4. Record Yourself</h2>
+        <h3>4. Record Yourself</h3>
         <p>
           Recording yourself speaking is uncomfortable in the best way. When you play it back, you
           hear exactly what a native speaker would hear: your accent, your hesitations, the words you
@@ -117,7 +189,7 @@ export default function HowToPracticeSpeakingAlone() {
           motivating when the day-to-day improvement feels invisible.
         </p>
 
-        <h2>5. Think in the Language</h2>
+        <h3>5. Think in the Language</h3>
         <p>
           Most intermediate learners still think in English and translate. That internal translation
           step is what makes real-time conversation feel slow and effortful.
@@ -132,7 +204,7 @@ export default function HowToPracticeSpeakingAlone() {
           translation step shrinks and eventually disappears for common phrases and situations.
         </p>
 
-        <h2>6. Use an AI Voice Tutor for Real Conversation Practice</h2>
+        <h3>6. Use an AI Voice Tutor for Real Conversation Practice</h3>
         <p>
           The methods above are valuable, but they share a limitation: there's no one responding to
           you. Self-talk and shadowing build fluency mechanics, but they don't train you to hold a
@@ -140,10 +212,7 @@ export default function HowToPracticeSpeakingAlone() {
         </p>
         <p>
           That's where AI voice tutors have changed what's possible for solo learners.{' '}
-          <a href="https://walkietalkie.so" target="_blank" rel="noreferrer noopener">
-            Walkie Talkie
-          </a>{' '}
-          is an AI voice tutor built specifically for this gap. You tap to speak, and the AI responds
+          <Link to="/">Walkie Talkie</Link> is an AI voice tutor built specifically for this gap. You tap to speak, and the AI responds
           in natural conversation — asking follow-up questions, gently correcting mistakes in
           context, and adapting to your level.
         </p>
@@ -159,11 +228,8 @@ export default function HowToPracticeSpeakingAlone() {
           of starting from zero every time, each conversation builds on the last.
         </p>
         <p>
-          You can try it free for 10 minutes with no credit card required at{' '}
-          <a href="https://walkietalkie.so" target="_blank" rel="noreferrer noopener">
-            walkietalkie.so
-          </a>
-          .
+          You can try it free for 10 minutes with no credit card required —{' '}
+          <Link to="/">start a conversation here</Link>.
         </p>
 
         <h2>How to Build a Solo Speaking Routine That Sticks</h2>
@@ -255,59 +321,12 @@ export default function HowToPracticeSpeakingAlone() {
         </p>
 
         <h2>FAQs</h2>
-
-        <h2>Can I actually improve my speaking fluency by practicing alone?</h2>
-        <p>
-          Yes. Speaking fluency improves through repetition and feedback, both of which you can get
-          solo. Methods like self-talk, shadowing, and AI conversation practice give you the reps.
-          Recording yourself provides a form of feedback. The main thing you miss without a human
-          partner is unpredictability, which AI tutors increasingly replicate.
-        </p>
-
-        <h2>How long does it take to notice improvement from solo speaking practice?</h2>
-        <p>
-          Most learners notice a difference in confidence and retrieval speed within three to four
-          weeks of consistent daily practice. Pronunciation and fluency improvements take longer —
-          typically two to three months of regular effort.
-        </p>
-
-        <h2>Is an AI voice tutor a replacement for a human tutor?</h2>
-        <p>
-          Not a replacement, but a complement. Human tutors are valuable for milestone feedback,
-          nuanced cultural context, and accountability. AI tutors are better for daily reps —
-          they're available at any time, there's no scheduling friction, and there's no social
-          pressure. Most learners benefit from using both at different stages.
-        </p>
-
-        <h2>What's the best solo speaking method for beginners?</h2>
-        <p>
-          Self-talk is the lowest barrier entry point. Narrating your day in the target language
-          requires no setup and builds retrieval habits quickly. Shadowing is also effective early on
-          because it trains your mouth to produce natural sounds before you have the vocabulary to
-          generate original sentences.
-        </p>
-
-        <h2>How do I stay motivated when practicing alone feels pointless?</h2>
-        <p>
-          Track your sessions, not your fluency. Fluency is hard to measure day-to-day, but you can
-          always count whether you practiced. Record yourself once a month and compare to the
-          previous recording — the difference is usually more noticeable than you expect. Setting a
-          concrete goal (a trip, a conversation with a family member, a specific milestone) also
-          helps anchor the effort.
-        </p>
-
-        <h2>Does Walkie Talkie work for complete beginners?</h2>
-        <p>
-          Walkie Talkie is designed for learners who already have foundational knowledge and want to
-          build speaking fluency. If you're starting from zero, spend a few weeks on vocabulary and
-          basic grammar first, then use the AI conversation practice to activate what you've learned.
-        </p>
-
-        <h2>What languages does Walkie Talkie support?</h2>
-        <p>
-          Walkie Talkie currently supports Brazilian Portuguese, Mexican Spanish, Italian, French,
-          and German — all under one subscription.
-        </p>
+        {FAQS.map((faq) => (
+          <div key={faq.q}>
+            <h3>{faq.q}</h3>
+            <p>{faq.a}</p>
+          </div>
+        ))}
 
         <h2>Start Speaking Today</h2>
         <p>
@@ -318,10 +337,8 @@ export default function HowToPracticeSpeakingAlone() {
         <p>
           If you want to add real conversation practice to your routine without the hassle of
           scheduling or the anxiety of speaking in front of someone,{' '}
-          <a href="https://walkietalkie.so" target="_blank" rel="noreferrer noopener">
-            Walkie Talkie
-          </a>{' '}
-          gives you 10 free minutes to try it right now — no credit card, no commitment. Tap, speak,
+          <Link to="/">Walkie Talkie</Link> gives you 10 free minutes to try it right now — no
+          credit card, no commitment. Tap, speak,
           and see what it feels like to actually use the language you've been studying.
         </p>
       </article>
