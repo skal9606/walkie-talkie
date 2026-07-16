@@ -11,6 +11,7 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import AdNeymarDM from './pages/Ad'
 import Admin from './pages/Admin'
+import HowToPracticeSpeakingAlone from '../blogposts/HowToPracticeSpeakingAlone'
 import { trackPage } from './lib/tiktok'
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/ad/neymar-dm" element={<AdNeymarDM />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/blog/how-to-practice-speaking-a-language-alone" element={<HowToPracticeSpeakingAlone />} />
       </Routes>
     </BrowserRouter>
   )
