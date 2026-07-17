@@ -5,6 +5,13 @@ import Seo from '../components/Seo'
 // (and add its route in App.tsx + a URL in public/sitemap.xml).
 const POSTS: { slug: string; title: string; date: string; description: string }[] = [
   {
+    slug: 'speak-vs-walkie-talkie',
+    title: 'Speak vs Walkie Talkie: Which AI Language App Actually Gets You Speaking?',
+    date: 'July 17, 2026',
+    description:
+      'An honest comparison of Speak and Walkie Talkie — who each app is built for, how they handle mistakes, language coverage, and pricing.',
+  },
+  {
     slug: 'how-to-practice-speaking-a-language-alone',
     title: 'How to Practice Speaking a Language Alone in 2026 (Without Feeling Silly)',
     date: 'July 16, 2026',
