@@ -13,6 +13,7 @@ import AdNeymarDM from './pages/Ad'
 import Admin from './pages/Admin'
 import Blog from './pages/Blog'
 import HowToPracticeSpeakingAlone from '../blogposts/HowToPracticeSpeakingAlone'
+import IntermediatePlateau from '../blogposts/IntermediatePlateau'
 import { trackPage } from './lib/tiktok'
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/admin" element={<Admin />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/how-to-practice-speaking-a-language-alone" element={<HowToPracticeSpeakingAlone />} />
+        <Route path="/blog/why-youre-stuck-at-the-intermediate-language-plateau" element={<IntermediatePlateau />} />
       </Routes>
     </BrowserRouter>
   )
