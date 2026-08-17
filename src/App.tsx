@@ -15,6 +15,7 @@ import Blog from './pages/Blog'
 import HowToPracticeSpeakingAlone from '../blogposts/HowToPracticeSpeakingAlone'
 import IntermediatePlateau from '../blogposts/IntermediatePlateau'
 import { trackPage } from './lib/tiktok'
+import { trackPageView } from './lib/gtag'
 
 export default function App() {
   return (
@@ -43,10 +44,14 @@ export default function App() {
 // Fires ttq.page() on every client-side navigation. index.html already fires
 // it once on initial load; this keeps the pixel in sync as users move between
 // the landing page, chat, and the ad page without a full reload.
+// Also fires GA page_view here — GA's auto pageview is disabled in index.html
+// (send_page_view: false), so this effect is the sole source, covering both
+// the initial load and every route change exactly once.
 function PageTracker() {
   const { pathname } = useLocation()
   useEffect(() => {
     trackPage()
+    trackPageView(pathname)
   }, [pathname])
   return null
 }
