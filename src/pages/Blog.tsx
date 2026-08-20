@@ -5,6 +5,13 @@ import Seo from '../components/Seo'
 // (and add its route in App.tsx + a URL in public/sitemap.xml).
 const POSTS: { slug: string; title: string; date: string; description: string }[] = [
   {
+    slug: 'intermediate-spanish-practice-b1-to-fluency',
+    title: 'Intermediate Spanish Practice: Moving from B1 to Actual Fluency',
+    date: 'August 20, 2026',
+    description:
+      "You're past beginner Spanish but real conversations still stall. Here's why the B1 wall happens and what intermediate Spanish practice actually looks like to break through it.",
+  },
+  {
     slug: 'why-youre-stuck-at-the-intermediate-language-plateau',
     title: "Why You're Stuck at the Intermediate Language Plateau (And What Actually Gets You Talking Again)",
     date: 'July 17, 2026',

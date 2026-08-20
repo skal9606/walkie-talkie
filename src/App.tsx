@@ -14,6 +14,7 @@ import Admin from './pages/Admin'
 import Blog from './pages/Blog'
 import HowToPracticeSpeakingAlone from '../blogposts/HowToPracticeSpeakingAlone'
 import IntermediatePlateau from '../blogposts/IntermediatePlateau'
+import IntermediateSpanishPractice from '../blogposts/IntermediateSpanishPractice'
 import { trackPage } from './lib/tiktok'
 import { trackPageView } from './lib/gtag'
 
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/how-to-practice-speaking-a-language-alone" element={<HowToPracticeSpeakingAlone />} />
         <Route path="/blog/why-youre-stuck-at-the-intermediate-language-plateau" element={<IntermediatePlateau />} />
+        <Route path="/blog/intermediate-spanish-practice-b1-to-fluency" element={<IntermediateSpanishPractice />} />
       </Routes>
     </BrowserRouter>
   )
