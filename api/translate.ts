@@ -1,5 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { synthesizeSpeech, translate, unsplashImageLookup } from '../lib/api-handlers.js'
+import {
+  generateHint,
+  synthesizeSpeech,
+  translate,
+  unsplashImageLookup,
+  type TranscriptEntry,
+} from '../lib/api-handlers.js'
 import { checkRateLimit } from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 
@@ -32,11 +38,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
   const body = (req.body ?? {}) as {
-    type?: 'translate' | 'tts' | 'image'
+    type?: 'translate' | 'tts' | 'image' | 'hint'
     text?: string
     language?: string
     voice?: string
     query?: string
+    transcript?: TranscriptEntry[]
+    proficiency?: string
+    languageLabel?: string
+    nativeLanguage?: string
   }
   // Length caps — applied before we hand strings off to OpenAI so an
   // attacker can't paste megabytes of text into a TTS request.
@@ -48,6 +58,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (body.type === 'tts') {
     const result = await synthesizeSpeech(process.env.OPENAI_API_KEY, body.text, body.voice)
+    return res.status(result.status).json(result.body)
+  }
+  if (body.type === 'hint') {
+    // GPT-Live engine: hints are a server-side chat completion over the
+    // recent transcript (the voice model has no silent text channel).
+    const result = await generateHint(process.env.OPENAI_API_KEY, body)
     return res.status(result.status).json(result.body)
   }
   if (body.type === 'image') {

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
+import { LiveTutor, LIVE_PROMPT_ADDENDUM, type LiveEvent, type LivePrepared } from '../lib/live'
+import { applyEngineParams, currentEngine, currentLiveVoice } from '../lib/engine'
 
 /// Mirrors the backend shape in lib/api-handlers.ts. Inlined here rather
 /// than imported from the backend module to keep the frontend bundle
@@ -137,7 +139,9 @@ export default function Tutor() {
   // sees their level prominently alongside the subscribe CTA.
   const [cefr, setCefr] = useState<CefrAssessment | null>(null)
 
-  const tutorRef = useRef<RealtimeTutor | null>(null)
+  // Either voice engine — Realtime (production default) or GPT-Live
+  // (behind the ?engine=live flag, see src/lib/engine.ts).
+  const tutorRef = useRef<RealtimeTutor | LiveTutor | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Timestamp of when the current session went live; used to decide whether
   // the session was long enough to count toward the daily-practice streak.
@@ -273,6 +277,17 @@ export default function Tutor() {
       }
     })()
   }, [accessToken, searchParams, setSearchParams])
+
+  // --- Voice engine switch: /chat?engine=live|realtime, /chat?voice=bossa ---
+  // Sticks in localStorage; params are stripped so a shared link doesn't
+  // keep re-applying them.
+  useEffect(() => {
+    if (!applyEngineParams(searchParams)) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('engine')
+    next.delete('voice')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   // --- One-shot /chat?reset=1 handler (for testing the onboarding flow) ---
   // Clears profile + per-tutor memory/vocab/focus + signs out, then reloads
@@ -733,7 +748,29 @@ export default function Tutor() {
     setHintLoading(true)
     setHintLines(null)
     hintBufferRef.current = ''
-    tutorRef.current.requestHint({
+    const client = tutorRef.current
+    if (client instanceof LiveTutor) {
+      // GPT-Live: server round-trip over the transcript (no silent text
+      // channel on the live connection). Resolves straight to lines.
+      void (async () => {
+        try {
+          const fresh = await getFreshAccessToken()
+          const lines = await client.requestHint({
+            proficiency: profile.level!,
+            languageLabel: tutor.languageLabel,
+            nativeLanguage: profile.nativeLanguage ?? 'English',
+            accessToken: fresh ?? undefined,
+          })
+          if (tutorRef.current === client) setHintLines(lines)
+        } catch {
+          if (tutorRef.current === client) setHintLines([])
+        } finally {
+          if (tutorRef.current === client) setHintLoading(false)
+        }
+      })()
+      return
+    }
+    client.requestHint({
       proficiency: profile.level,
       languageLabel: tutor.languageLabel,
       nativeLanguage: profile.nativeLanguage ?? 'English',
@@ -770,18 +807,28 @@ export default function Tutor() {
     // weave it into the system prompt BEFORE the opener fires. Without
     // this pre-fetch, the opener would run with no mistakes context and
     // a session.update after-the-fact would land too late.
-    const realtime = new RealtimeTutor()
-    tutorRef.current = realtime
+    //
+    // GPT-Live engine: same shape, but "prepare" is an access check +
+    // learner state only. The prompt travels with the WebRTC offer in
+    // connect() instead of being sent after the call opens.
+    const engine = currentEngine()
+    const live = engine === 'live' ? new LiveTutor() : null
+    const realtime = live ? null : new RealtimeTutor()
+    tutorRef.current = live ?? realtime
 
-    let minted:
-      | Awaited<ReturnType<RealtimeTutor['mintSession']>>
-      | null = null
+    let minted: (LivePrepared & { ephemeralKey?: string }) | null = null
+    let freshToken: string | null = null
     try {
-      const freshToken = await getFreshAccessToken()
-      minted = await realtime.mintSession({
-        accessToken: freshToken ?? undefined,
-        language: tutor.language,
-      })
+      freshToken = await getFreshAccessToken()
+      minted = live
+        ? await live.prepareSession({
+            accessToken: freshToken ?? undefined,
+            language: tutor.language,
+          })
+        : await realtime!.mintSession({
+            accessToken: freshToken ?? undefined,
+            language: tutor.language,
+          })
     } catch (err) {
       const e = err as Error & { status?: number; secondsRemaining?: number }
       // 402 = trial exhausted. Mirror the previous behavior — paywall,
@@ -836,11 +883,56 @@ export default function Tutor() {
       focusBlock,
       mistakesBlock,
       preferencesBlock,
+      // GPT-Live has no turn-detection settings; interruption and
+      // backchannel behaviour are steered by prompt text only.
+      live ? LIVE_PROMPT_ADDENDUM : '',
     ]
       .filter(Boolean)
       .join('\n\n')
 
-    realtime.onEvent((event: RealtimeEvent) => {
+    // --- GPT-Live event handling ---
+    // The client already segments transcript deltas into bubbles and
+    // marks them done after a quiet period; the page just mirrors the
+    // list. Beginner cards watch the tutor bubbles' cumulative text.
+    const handleLiveEvent = (event: LiveEvent) => {
+      switch (event.type) {
+        case 'turns': {
+          setTurns(
+            event.turns.map((t) => ({ id: t.id, role: t.role, text: t.text, done: t.done })),
+          )
+          if (profile?.level === 'complete-beginner' && tutor.beginnerCards.length > 0) {
+            for (const t of event.turns) {
+              if (t.role !== 'tutor') continue
+              if (tutorTurnTextRef.current.get(t.id) === t.text) continue
+              tutorTurnTextRef.current.set(t.id, t.text)
+              const card = findBeginnerCardInText(
+                t.text,
+                tutor.beginnerCards,
+                triggeredCardWordsRef.current,
+              )
+              if (card) {
+                triggeredCardWordsRef.current.add(card.word)
+                setActiveCard(card)
+              }
+            }
+          }
+          break
+        }
+        case 'error':
+          setError(event.message)
+          break
+        case 'closed':
+          // OpenAI ended the call (expiry, moderation, network). Surface
+          // it as an error only if we didn't ask for it ourselves.
+          if (event.reason !== 'close_requested' && tutorRef.current === live) {
+            setError(`The call ended (${event.reason}).`)
+          }
+          break
+      }
+    }
+
+    live?.onEvent(handleLiveEvent)
+    realtime?.onEvent((event: RealtimeEvent) => {
       switch (event.type) {
         // GA may emit conversation.item.added instead of .created, and may
         // have dropped or renamed item.type. Drop the type:'message' check
@@ -980,17 +1072,23 @@ export default function Tutor() {
     })
 
     try {
-      const info = await realtime.connect(instructions, {
-        vadEagerness: activeScenario.vadEagerness,
-        mintedToken: minted.ephemeralKey,
-        transcriptionLanguage: tutor.transcriptionLanguage(profile?.level),
-      })
+      const info = live
+        ? await live.connect(instructions, {
+            accessToken: freshToken ?? undefined,
+            voice: currentLiveVoice(),
+          })
+        : await realtime!.connect(instructions, {
+            vadEagerness: activeScenario.vadEagerness,
+            mintedToken: minted.ephemeralKey,
+            transcriptionLanguage: tutor.transcriptionLanguage(profile?.level),
+          })
       setSubscribed(minted.subscribed || info.subscribed)
       setSecondsRemaining(minted.secondsRemaining || info.secondsRemaining)
       sessionStartedAtRef.current = Date.now()
       // PostHog: session connected. Non-sensitive metadata only — never the
       // transcript or anything the learner said.
       track.conversationStarted({
+        engine,
         scenario_id: activeScenario.id,
         tutor_id: tutor.id,
         tutor_language: tutor.language,
@@ -1003,7 +1101,7 @@ export default function Tutor() {
       // localStorage-deduped so repeat sessions are no-ops.
       trackStartTrial()
     } catch (err) {
-      realtime.disconnect()
+      tutorRef.current?.disconnect()
       tutorRef.current = null
       const typed = err as Error & { status?: number; secondsRemaining?: number }
       if (typed.status === 402) {

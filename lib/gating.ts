@@ -391,11 +391,27 @@ export async function mintGatedSession(
   // common path, but app-opens-without-use show up as a false +1.
   await bumpConversationCount(userId)
   const body = mint.body && typeof mint.body === 'object' ? (mint.body as object) : {}
+  const extras = await loadSessionExtras(userId, language)
+  return {
+    status: 200,
+    body: {
+      ...body,
+      subscribed: access.subscribed,
+      secondsRemaining: access.secondsRemaining,
+      ...extras,
+    },
+  }
+}
 
+/**
+ * Learner state that rides along with every session start: per-language
+ * mistakes / memory / focus, the streak, and the server-side profile.
+ * Shared by the Realtime mint and the GPT-Live prepare step. Every load is
+ * best-effort — a DB hiccup returns empty state, never blocks a session.
+ */
+export async function loadSessionExtras(userId: string, language?: string) {
   // Load learner state for the requested language. Skipped when no language
   // is passed (legacy callers) — they just don't get continuity, no error.
-  // Best-effort: any DB hiccup falls back to empty state, never blocks the
-  // session mint.
   let learnerState: {
     mistakes: unknown[]
     memory: string[]
@@ -411,8 +427,7 @@ export async function mintGatedSession(
   }
 
   // Pull current streak so the home screen can render immediately on
-  // session start without a separate round-trip. Best-effort — a DB
-  // hiccup just renders 0/null, never blocks the session mint.
+  // session start without a separate round-trip.
   let streak: { streakCount: number; streakLastDay: string | null } = {
     streakCount: 0,
     streakLastDay: null,
@@ -427,7 +442,7 @@ export async function mintGatedSession(
   // Pull the server-backed learner profile so iOS (which reads /api/session
   // on launch) can hydrate name/language/tutor/level/goals and skip onboarding
   // for a returning account — same source of truth the web app reads from
-  // /api/subscription-status. Best-effort: null on any hiccup, never blocks.
+  // /api/subscription-status.
   let learnerProfile: unknown = null
   try {
     const { loadLearnerProfile } = await import('./api-handlers.js')
@@ -437,17 +452,82 @@ export async function mintGatedSession(
   }
 
   return {
+    recentMistakes: learnerState.mistakes,
+    recentMemory: learnerState.memory,
+    nextFocus: learnerState.nextFocus,
+    streakCount: streak.streakCount,
+    streakLastDay: streak.streakLastDay,
+    learnerProfile,
+  }
+}
+
+// -- GPT-Live engine ---------------------------------------------------------
+//
+// GPT-Live needs the instructions in the same request as the WebRTC offer,
+// and the web client assembles the prompt from learner state. So a session
+// start is two calls: prepare (access check + learner state, no OpenAI
+// call) → client builds the prompt and offer → create (access check again
+// + forward to OpenAI). The second access check is cheap and closes the
+// window where a trial runs out between the two calls.
+
+export async function prepareLiveSession(
+  userId: string,
+  language?: string,
+  ipHash?: string,
+  deviceId?: string,
+): Promise<HandlerResult> {
+  const access = await checkSessionAccess(userId, ipHash, deviceId)
+  if (!access.allowed) {
+    return {
+      status: 402,
+      body: {
+        error: access.reason ?? 'Payment required',
+        subscribed: access.subscribed,
+        secondsRemaining: access.secondsRemaining,
+      },
+    }
+  }
+  const extras = await loadSessionExtras(userId, language)
+  return {
+    status: 200,
+    body: {
+      engine: 'live',
+      subscribed: access.subscribed,
+      secondsRemaining: access.secondsRemaining,
+      ...extras,
+    },
+  }
+}
+
+export async function createGatedLiveSession(
+  userId: string,
+  openAiKey: string | undefined,
+  params: { sdp?: unknown; instructions?: unknown; voice?: unknown },
+  ipHash?: string,
+  deviceId?: string,
+): Promise<HandlerResult> {
+  const access = await checkSessionAccess(userId, ipHash, deviceId)
+  if (!access.allowed) {
+    return {
+      status: 402,
+      body: {
+        error: access.reason ?? 'Payment required',
+        subscribed: access.subscribed,
+        secondsRemaining: access.secondsRemaining,
+      },
+    }
+  }
+  const { createLiveSession } = await import('./api-handlers.js')
+  const created = await createLiveSession(openAiKey, params)
+  if (created.status !== 200) return created
+  await bumpConversationCount(userId)
+  const body = created.body && typeof created.body === 'object' ? (created.body as object) : {}
+  return {
     status: 200,
     body: {
       ...body,
       subscribed: access.subscribed,
       secondsRemaining: access.secondsRemaining,
-      recentMistakes: learnerState.mistakes,
-      recentMemory: learnerState.memory,
-      nextFocus: learnerState.nextFocus,
-      streakCount: streak.streakCount,
-      streakLastDay: streak.streakLastDay,
-      learnerProfile,
     },
   }
 }

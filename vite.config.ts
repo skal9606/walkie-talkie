@@ -6,13 +6,20 @@ import {
   cancelSubscription,
   createCheckoutSession,
   deleteAccount,
+  generateHint,
   getSubscriptionDetail,
   reactivateSubscription,
   reviewTranscript,
   translate,
   type HandlerResult,
 } from './lib/api-handlers.js'
-import { addUsageSeconds, checkSessionAccess, mintGatedSession } from './lib/gating.js'
+import {
+  addUsageSeconds,
+  checkSessionAccess,
+  createGatedLiveSession,
+  mintGatedSession,
+  prepareLiveSession,
+} from './lib/gating.js'
 import { handleStripeWebhook } from './lib/stripe-webhook.js'
 import { getUserIdFromAuthHeader } from './lib/supabase-admin.js'
 
@@ -103,7 +110,17 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use('/api/session', async (req, res) => {
             const userId = await getUserIdFromAuthHeader(authHeader(req))
             if (!userId) return sendResult(res, { status: 401, body: { error: 'Not signed in.' } })
-            sendResult(res, await mintGatedSession(userId, env.OPENAI_API_KEY))
+            const url = new URL(req.url ?? '/', 'http://localhost')
+            const language = url.searchParams.get('language') ?? undefined
+            // GPT-Live engine — mirrors api/session.ts.
+            if (req.method === 'POST') {
+              const body = await readJsonBody<{ sdp?: unknown; instructions?: unknown; voice?: unknown }>(req)
+              return sendResult(res, await createGatedLiveSession(userId, env.OPENAI_API_KEY, body))
+            }
+            if (url.searchParams.get('engine') === 'live') {
+              return sendResult(res, await prepareLiveSession(userId, language))
+            }
+            sendResult(res, await mintGatedSession(userId, env.OPENAI_API_KEY, language))
           })
 
           server.middlewares.use('/api/heartbeat', async (req, res) => {
@@ -132,7 +149,10 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use('/api/translate', async (req, res) => {
             const userId = await getUserIdFromAuthHeader(authHeader(req))
             if (!userId) return sendResult(res, { status: 401, body: { error: 'Not signed in.' } })
-            const body = await readJsonBody<{ text?: string; language?: string }>(req)
+            const body = await readJsonBody<{ type?: string; text?: string; language?: string }>(req)
+            if (body.type === 'hint') {
+              return sendResult(res, await generateHint(env.OPENAI_API_KEY, body as Parameters<typeof generateHint>[1]))
+            }
             sendResult(res, await translate(env.OPENAI_API_KEY, body.text, body.language))
           })
 

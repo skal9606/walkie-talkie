@@ -1,5 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { checkRateLimit, clientDeviceId, clientIpHash, mintGatedSession } from '../lib/gating.js'
+import {
+  checkRateLimit,
+  clientDeviceId,
+  clientIpHash,
+  createGatedLiveSession,
+  mintGatedSession,
+  prepareLiveSession,
+} from '../lib/gating.js'
 import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 
 // Tunables — picked to be generous for real users and tight enough to
@@ -44,6 +51,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // equivalent in browsers); pre-Build-27 iOS clients don't either. In
   // both cases the device gate is a no-op — per-user + per-IP still apply.
   const deviceId = clientDeviceId(req.headers) ?? undefined
+
+  // GPT-Live engine (web only for now; iOS stays on Realtime). Folded into
+  // this function rather than a new api/live-session.ts to stay under the
+  // Vercel Hobby 12-function cap. POST = forward the browser's WebRTC
+  // offer + prompt to OpenAI; GET ?engine=live = access check + learner
+  // state without minting anything.
+  if (req.method === 'POST') {
+    const body = (req.body ?? {}) as { sdp?: unknown; instructions?: unknown; voice?: unknown }
+    const result = await createGatedLiveSession(
+      userId,
+      process.env.OPENAI_API_KEY,
+      body,
+      ipHash,
+      deviceId,
+    )
+    return res.status(result.status).json(result.body)
+  }
+  if (req.query?.engine === 'live') {
+    const result = await prepareLiveSession(userId, language, ipHash, deviceId)
+    return res.status(result.status).json(result.body)
+  }
+
   const result = await mintGatedSession(
     userId,
     process.env.OPENAI_API_KEY,

@@ -97,6 +97,170 @@ export async function mintSessionToken(apiKey: string | undefined): Promise<Hand
   }
 }
 
+// -- OpenAI GPT-Live session (gpt-live-1) ----------------------------------
+//
+// GPT-Live is a separate API from Realtime: there are no ephemeral client
+// tokens, so the browser sends its WebRTC SDP offer to us and we forward it
+// to OpenAI together with the session config, using the project API key.
+// The answer SDP goes back to the browser, which applies it as the remote
+// description. Verified against the live endpoint on 2026-09-12 — the
+// session object accepts exactly: model, instructions, input[],
+// audio.output.voice, delegation, store. Every Realtime field
+// (turn_detection, transcription, output_modalities, ...) is rejected as
+// an unknown parameter, so nothing else is sent.
+
+export const LIVE_MODEL = 'gpt-live-1'
+
+/// Voices accepted by /v1/live/sessions on this account. `bossa` (feminine)
+/// and `tempo` (masculine) are the Brazilian Portuguese voices GPT-Live
+/// added; the rest are the shared OpenAI voice set. Anything outside this
+/// list falls back to the default so a bad query param can't break a mint.
+export const LIVE_VOICES = [
+  'coral', 'bossa', 'tempo', 'marin', 'cedar', 'sage', 'shimmer', 'ballad',
+  'alloy', 'ash', 'echo', 'verse',
+] as const
+export type LiveVoice = (typeof LIVE_VOICES)[number]
+export const DEFAULT_LIVE_VOICE: LiveVoice = 'coral'
+
+export function normalizeLiveVoice(voice: unknown): LiveVoice {
+  return typeof voice === 'string' && (LIVE_VOICES as readonly string[]).includes(voice)
+    ? (voice as LiveVoice)
+    : DEFAULT_LIVE_VOICE
+}
+
+/// Hard cap from the GPT-Live docs: instructions are limited to 16,384
+/// tokens. ~4 chars/token, with headroom. Natalia's longest assembled
+/// prompt is ~45k chars (~11k tokens) as of 2026-09-12.
+const LIVE_MAX_INSTRUCTION_CHARS = 60_000
+/// A browser SDP offer is a few KB. 64KB blocks junk without ever
+/// touching a real offer.
+const LIVE_MAX_SDP_CHARS = 65_536
+
+export async function createLiveSession(
+  apiKey: string | undefined,
+  params: { sdp?: unknown; instructions?: unknown; voice?: unknown },
+): Promise<HandlerResult> {
+  if (!apiKey) {
+    return { status: 500, body: { error: 'OPENAI_API_KEY not set.' } }
+  }
+  const sdp = typeof params.sdp === 'string' ? params.sdp : ''
+  if (!sdp.trim()) return { status: 400, body: { error: 'An SDP offer is required.' } }
+  if (sdp.length > LIVE_MAX_SDP_CHARS) return { status: 400, body: { error: 'SDP offer too large.' } }
+  const instructions = typeof params.instructions === 'string' ? params.instructions : ''
+  if (!instructions.trim()) return { status: 400, body: { error: 'Instructions are required.' } }
+  if (instructions.length > LIVE_MAX_INSTRUCTION_CHARS) {
+    return { status: 400, body: { error: 'Instructions too long for a GPT-Live session.' } }
+  }
+  const voice = normalizeLiveVoice(params.voice)
+  try {
+    const response = await fetch('https://api.openai.com/v1/live/sessions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        transport: { type: 'webrtc', sdp },
+        session: {
+          model: LIVE_MODEL,
+          instructions,
+          audio: { output: { voice } },
+        },
+      }),
+    })
+    const data = (await response.json()) as {
+      session?: { id?: string }
+      transport?: { type?: string; sdp?: string }
+      error?: { message?: string; code?: string }
+    }
+    if (!response.ok || !data.transport?.sdp) {
+      console.error(
+        `[createLiveSession] OpenAI status=${response.status} ` +
+          `error=${JSON.stringify(data.error ?? data).slice(0, 400)}`,
+      )
+      return {
+        status: response.ok ? 502 : response.status,
+        body: { error: data.error?.message ?? 'GPT-Live session creation failed.' },
+      }
+    }
+    return {
+      status: 200,
+      body: { sessionId: data.session?.id ?? null, answerSdp: data.transport.sdp, voice },
+    }
+  } catch (err) {
+    return { status: 500, body: { error: String(err) } }
+  }
+}
+
+// -- Hint ("Try saying…") for the GPT-Live engine ----------------------------
+//
+// Realtime could answer a silent text-only request on the live connection.
+// GPT-Live cannot (every response is spoken), so the hint is a plain chat
+// completion over the last few transcript turns. Same prompt as the
+// Realtime path so both engines produce comparable hints.
+
+const HINT_MAX_TURNS = 12
+const HINT_MAX_TURN_CHARS = 600
+
+export async function generateHint(
+  apiKey: string | undefined,
+  params: {
+    transcript?: TranscriptEntry[]
+    proficiency?: string
+    languageLabel?: string
+    nativeLanguage?: string
+  },
+): Promise<HandlerResult> {
+  if (!apiKey) {
+    return { status: 500, body: { error: 'OPENAI_API_KEY not set.' } }
+  }
+  const { buildHintInstructions } = await import('./hint-prompt.js')
+  const proficiency = typeof params.proficiency === 'string' ? params.proficiency : 'intermediate'
+  const languageLabel = typeof params.languageLabel === 'string' ? params.languageLabel : 'Portuguese'
+  const nativeLanguage = typeof params.nativeLanguage === 'string' ? params.nativeLanguage : 'English'
+  const transcript = (Array.isArray(params.transcript) ? params.transcript : [])
+    .filter((t) => t && (t.role === 'user' || t.role === 'tutor') && typeof t.text === 'string')
+    .slice(-HINT_MAX_TURNS)
+    .map((t) => ({ role: t.role, text: t.text.slice(0, HINT_MAX_TURN_CHARS) }))
+  const conversation = transcript.length
+    ? transcript.map((t) => `${t.role === 'user' ? 'Learner' : 'Tutor'}: ${t.text}`).join('\n')
+    : '(The conversation has just started; the tutor has greeted the learner.)'
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: buildHintInstructions(proficiency, languageLabel, nativeLanguage) },
+          { role: 'user', content: `Recent conversation:\n${conversation}` },
+        ],
+        max_tokens: 120,
+        temperature: 0.7,
+      }),
+    })
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>
+      error?: { message?: string }
+    }
+    if (data.error) {
+      return { status: 500, body: { error: data.error.message } }
+    }
+    const raw = data.choices?.[0]?.message?.content ?? ''
+    const lines = raw
+      .split('\n')
+      .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
+      .filter((line) => line.length > 0 && !(line.length < 80 && line.endsWith(':')))
+      .slice(0, 2)
+    return { status: 200, body: { lines } }
+  } catch (err) {
+    return { status: 500, body: { error: String(err) } }
+  }
+}
+
 // -- Translate a target-language utterance to English ----------------------
 
 /** Display label shown in the system prompt for each supported language. */
