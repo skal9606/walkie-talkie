@@ -35,7 +35,8 @@ import { TranscriptSegmenter, type SegmentedTurn } from './transcript-segmenter'
 /// natural listening sounds). Kept short: it rides on top of Natalia's
 /// ~11k-token prompt inside a 16k limit.
 export const LIVE_PROMPT_ADDENDUM = `CONVERSATION FLOW (full-duplex voice call):
-- Interruption policy: stop speaking when the learner interrupts. Listen to what they say, then respond to it.
+- Interruption policy: stop speaking when the learner interrupts. React to what they said in one short sentence (acknowledge or answer it) before you continue anything else. If they answered a question you had not finished asking, take the answer as applying to the part you already said, not as unclear.
+- Never narrate thinking or stall with filler like "deixa eu pensar", "let me think", "rapidinho"; if you need a beat, a brief backchannel ("uhum") is fine.
 - Backchannel policy: use light, natural backchannels ("uhum", "isso") while the learner speaks; never talk over their main point.
 - Keep listening while the learner pauses to think. Do not treat a cough, background music, or nearby conversation as a new request.
 - Start the call yourself with your usual short greeting; do not wait for the learner.`

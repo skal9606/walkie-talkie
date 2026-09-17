@@ -85,4 +85,46 @@ describe('TranscriptSegmenter', () => {
     expect(a).not.toBe(b)
     expect(a[0]).not.toBe(b[0])
   })
+
+  describe('utterance boundary without a leading space (bug 2026-09-17)', () => {
+    // Real mobile session: Natalia stalled with a filler line, paused for
+    // under the gap threshold, then began a fresh answer. GPT-Live starts
+    // every delta of a continuing utterance with a leading space (or
+    // punctuation), so a delta that starts with a bare letter right after
+    // sentence-ending punctuation is a new utterance. The app rendered
+    // "...rapidinho.Show. Uma frase útil..." as one bubble.
+    it('starts a new bubble when a fresh utterance begins without a leading space', () => {
+      const seg = new TranscriptSegmenter()
+      seg.push('tutor', ' Legal', 40000, 40200)
+      seg.push('tutor', '. É uma apresentação', 40200, 41000)
+      seg.push('user', ' Sim, exatamente.', 41000, 41800)
+      seg.push('tutor', ' Beleza, deixa eu pensar', 42500, 43500)
+      seg.push('tutor', ' em como te ajudar com isso rapidinho.', 43500, 45000)
+      const turns = seg.push('tutor', 'Show', 46200, 46400)
+      expect(turns.map((t) => [t.role, t.text])).toEqual([
+        ['tutor', ' Legal. É uma apresentação'],
+        ['user', ' Sim, exatamente.'],
+        ['tutor', ' Beleza, deixa eu pensar em como te ajudar com isso rapidinho.'],
+        ['tutor', 'Show'],
+      ])
+      expect(turns[2].done).toBe(true)
+      expect(turns[3].done).toBe(false)
+    })
+
+    it('still joins a continuing sentence that arrives with a leading space', () => {
+      const seg = new TranscriptSegmenter()
+      seg.push('tutor', ' rapidinho.', 45000, 45200)
+      const turns = seg.push('tutor', ' Uma frase útil', 46200, 46800)
+      expect(turns).toHaveLength(1)
+      expect(turns[0].text).toBe(' rapidinho. Uma frase útil')
+    })
+
+    it('still joins punctuation-only continuations', () => {
+      const seg = new TranscriptSegmenter()
+      seg.push('tutor', ' Quer tentar', 50000, 50400)
+      const turns = seg.push('tutor', '?', 50400, 50500)
+      expect(turns).toHaveLength(1)
+      expect(turns[0].text).toBe(' Quer tentar?')
+    })
+  })
 })
