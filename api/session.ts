@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // both cases the device gate is a no-op — per-user + per-IP still apply.
   const deviceId = clientDeviceId(req.headers) ?? undefined
 
-  // GPT-Live engine (web only for now; iOS stays on Realtime). Folded into
+  // GPT-Live engine (web since 2026-09-17, iOS since 2026-09-20). Folded into
   // this function rather than a new api/live-session.ts to stay under the
   // Vercel Hobby 12-function cap. POST = forward the browser's WebRTC
   // offer + prompt to OpenAI; GET ?engine=live = access check + learner
