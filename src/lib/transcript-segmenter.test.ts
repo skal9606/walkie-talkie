@@ -111,6 +111,24 @@ describe('TranscriptSegmenter', () => {
       expect(turns[3].done).toBe(false)
     })
 
+    it('does not split a word that arrives in two deltas (bug 2026-09-20: "En" + "zo")', () => {
+      // Real web session: "já marcou de encontrar o En" then "zo no Brasil?"
+      // rendered as two bubbles. A bare-letter delta is a new utterance
+      // only when the open bubble already ended a sentence.
+      const seg = new TranscriptSegmenter()
+      seg.push('tutor', ' Oi, Samit! E aí, já marcou de encontrar o En', 40000, 42000)
+      const turns = seg.push('tutor', 'zo no Brasil?', 42000, 42600)
+      expect(turns).toHaveLength(1)
+      expect(turns[0].text).toBe(' Oi, Samit! E aí, já marcou de encontrar o Enzo no Brasil?')
+    })
+
+    it('still splits a fresh utterance after sentence-ending punctuation without a leading space', () => {
+      const seg = new TranscriptSegmenter()
+      seg.push('tutor', ' Quer tentar?', 50000, 50400)
+      const turns = seg.push('tutor', 'Beleza', 51000, 51200)
+      expect(turns).toHaveLength(2)
+    })
+
     it('still joins a continuing sentence that arrives with a leading space', () => {
       const seg = new TranscriptSegmenter()
       seg.push('tutor', ' rapidinho.', 45000, 45200)

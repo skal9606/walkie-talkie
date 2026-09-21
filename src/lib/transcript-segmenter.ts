@@ -17,8 +17,13 @@
 ///     ~3s after being interrupted, so 2s separates the two cleanly.
 ///   - A delta that starts with a bare letter/digit (no leading space, not
 ///     punctuation) is the first word of a NEW utterance and opens a new
-///     bubble even inside GAP_MS. Every delta of a continuing utterance
-///     starts with a space or punctuation (" Oi", ", tudo", "!", "?").
+///     bubble even inside GAP_MS — but only if the open bubble already ends
+///     a sentence (last non-space char is . ! ? …, optionally followed by
+///     closing quotes/brackets). Every delta of a continuing utterance
+///     starts with a space or punctuation (" Oi", ", tudo", "!", "?"), yet
+///     GPT-Live sometimes splits ONE word across two deltas ("...o En" +
+///     "zo no Brasil?"); mid-sentence, a bare-letter delta is that sub-word
+///     continuation and is appended verbatim (2026-09-20).
 ///   - If the other role spoke a whole turn in between — started at/after
 ///     this role's last word and finished before this delta — that was a
 ///     real exchange, so a new bubble opens even inside GAP_MS. Overlapping
@@ -42,9 +47,17 @@ export type SegmentedTurn = {
 export const SEGMENT_GAP_MS = 2000
 
 /// GPT-Live prefixes every continuing delta with a space or punctuation;
-/// a bare letter/digit at position 0 marks the start of a new utterance.
-function startsNewUtterance(delta: string): boolean {
-  return /^[\p{L}\p{N}]/u.test(delta)
+/// a bare letter/digit at position 0 marks the start of a new utterance —
+/// unless the open bubble is mid-sentence, in which case the delta is the
+/// tail of a word GPT-Live split in two ("...o En" + "zo").
+function startsNewUtterance(delta: string, openText: string): boolean {
+  return /^[\p{L}\p{N}]/u.test(delta) && endsSentence(openText)
+}
+
+/// True when `text`, trimmed of trailing whitespace, ends with . ! ? or …,
+/// optionally followed by closing quotes/brackets (" ” ' ’ ) ]).
+function endsSentence(text: string): boolean {
+  return /[.!?…]["”'’)\]]*$/u.test(text.trimEnd())
 }
 
 export class TranscriptSegmenter {
@@ -59,7 +72,7 @@ export class TranscriptSegmenter {
     if (
       open &&
       startMs - open.endMs <= SEGMENT_GAP_MS &&
-      !startsNewUtterance(delta) &&
+      !startsNewUtterance(delta, open.text) &&
       !this.exchangedSince(open, startMs)
     ) {
       open.text += delta
