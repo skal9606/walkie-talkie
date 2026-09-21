@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
-import { LiveTutor, LIVE_PROMPT_ADDENDUM, type LiveEvent, type LivePrepared } from '../lib/live'
+import { LiveTutor, buildLiveInstructions, type LiveEvent, type LivePrepared } from '../lib/live'
 import { applyEngineParams, currentEngine, currentLiveVoice } from '../lib/engine'
 
 /// Mirrors the backend shape in lib/api-handlers.ts. Inlined here rather
@@ -875,7 +875,7 @@ export default function Tutor() {
     const mistakesBlock = isFreeConversation
       ? buildMistakesBlock(minted.recentMistakes)
       : ''
-    const instructions = [
+    const promptBody = [
       tutor.buildSystemInstructions({ nativeLanguage }),
       addon,
       learnerContext,
@@ -883,12 +883,13 @@ export default function Tutor() {
       focusBlock,
       mistakesBlock,
       preferencesBlock,
-      // GPT-Live has no turn-detection settings; interruption and
-      // backchannel behaviour are steered by prompt text only.
-      live ? LIVE_PROMPT_ADDENDUM : '',
     ]
       .filter(Boolean)
       .join('\n\n')
+    // GPT-Live has no turn-detection settings; interruption, backchannel
+    // and speak-first behaviour are steered by prompt text only — and the
+    // speak-first rule has to LEAD the prompt (see buildLiveInstructions).
+    const instructions = live ? buildLiveInstructions(promptBody) : promptBody
 
     // --- GPT-Live event handling ---
     // The client already segments transcript deltas into bubbles and

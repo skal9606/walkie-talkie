@@ -41,6 +41,27 @@ export const LIVE_PROMPT_ADDENDUM = `CONVERSATION FLOW (full-duplex voice call):
 - Keep listening while the learner pauses to think. Do not treat a cough, background music, or nearby conversation as a new request.
 - Start the call yourself with your usual short greeting; do not wait for the learner.`
 
+/// Leads the GPT-Live prompt. Natalia's prompt says "wait silently for the
+/// learner" in several places and the one "start the call yourself" line
+/// sat at the very end — with the full ~42k-char prompt gpt-live-1 stayed
+/// silent until the learner spoke (2026-09-20). Position matters: this
+/// block goes FIRST, ahead of the addendum and the tutor body.
+export const LIVE_OPENING_BLOCK = `FIRST ACTION — READ THIS BEFORE ANYTHING ELSE:
+This is a live voice call. The moment the call connects, YOU speak first: give your usual short greeting and one opening question, then stop and listen. The learner will not speak until you do. Never open the call with silence.`
+
+/// Sent as \`session.instructions.append\` the moment \`session.started\`
+/// arrives. Prompt order alone fixed the silent start in 2 of 3 probe runs;
+/// order + this nudge fixed it in 4 of 4, with a single greeting each time.
+/// Must stay under the 500-token append limit.
+export const LIVE_GREET_NUDGE =
+  'The call is connected and the learner can hear you. If you have not spoken yet, speak now: your usual short greeting and one opening question, then stop and listen.'
+
+/// Assembles the full GPT-Live prompt: speak-first rule, conversation-flow
+/// addendum, then the tutor body (persona + scenario + learner context).
+export function buildLiveInstructions(body: string): string {
+  return [LIVE_OPENING_BLOCK, LIVE_PROMPT_ADDENDUM, body].filter(Boolean).join('\n\n')
+}
+
 export type LiveEvent =
   | { type: 'turns'; turns: SegmentedTurn[] }
   | { type: 'speaking'; speaking: boolean }
@@ -256,6 +277,9 @@ export class LiveTutor {
     switch (event.type) {
       case 'session.started':
         onStarted()
+        // Belt and braces for the opener (see LIVE_GREET_NUDGE): without it
+        // the model sometimes decides to "wait silently" per the tutor prompt.
+        this.send({ type: 'session.instructions.append', delegation_id: null, content: LIVE_GREET_NUDGE })
         break
       case 'session.input_transcript.delta':
       case 'session.output_transcript.delta': {
