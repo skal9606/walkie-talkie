@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
 
 /**
  * Server-side Supabase client using the service_role key. Bypasses RLS — only
@@ -42,7 +43,60 @@ export async function getUserFromAuthHeader(
   const match = /^Bearer\s+(.+)$/i.exec(header)
   if (!match) return null
   const jwt = match[1]
+  // Fast path: verify the signature locally against Supabase's published
+  // JWKS (ES256). Saves the 150–600ms auth round-trip on every API call
+  // (start-latency work, 2026-09-20). Trade-off: a session revoked by
+  // sign-out stays valid here until the token expires (≤1h) — acceptable
+  // for gating a voice session; Stripe/account mutations still go
+  // through Supabase itself.
+  //
+  // MUST NEVER THROW: the first version took every /api/* route down
+  // with 500s in production on 2026-09-20. Anything unexpected here is
+  // logged and falls through to the Supabase check, exactly as before.
+  try {
+    const local = await verifySupabaseJwt(jwt, remoteJwks())
+    if (local) return local
+  } catch (err) {
+    console.error('[auth] local JWT verify threw; falling back to Supabase:', err)
+  }
   const { data, error } = await supabaseAdmin().auth.getUser(jwt)
   if (error || !data?.user) return null
   return { id: data.user.id, email: data.user.email ?? null }
+}
+
+let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
+/// Module-cached so warm serverless invocations reuse the fetched keys;
+/// jose refetches on an unknown `kid` (key rotation) automatically.
+function remoteJwks() {
+  if (!jwks) {
+    const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? ''
+    jwks = createRemoteJWKSet(new URL(`${url}/auth/v1/.well-known/jwks.json`), {
+      // Don't let a slow JWKS fetch cost more than the round-trip it replaces.
+      timeoutDuration: 1500,
+      cooldownDuration: 30_000,
+    })
+  }
+  return jwks
+}
+
+/// Verifies a Supabase access token and returns its user, or null when the
+/// token is invalid/expired/not for this project. `getKey` is injectable
+/// so tests can sign with a local key; production passes the remote JWKS.
+export async function verifySupabaseJwt(
+  jwt: string,
+  getKey: Parameters<typeof jwtVerify>[1],
+): Promise<{ id: string; email: string | null } | null> {
+  const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? ''
+  try {
+    const { payload } = await jwtVerify(jwt, getKey, {
+      issuer: `${url}/auth/v1`,
+      audience: 'authenticated',
+      algorithms: ['ES256', 'RS256'],
+    })
+    if (typeof payload.sub !== 'string' || !payload.sub) return null
+    const email = typeof payload.email === 'string' ? payload.email : null
+    return { id: payload.sub, email }
+  } catch {
+    return null
+  }
 }
