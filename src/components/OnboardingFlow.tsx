@@ -19,9 +19,9 @@ import type { Level } from '../lib/scenarios'
 // Settings still uses simple selects to switch native/target — this
 // component is only for the first-time path.
 
-type Step = 'name' | 'native' | 'target' | 'level' | 'goals'
+type Step = 'name' | 'native' | 'target' | 'mic' | 'level' | 'goals'
 
-const STEP_ORDER: Step[] = ['name', 'native', 'target', 'level', 'goals']
+const ALL_STEPS: Step[] = ['name', 'native', 'target', 'mic', 'level', 'goals']
 
 type LevelOption = {
   id: Level
@@ -54,13 +54,23 @@ export type OnboardingResult = {
 export function OnboardingFlow({
   onComplete,
   onTutorPicked,
+  onRequestMic,
 }: {
   onComplete: (result: OnboardingResult) => void
   /// Fires as soon as a tutor is tapped on the "target" step — two steps
   /// (level, goals) before onComplete. The Tutor page uses it to start
   /// the GPT-Live prepare call early so the first session starts faster.
   onTutorPicked?: (tutorId: TutorId) => void
+  /// When provided, a "Turn on your microphone" step runs right after the
+  /// tutor pick. It should request mic permission (and do any local voice
+  /// setup) and resolve on success / reject on denial. Requesting the mic
+  /// here — instead of at session start — takes the permission prompt off
+  /// the first session's critical path and surfaces a blocked mic before
+  /// the learner is waiting for the tutor to speak (2026-09-20).
+  onRequestMic?: () => Promise<void>
 }) {
+  const STEP_ORDER = onRequestMic ? ALL_STEPS : ALL_STEPS.filter((st) => st !== 'mic')
+  const [micState, setMicState] = useState<'idle' | 'asking' | 'denied'>('idle')
   const [step, setStep] = useState<Step>('name')
   const [name, setName] = useState('')
   const [nativeLanguage, setNativeLanguage] = useState<NativeLanguage>('English')
@@ -229,6 +239,48 @@ export function OnboardingFlow({
               >
                 Continue
               </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'mic' && (
+          <div className="onboarding-step">
+            <p className="onboarding-step-eyebrow">
+              {tutor?.name ?? 'Your tutor'} talks out loud and listens to you.
+            </p>
+            <h1 className="onboarding-step-title">Turn on your microphone</h1>
+            <p className="onboarding-step-help">
+              Your browser will ask for permission. We only listen while a conversation is running.
+            </p>
+            {micState === 'denied' && (
+              <p className="onboarding-step-help onboarding-step-error">
+                We couldn't access your microphone. Check the microphone permission in your
+                browser's address bar, then try again.
+              </p>
+            )}
+            <div className="onboarding-flow-actions">
+              <button
+                type="button"
+                className="onboarding-flow-cta"
+                disabled={micState === 'asking'}
+                onClick={async () => {
+                  setMicState('asking')
+                  try {
+                    await onRequestMic?.()
+                    setMicState('idle')
+                    goNext()
+                  } catch {
+                    setMicState('denied')
+                  }
+                }}
+              >
+                {micState === 'asking' ? 'Waiting for permission…' : micState === 'denied' ? 'Try again' : 'Enable microphone'}
+              </button>
+              {micState === 'denied' && (
+                <button type="button" className="onboarding-flow-secondary" onClick={goNext}>
+                  Continue anyway
+                </button>
+              )}
             </div>
           </div>
         )}

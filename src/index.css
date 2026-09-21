@@ -5053,3 +5053,14 @@ body:has(.landing) {
 }
 .paywall-close:hover { background: rgba(255, 255, 255, 0.16); }
 .paywall-card-pitch { position: relative; }
+
+/* Onboarding microphone step (2026-09-20) */
+.onboarding-step-help {
+  margin: 0.25rem 0 1rem;
+  color: var(--muted, #a3a3a3);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.onboarding-step-error {
+  color: var(--danger, #f87171);
+}

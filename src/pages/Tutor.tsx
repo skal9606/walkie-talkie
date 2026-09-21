@@ -142,6 +142,16 @@ export default function Tutor() {
   // Either voice engine — Realtime (production default) or GPT-Live
   // (behind the ?engine=live flag, see src/lib/engine.ts).
   const tutorRef = useRef<RealtimeTutor | LiveTutor | null>(null)
+  /// GPT-Live client prepared during onboarding's microphone step (mic
+  /// permission + peer connection + offer), handed to start() so the first
+  /// session skips that work. Released on unmount if never used.
+  const preparedLiveRef = useRef<LiveTutor | null>(null)
+  useEffect(() => {
+    return () => {
+      preparedLiveRef.current?.disconnect()
+      preparedLiveRef.current = null
+    }
+  }, [])
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Timestamp of when the current session went live; used to decide whether
   // the session was long enough to count toward the daily-practice streak.
@@ -823,7 +833,8 @@ export default function Tutor() {
     // learner state only. The prompt travels with the WebRTC offer in
     // connect() instead of being sent after the call opens.
     const engine = currentEngine()
-    const live = engine === 'live' ? new LiveTutor() : null
+    const live = engine === 'live' ? (preparedLiveRef.current ?? new LiveTutor()) : null
+    preparedLiveRef.current = null
     const realtime = live ? null : new RealtimeTutor()
     tutorRef.current = live ?? realtime
 
@@ -1280,6 +1291,27 @@ export default function Tutor() {
           </Link>
         </nav>
         <OnboardingFlow
+          onRequestMic={async () => {
+            if (currentEngine() === 'live') {
+              // Mic permission + local WebRTC prep now; start() picks the
+              // client up, so only the broker call + connection remain.
+              preparedLiveRef.current?.disconnect()
+              const live = new LiveTutor()
+              preparedLiveRef.current = live
+              try {
+                await live.prepareLocal()
+              } catch (err) {
+                preparedLiveRef.current = null
+                live.disconnect()
+                throw err
+              }
+            } else {
+              // Realtime engine: just get the permission granted so the
+              // session's own getUserMedia resolves instantly later.
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+              stream.getTracks().forEach((t) => t.stop())
+            }
+          }}
           onTutorPicked={(pickedTutorId) => {
             // New visitors: the anonymous account already exists (created on
             // mount), so warm the learner-state call now, while they fill in
