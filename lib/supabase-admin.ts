@@ -61,6 +61,7 @@ export async function getUserFromAuthHeader(
     }
   } catch (err) {
     console.error('[auth] local JWT verify threw; falling back to Supabase:', err)
+    lastAuthReason = 'threw:' + ((err as { message?: string })?.message ?? '').slice(0, 60)
   }
   lastAuthVia = 'supabase'
   const { data, error } = await supabaseAdmin().auth.getUser(jwt)
@@ -73,8 +74,8 @@ let lastAuthVia: 'local' | 'supabase' | 'none' = 'none'
 /// as the `x-walkie-auth` response header on /api/session so the fast
 /// path can be confirmed from outside (Vercel logs aren't at hand).
 /// Diagnostic only; safe to remove once confirmed.
-export function authVia(): 'local' | 'supabase' | 'none' {
-  return lastAuthVia
+export function authVia(): string {
+  return lastAuthReason ? `${lastAuthVia};reason=${lastAuthReason}` : lastAuthVia
 }
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
@@ -82,8 +83,7 @@ let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
 /// jose refetches on an unknown `kid` (key rotation) automatically.
 function remoteJwks() {
   if (!jwks) {
-    const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? ''
-    jwks = createRemoteJWKSet(new URL(`${url}/auth/v1/.well-known/jwks.json`), {
+    jwks = createRemoteJWKSet(new URL(`${supabaseUrl()}/auth/v1/.well-known/jwks.json`), {
       // Don't let a slow JWKS fetch cost more than the round-trip it replaces.
       timeoutDuration: 1500,
       cooldownDuration: 30_000,
@@ -99,7 +99,11 @@ export async function verifySupabaseJwt(
   jwt: string,
   getKey: Parameters<typeof jwtVerify>[1],
 ): Promise<{ id: string; email: string | null } | null> {
-  const url = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? ''
+  // Trailing slashes in the env var would make the issuer check fail
+  // silently (".co//auth/v1"), which is exactly the kind of prod-only
+  // mismatch this path cannot afford.
+  const url = supabaseUrl()
+  lastAuthReason = ''
   try {
     const { payload } = await jwtVerify(jwt, getKey, {
       issuer: `${url}/auth/v1`,
@@ -109,7 +113,17 @@ export async function verifySupabaseJwt(
     if (typeof payload.sub !== 'string' || !payload.sub) return null
     const email = typeof payload.email === 'string' ? payload.email : null
     return { id: payload.sub, email }
-  } catch {
+  } catch (err) {
+    // jose error codes (ERR_JWT_EXPIRED, ERR_JWT_CLAIM_VALIDATION_FAILED,
+    // ERR_JWKS_NO_MATCHING_KEY, …) plus the failing claim when present.
+    const e = err as { code?: string; claim?: string; name?: string; message?: string }
+    lastAuthReason = [e.code ?? e.name ?? 'error', e.claim].filter(Boolean).join(':')
     return null
   }
 }
+
+function supabaseUrl(): string {
+  return (process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '').replace(/\/+$/, '')
+}
+
+let lastAuthReason = 
