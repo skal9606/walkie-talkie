@@ -55,13 +55,26 @@ export async function getUserFromAuthHeader(
   // logged and falls through to the Supabase check, exactly as before.
   try {
     const local = await verifySupabaseJwt(jwt, remoteJwks())
-    if (local) return local
+    if (local) {
+      lastAuthVia = 'local'
+      return local
+    }
   } catch (err) {
     console.error('[auth] local JWT verify threw; falling back to Supabase:', err)
   }
+  lastAuthVia = 'supabase'
   const { data, error } = await supabaseAdmin().auth.getUser(jwt)
   if (error || !data?.user) return null
   return { id: data.user.id, email: data.user.email ?? null }
+}
+
+let lastAuthVia: 'local' | 'supabase' | 'none' = 'none'
+/// Which path verified the most recent token in this invocation. Surfaced
+/// as the `x-walkie-auth` response header on /api/session so the fast
+/// path can be confirmed from outside (Vercel logs aren't at hand).
+/// Diagnostic only; safe to remove once confirmed.
+export function authVia(): 'local' | 'supabase' | 'none' {
+  return lastAuthVia
 }
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null

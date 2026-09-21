@@ -7,7 +7,7 @@ import {
   mintGatedSession,
   prepareLiveSession,
 } from '../lib/gating.js'
-import { getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
+import { authVia, getUserIdFromAuthHeader } from '../lib/supabase-admin.js'
 
 // Tunables — picked to be generous for real users and tight enough to
 // block the "burn OpenAI budget" attack. A real user mints ~once per
@@ -24,6 +24,7 @@ const SESSION_MINTS_PER_MIN = 8
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await getUserIdFromAuthHeader(req.headers.authorization)
+  res.setHeader('x-walkie-auth', authVia())
   if (!userId) {
     return res.status(401).json({ error: 'Not signed in.' })
   }
