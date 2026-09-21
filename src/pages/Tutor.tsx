@@ -1280,6 +1280,18 @@ export default function Tutor() {
           </Link>
         </nav>
         <OnboardingFlow
+          onTutorPicked={(pickedTutorId) => {
+            // New visitors: the anonymous account already exists (created on
+            // mount), so warm the learner-state call now, while they fill in
+            // level + goals. By onComplete → auto-start it is usually done.
+            if (!user || !accessToken) return
+            if (currentEngine() !== 'live') return
+            prefetchLiveSession({
+              accessToken,
+              language: getTutor(pickedTutorId).language,
+              userId: user.id,
+            })
+          }}
           onComplete={(picked) => {
             const merged = mergeProfileBlanks({
               name: picked.name,

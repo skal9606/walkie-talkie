@@ -53,8 +53,13 @@ export type OnboardingResult = {
 
 export function OnboardingFlow({
   onComplete,
+  onTutorPicked,
 }: {
   onComplete: (result: OnboardingResult) => void
+  /// Fires as soon as a tutor is tapped on the "target" step — two steps
+  /// (level, goals) before onComplete. The Tutor page uses it to start
+  /// the GPT-Live prepare call early so the first session starts faster.
+  onTutorPicked?: (tutorId: TutorId) => void
 }) {
   const [step, setStep] = useState<Step>('name')
   const [name, setName] = useState('')
@@ -199,7 +204,10 @@ export function OnboardingFlow({
                   type="button"
                   key={t.id}
                   className={`onboarding-option ${tutorId === t.id ? 'selected' : ''}`}
-                  onClick={() => setTutorId(t.id)}
+                  onClick={() => {
+                    setTutorId(t.id)
+                    onTutorPicked?.(t.id)
+                  }}
                 >
                   <span className="onboarding-option-flag" aria-hidden>{t.flag}</span>
                   <span className="onboarding-option-text">
