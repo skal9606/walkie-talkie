@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { SignJWT, exportJWK, generateKeyPair, type JWK } from 'jose'
 import { createLocalJWKSet } from 'jose'
-import { verifySupabaseJwt } from './supabase-admin'
+import { supabaseOrigin, verifySupabaseJwt } from './supabase-admin'
 
 // Local JWT verification replaces a Supabase auth round-trip on every API
 // call. These tests sign tokens with a throwaway ES256 key and check the
@@ -58,5 +58,13 @@ describe('verifySupabaseJwt', () => {
 
   it('rejects garbage', async () => {
     expect(await verifySupabaseJwt('not-a-jwt', jwks)).toBeNull()
+  })
+
+  it('derives the project origin from odd env var shapes', () => {
+    expect(supabaseOrigin('https://abc123.supabase.co')).toBe('https://abc123.supabase.co')
+    expect(supabaseOrigin('https://abc123.supabase.co/')).toBe('https://abc123.supabase.co')
+    expect(supabaseOrigin('abc123.supabase.co')).toBe('https://abc123.supabase.co')
+    expect(supabaseOrigin(' https://ABC123.supabase.co/auth/v1 ')).toBe('https://abc123.supabase.co')
+    expect(supabaseOrigin('http://localhost:54321/')).toBe('http://localhost:54321')
   })
 })

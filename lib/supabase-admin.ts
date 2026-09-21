@@ -122,8 +122,18 @@ export async function verifySupabaseJwt(
   }
 }
 
+/// Canonical https origin of the Supabase project, derived from the env var
+/// by project ref rather than taken verbatim. In production the verbatim
+/// value made `new URL()` throw ("Invalid URL", 2026-09-20) even though
+/// supabase-js accepted it — so never trust its exact shape here.
+export function supabaseOrigin(raw = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? ''): string {
+  const m = /([a-z0-9-]+)\.supabase\.co/i.exec(raw)
+  if (m) return `https://${m[1].toLowerCase()}.supabase.co`
+  return raw.trim().replace(/\/+$/, '')
+}
+
 function supabaseUrl(): string {
-  return (process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '').replace(/\/+$/, '')
+  return supabaseOrigin()
 }
 
 let lastAuthReason = ''
