@@ -410,46 +410,45 @@ export async function mintGatedSession(
  * best-effort — a DB hiccup returns empty state, never blocks a session.
  */
 export async function loadSessionExtras(userId: string, language?: string) {
-  // Load learner state for the requested language. Skipped when no language
-  // is passed (legacy callers) — they just don't get continuity, no error.
-  let learnerState: {
-    mistakes: unknown[]
-    memory: string[]
-    nextFocus: string | null
-  } = { mistakes: [], memory: [], nextFocus: null }
-  if (language) {
-    try {
-      const { loadLearnerState } = await import('./api-handlers.js')
-      learnerState = await loadLearnerState(userId, language)
-    } catch (err) {
-      console.error('[session] loadLearnerState failed:', err)
-    }
-  }
-
-  // Pull current streak so the home screen can render immediately on
-  // session start without a separate round-trip.
-  let streak: { streakCount: number; streakLastDay: string | null } = {
-    streakCount: 0,
-    streakLastDay: null,
-  }
-  try {
-    const { loadStreak } = await import('./api-handlers.js')
-    streak = await loadStreak(userId)
-  } catch (err) {
-    console.error('[session] loadStreak failed:', err)
-  }
-
-  // Pull the server-backed learner profile so iOS (which reads /api/session
-  // on launch) can hydrate name/language/tutor/level/goals and skip onboarding
-  // for a returning account — same source of truth the web app reads from
-  // /api/subscription-status.
-  let learnerProfile: unknown = null
-  try {
-    const { loadLearnerProfile } = await import('./api-handlers.js')
-    learnerProfile = await loadLearnerProfile(userId)
-  } catch (err) {
-    console.error('[session] loadLearnerProfile failed:', err)
-  }
+  // The three loads are independent, so they run in parallel — they used
+  // to run one after another and cost ~270ms of the session start
+  // (measured 2026-09-20). Each failure is logged and degrades to its
+  // empty default rather than failing the session.
+  const handlers = import('./api-handlers.js')
+  const [learnerState, streak, learnerProfile] = await Promise.all([
+    // Learner state for the requested language. Skipped when no language
+    // is passed (legacy callers) — they just don't get continuity, no error.
+    (async (): Promise<{ mistakes: unknown[]; memory: string[]; nextFocus: string | null }> => {
+      if (!language) return { mistakes: [], memory: [], nextFocus: null }
+      try {
+        return await (await handlers).loadLearnerState(userId, language)
+      } catch (err) {
+        console.error('[session] loadLearnerState failed:', err)
+        return { mistakes: [], memory: [], nextFocus: null }
+      }
+    })(),
+    // Current streak so the home screen can render immediately on
+    // session start without a separate round-trip.
+    (async (): Promise<{ streakCount: number; streakLastDay: string | null }> => {
+      try {
+        return await (await handlers).loadStreak(userId)
+      } catch (err) {
+        console.error('[session] loadStreak failed:', err)
+        return { streakCount: 0, streakLastDay: null }
+      }
+    })(),
+    // Server-backed learner profile so iOS (which reads /api/session on
+    // launch) can hydrate name/language/tutor/level/goals and skip
+    // onboarding for a returning account.
+    (async (): Promise<unknown> => {
+      try {
+        return await (await handlers).loadLearnerProfile(userId)
+      } catch (err) {
+        console.error('[session] loadLearnerProfile failed:', err)
+        return null
+      }
+    })(),
+  ])
 
   return {
     recentMistakes: learnerState.mistakes,
@@ -459,6 +458,11 @@ export async function loadSessionExtras(userId: string, language?: string) {
     streakLastDay: streak.streakLastDay,
     learnerProfile,
   }
+}
+
+const RATE_LIMITED: HandlerResult = {
+  status: 429,
+  body: { error: 'Too many session requests. Please wait a moment and try again.' },
 }
 
 // -- GPT-Live engine ---------------------------------------------------------
@@ -475,8 +479,18 @@ export async function prepareLiveSession(
   language?: string,
   ipHash?: string,
   deviceId?: string,
+  /// Caller-started rate-limit check, awaited alongside the other work
+  /// instead of before it. Resolves to `allowed`.
+  rateLimitCheck: Promise<boolean> = Promise.resolve(true),
 ): Promise<HandlerResult> {
-  const access = await checkSessionAccess(userId, ipHash, deviceId)
+  // All three are independent reads; running them together instead of in
+  // sequence cut this call from ~1.1s to ~0.5s warm (2026-09-20).
+  const [allowed, access, extras] = await Promise.all([
+    rateLimitCheck,
+    checkSessionAccess(userId, ipHash, deviceId),
+    loadSessionExtras(userId, language),
+  ])
+  if (!allowed) return RATE_LIMITED
   if (!access.allowed) {
     return {
       status: 402,
@@ -487,7 +501,6 @@ export async function prepareLiveSession(
       },
     }
   }
-  const extras = await loadSessionExtras(userId, language)
   return {
     status: 200,
     body: {
@@ -505,8 +518,16 @@ export async function createGatedLiveSession(
   params: { sdp?: unknown; instructions?: unknown; voice?: unknown },
   ipHash?: string,
   deviceId?: string,
+  /// Caller-started rate-limit check, awaited together with the access
+  /// check. Both must pass BEFORE the OpenAI call: a GPT-Live session bills
+  /// from creation, so gating cannot run concurrently with it.
+  rateLimitCheck: Promise<boolean> = Promise.resolve(true),
 ): Promise<HandlerResult> {
-  const access = await checkSessionAccess(userId, ipHash, deviceId)
+  const [allowed, access] = await Promise.all([
+    rateLimitCheck,
+    checkSessionAccess(userId, ipHash, deviceId),
+  ])
+  if (!allowed) return RATE_LIMITED
   if (!access.allowed) {
     return {
       status: 402,
@@ -520,7 +541,10 @@ export async function createGatedLiveSession(
   const { createLiveSession } = await import('./api-handlers.js')
   const created = await createLiveSession(openAiKey, params)
   if (created.status !== 200) return created
-  await bumpConversationCount(userId)
+  // Bookkeeping only — don't make the learner wait on it. (Vercel keeps
+  // the function alive until the response is sent; this write takes
+  // ~100ms and the SDP answer is what the client is blocked on.)
+  bumpConversationCount(userId).catch((err) => console.error('[session] bumpConversationCount failed:', err))
   const body = created.body && typeof created.body === 'object' ? (created.body as object) : {}
   return {
     status: 200,

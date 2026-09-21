@@ -34,12 +34,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Rate limit: cap session-token mints per user-minute. Anonymous
   // Supabase users (which we auto-create) are subject to the same cap,
   // closing the "burn the OpenAI budget by hammering /api/session" path.
-  const allowed = await checkRateLimit(userId, 'session', SESSION_MINTS_PER_MIN, 60)
-  if (!allowed) {
-    return res.status(429).json({
-      error: 'Too many session requests. Please wait a moment and try again.',
-    })
-  }
+  // Started here, awaited later: the GPT-Live paths run it in parallel with
+  // their own database reads (it costs ~100–150ms on its own) and still
+  // refuse before anything is minted. The Realtime path awaits it up front
+  // as before.
+  const rateLimitCheck = checkRateLimit(userId, 'session', SESSION_MINTS_PER_MIN, 60)
   const langParam = req.query?.language
   const language = typeof langParam === 'string' ? langParam : undefined
   // Hash the client IP for the per-IP trial cap (see 2026-05-21 migration).
@@ -65,14 +64,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body,
       ipHash,
       deviceId,
+      rateLimitCheck,
     )
     return res.status(result.status).json(result.body)
   }
   if (req.query?.engine === 'live') {
-    const result = await prepareLiveSession(userId, language, ipHash, deviceId)
+    const result = await prepareLiveSession(userId, language, ipHash, deviceId, rateLimitCheck)
     return res.status(result.status).json(result.body)
   }
 
+  if (!(await rateLimitCheck)) {
+    return res.status(429).json({
+      error: 'Too many session requests. Please wait a moment and try again.',
+    })
+  }
   const result = await mintGatedSession(
     userId,
     process.env.OPENAI_API_KEY,

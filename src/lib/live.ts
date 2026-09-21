@@ -27,6 +27,7 @@
 /// events are exposed only under type 'raw' for debugging.
 
 import { TranscriptSegmenter, type SegmentedTurn } from './transcript-segmenter'
+import { PrefetchCache, livePrefetchKey } from './live-prefetch'
 
 /// Appended to the assembled tutor prompt on the GPT-Live engine only.
 /// GPT-Live has no turn-detection or interruption settings; OpenAI's
@@ -98,33 +99,16 @@ const SPEAKING_HANGOVER_MS = 400
 /// Grace period for `session.closed` after we send `session.close`.
 const CLOSE_GRACE_MS = 800
 
-export class LiveTutor {
-  private pc: RTCPeerConnection | null = null
-  private dc: RTCDataChannel | null = null
-  private audioEl: HTMLAudioElement | null = null
-  private localStream: MediaStream | null = null
-  private audioCtx: AudioContext | null = null
-  private handlers = new Set<EventHandler>()
-  private segmenter = new TranscriptSegmenter()
-  private idleTimer: ReturnType<typeof setTimeout> | null = null
-  private speakingTimer: ReturnType<typeof setInterval> | null = null
-  private closed = false
-  /// Session id from OpenAI. Kept for logs / support; not used on the wire.
-  sessionId: string | null = null
+const prepareCache = new PrefetchCache<LivePrepared>()
 
-  onEvent(handler: EventHandler): () => void {
-    this.handlers.add(handler)
-    return () => this.handlers.delete(handler)
-  }
+/// Start the "prepare" call early (Lessons page mount, Tutor page mount)
+/// so `LiveTutor.prepareSession` finds it done. Safe to call repeatedly:
+/// an in-flight or fresh (<45s) result is reused, a failed one is dropped.
+export function prefetchLiveSession(opts: { accessToken: string; language: string; userId: string }): void {
+  prepareCache.prime(livePrefetchKey(opts.userId, opts.language), () => fetchLivePrepare(opts))
+}
 
-  private emit(event: LiveEvent) {
-    this.handlers.forEach((h) => h(event))
-  }
-
-  /// Access check + learner state, no OpenAI call. Mirrors
-  /// RealtimeTutor.mintSession() so the Tutor page can build the prompt
-  /// from server memory before the call starts.
-  async prepareSession(opts: { accessToken?: string; language?: string } = {}): Promise<LivePrepared> {
+async function fetchLivePrepare(opts: { accessToken?: string; language?: string }): Promise<LivePrepared> {
     const params = new URLSearchParams({ engine: 'live' })
     if (opts.language) params.set('language', opts.language)
     const res = await fetch(`/api/session?${params.toString()}`, {
@@ -152,12 +136,64 @@ export class LiveTutor {
       recentMemory: data.recentMemory ?? [],
       nextFocus: data.nextFocus ?? null,
     }
+}
+
+export class LiveTutor {
+  private pc: RTCPeerConnection | null = null
+  private dc: RTCDataChannel | null = null
+  private audioEl: HTMLAudioElement | null = null
+  private localStream: MediaStream | null = null
+  private audioCtx: AudioContext | null = null
+  private handlers = new Set<EventHandler>()
+  private segmenter = new TranscriptSegmenter()
+  private idleTimer: ReturnType<typeof setTimeout> | null = null
+  private speakingTimer: ReturnType<typeof setInterval> | null = null
+  private closed = false
+  /// Session id from OpenAI. Kept for logs / support; not used on the wire.
+  sessionId: string | null = null
+
+  onEvent(handler: EventHandler): () => void {
+    this.handlers.add(handler)
+    return () => this.handlers.delete(handler)
   }
 
-  async connect(
-    instructions: string,
-    options: { accessToken?: string; voice?: string } = {},
-  ): Promise<{ subscribed: boolean; secondsRemaining: number }> {
+  private emit(event: LiveEvent) {
+    this.handlers.forEach((h) => h(event))
+  }
+
+  /// Access check + learner state, no OpenAI call. Mirrors
+  /// RealtimeTutor.mintSession() so the Tutor page can build the prompt
+  /// from server memory before the call starts. Uses a prefetched result
+  /// when a page ahead of /chat (or the Tutor page on mount) primed one —
+  /// see `prefetchLiveSession` — so the ~0.5–1.3s round-trip is off the
+  /// start-latency critical path.
+  async prepareSession(
+    opts: { accessToken?: string; language?: string; userId?: string } = {},
+  ): Promise<LivePrepared> {
+    if (opts.userId && opts.language) {
+      const cached = prepareCache.take(livePrefetchKey(opts.userId, opts.language))
+      if (cached) return cached
+    }
+    return fetchLivePrepare(opts)
+  }
+
+  /// Stage 1 of 2: everything that needs no server — mic permission, peer
+  /// connection, audio element + analyser, data channel, local offer and
+  /// ICE gathering (~160ms in Chrome; the mic prompt dominates for
+  /// first-time users). Safe to run concurrently with `prepareSession()`,
+  /// which is what the Tutor page does so the two costs overlap instead of
+  /// adding up. Idempotent: `connect()` calls it if the page didn't.
+  async prepareLocal(): Promise<void> {
+    if (this.localPrep) return this.localPrep
+    this.localPrep = this.runLocalPrep()
+    return this.localPrep
+  }
+
+  private localPrep: Promise<void> | null = null
+  private localSdp: string | null = null
+  private started: Promise<void> | null = null
+
+  private async runLocalPrep(): Promise<void> {
     // Mic first: a permission prompt is the slowest step and the one most
     // likely to be denied, so fail before anything is created.
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -223,6 +259,21 @@ export class LiveTutor {
     await waitForIceGathering(pc, ICE_GATHER_TIMEOUT_MS)
     const sdp = pc.localDescription?.sdp
     if (!sdp) throw new Error('Could not create a WebRTC offer.')
+    this.localSdp = sdp
+    this.started = started
+  }
+
+  /// Stage 2 of 2: broker the offer + prompt through /api/session, apply
+  /// the answer, wait for session.started. Billing starts here.
+  async connect(
+    instructions: string,
+    options: { accessToken?: string; voice?: string } = {},
+  ): Promise<{ subscribed: boolean; secondsRemaining: number }> {
+    await this.prepareLocal()
+    const pc = this.pc
+    const sdp = this.localSdp
+    const started = this.started
+    if (!pc || !sdp || !started) throw new Error('Local WebRTC prep did not complete.')
 
     const res = await fetch('/api/session', {
       method: 'POST',

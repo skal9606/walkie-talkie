@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { signOut, useAuth } from '../lib/auth'
+import { currentEngine } from '../lib/engine'
+import { prefetchLiveSession } from '../lib/live'
 import {
   loadProfile,
   mergeProfileBlanks,
@@ -52,6 +54,21 @@ export default function Lessons() {
   /// network request just for the header.
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
   const [profile, setProfile] = useState<LearnerProfile | null>(() => loadProfile())
+
+  // Warm the GPT-Live prepare call while the learner is still looking at
+  // the Lessons home. Every path from here ("Free talk", a lesson, the
+  // onboarding hand-off) lands on /chat within seconds, and the Tutor page
+  // then finds the learner state already loaded (see prefetchLiveSession).
+  useEffect(() => {
+    if (!user || !accessToken || !profile?.tutorId) return
+    if (currentEngine() !== 'live') return
+    prefetchLiveSession({
+      accessToken,
+      language: getTutor(profile.tutorId).language,
+      userId: user.id,
+    })
+  }, [user, accessToken, profile?.tutorId])
+
   /// Whether we've reconciled the onboarding gate against the server profile
   /// yet. Starts true only if the local cache already has a complete
   /// selection (fast path — no need to wait on the network). Otherwise we

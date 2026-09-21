@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { RealtimeTutor, type RealtimeEvent } from '../lib/realtime'
-import { LiveTutor, buildLiveInstructions, type LiveEvent, type LivePrepared } from '../lib/live'
+import { LiveTutor, buildLiveInstructions, prefetchLiveSession, type LiveEvent, type LivePrepared } from '../lib/live'
 import { applyEngineParams, currentEngine, currentLiveVoice } from '../lib/engine'
 
 /// Mirrors the backend shape in lib/api-handlers.ts. Inlined here rather
@@ -336,6 +336,17 @@ export default function Tutor() {
       }
     })
   }, [authLoading, user, showSignIn, searchParams])
+
+  // --- Prefetch the GPT-Live prepare call as soon as we know who + which
+  // tutor. The auto-start below still waits for subscription status and
+  // the profile gate; by then this round-trip (~0.5–1.3s) is usually done
+  // and start() takes it from the cache instead of paying for it.
+  useEffect(() => {
+    if (!user || !accessToken) return
+    if (currentEngine() !== 'live') return
+    if (!hasLanguageSelection(profile)) return
+    prefetchLiveSession({ accessToken, language: tutor.language, userId: user.id })
+  }, [user, accessToken, profile, tutor.language])
 
   // --- Auto-start a session once auth + status are ready ---
   // First-time visitors get the level-discovery scenario. Returning learners
@@ -820,15 +831,26 @@ export default function Tutor() {
     let freshToken: string | null = null
     try {
       freshToken = await getFreshAccessToken()
-      minted = live
-        ? await live.prepareSession({
+      if (live) {
+        // Learner-state call and local WebRTC prep (mic, peer connection,
+        // offer) are independent — run them together so their costs
+        // overlap instead of adding up (start-latency work, 2026-09-20).
+        // prepareSession() picks up a prefetched result when one exists.
+        const [prepared] = await Promise.all([
+          live.prepareSession({
             accessToken: freshToken ?? undefined,
             language: tutor.language,
-          })
-        : await realtime!.mintSession({
-            accessToken: freshToken ?? undefined,
-            language: tutor.language,
-          })
+            userId: user?.id,
+          }),
+          live.prepareLocal(),
+        ])
+        minted = prepared
+      } else {
+        minted = await realtime!.mintSession({
+          accessToken: freshToken ?? undefined,
+          language: tutor.language,
+        })
+      }
     } catch (err) {
       const e = err as Error & { status?: number; secondsRemaining?: number }
       // 402 = trial exhausted. Mirror the previous behavior — paywall,
