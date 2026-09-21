@@ -126,4 +126,4 @@ function supabaseUrl(): string {
   return (process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '').replace(/\/+$/, '')
 }
 
-let lastAuthReason = 
+let lastAuthReason = ''
