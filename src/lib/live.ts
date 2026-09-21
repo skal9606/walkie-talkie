@@ -35,11 +35,25 @@ import { PrefetchCache, livePrefetchKey } from './live-prefetch'
 /// blanket "never speak while the user speaks" rule (it also suppresses
 /// natural listening sounds). Kept short: it rides on top of Natalia's
 /// ~11k-token prompt inside a 16k limit.
+///
+/// 2026-09-21 (App Store 1.1.0 reports): added turn-taking, no-filler,
+/// language and pace rules. Probe results (liveprobe/probe-speech.mjs,
+/// real TTS learner speech into production gpt-live-1, 3 runs each):
+/// the language rule took an English learner reply from 1/3 Portuguese
+/// answers (2/3 ignored outright) to 3/3; the turn-taking and pace rules
+/// did NOT measurably change the model — it still jumps into a 1.5s
+/// mid-sentence pause ~2 of 3 runs and speaks ~4 words/s. GPT-Live has no
+/// VAD, endpointing, or speed parameter (developers.openai.com/api/docs/
+/// guides/live*), so the prompt is the only lever; keep the rules as
+/// intent, don't expect them to fix those two on their own.
 export const LIVE_PROMPT_ADDENDUM = `CONVERSATION FLOW (full-duplex voice call):
 - Interruption policy: stop speaking when the learner interrupts. React to what they said in one short sentence (acknowledge or answer it) before you continue anything else. If they answered a question you had not finished asking, take the answer as applying to the part you already said, not as unclear.
-- Never narrate thinking or stall with filler like "deixa eu pensar", "let me think", "rapidinho"; if you need a beat, a brief backchannel ("uhum") is fine.
+- Turn-taking: a pause mid-sentence is not your turn. Learners stop to find words; wait until the thought is clearly finished and they have stayed quiet for about two seconds before you answer. If unsure whether they are done, keep waiting. Never finish their sentence for them.
+- Never narrate thinking or stall with filler like "deixa eu pensar", "let me think", "rapidinho"; if you need a moment, stay silent or use a brief backchannel ("uhum"), then answer directly. You never need to look anything up: everything you need is in this prompt and the conversation.
 - Backchannel policy: use light, natural backchannels ("uhum", "isso") while the learner speaks; never talk over their main point.
 - Keep listening while the learner pauses to think. Do not treat a cough, background music, or nearby conversation as a new request.
+- Language: an Intermediate or Advanced learner speaking their native language is still talking to you; answer them in the target language. Their native language is not a request to switch, and neither is a garbled transcript. Use their native language only for a brief bridge when they say they don't understand or ask what a word means, then return to the target language on the next turn.
+- Pace: speak slowly and clearly, about two words per second, noticeably slower than natives chatting. Short sentences with a small pause between them. Do not speed up as the conversation warms up.
 - Start the call yourself with your usual short greeting; do not wait for the learner.`
 
 /// Leads the GPT-Live prompt. Natalia's prompt says "wait silently for the
